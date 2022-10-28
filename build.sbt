@@ -5,9 +5,9 @@ ThisBuild / scalaVersion := "3.2.1"
 ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
 
-lazy val kreuzberg = (project in file("lib"))
+lazy val lib = (project in file("lib"))
   .settings(
-    name             := "kreuzberg",
+    name := "kreuzberg",
     libraryDependencies ++= Seq(
       "com.lihaoyi"   %% "scalatags"   % "0.11.1",
       "com.lihaoyi"  %%% "scalatags"   % "0.11.1",
@@ -16,9 +16,16 @@ lazy val kreuzberg = (project in file("lib"))
   )
   .enablePlugins(ScalaJSPlugin)
 
+lazy val extras = (project in file("extras"))
+  .settings(
+    name := "extras"
+  )
+  .dependsOn(lib)
+  .enablePlugins(ScalaJSPlugin)
+
 lazy val miniserver = (project in file("miniserver"))
   .settings(
-    name             := "miniserver",
+    name := "miniserver",
     libraryDependencies ++= Seq(
       "io.d11"                     %% "zhttp"           % "2.0.0-RC10",
       "ch.qos.logback"              % "logback-classic" % "1.2.11",
@@ -28,9 +35,9 @@ lazy val miniserver = (project in file("miniserver"))
 
 lazy val examples = (project in file("examples"))
   .settings(
-    name             := "examples"
+    name := "examples"
   )
-  .dependsOn(kreuzberg)
+  .dependsOn(lib)
   .enablePlugins(ScalaJSPlugin)
 
 lazy val root = (project in file("."))
@@ -42,7 +49,8 @@ lazy val root = (project in file("."))
     publishArtifact := false
   )
   .aggregate(
-    kreuzberg,
+    lib,
+    extras,
     miniserver,
     examples
   )
