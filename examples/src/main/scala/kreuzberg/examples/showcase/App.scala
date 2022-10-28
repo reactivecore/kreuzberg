@@ -2,6 +2,8 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.*
 import kreuzberg.extras.{Route, SimpleRouter}
+import org.scalajs.dom
+import org.scalajs.dom.document
 import scalatags.Text.all.*
 
 case class App()
@@ -50,4 +52,19 @@ case class App()
     Route.SimpleRoute("/wizzard", "Wizzard", WizzardPage),
     Route.SimpleRoute("/trigger", "Trigger", TriggerPage)
   )
+}
+
+object App {
+  def main(args: Array[String]): Unit = {
+    import kreuzberg._
+    val app = App()
+    document.addEventListener(
+      "DOMContentLoaded",
+      { (e: dom.Event) =>
+        val rootElement = document.getElementById("root")
+        val binder = Binder(rootElement, app)
+        binder.run()
+      }
+    )
+  }
 }

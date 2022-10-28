@@ -23,6 +23,18 @@ lazy val extras = (project in file("extras"))
   .dependsOn(lib)
   .enablePlugins(ScalaJSPlugin)
 
+lazy val examples = (project in file("examples"))
+  .settings(
+    name                            := "examples",
+    scalaJSUseMainModuleInitializer := true,
+
+    // Moving JavaScript to a place, where we can easily find it by the server
+    Compile / fastOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/fast/main.js",
+    Compile / fullOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/opt/main.js"
+  )
+  .dependsOn(lib, extras)
+  .enablePlugins(ScalaJSPlugin)
+
 lazy val miniserver = (project in file("miniserver"))
   .settings(
     name := "miniserver",
@@ -32,13 +44,8 @@ lazy val miniserver = (project in file("miniserver"))
       "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
     )
   )
+  .dependsOn(examples)
 
-lazy val examples = (project in file("examples"))
-  .settings(
-    name := "examples"
-  )
-  .dependsOn(lib, extras)
-  .enablePlugins(ScalaJSPlugin)
 
 lazy val root = (project in file("."))
   .settings(
