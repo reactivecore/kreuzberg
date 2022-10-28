@@ -37,7 +37,7 @@ lazy val examples = (project in file("examples"))
   .settings(
     name := "examples"
   )
-  .dependsOn(lib)
+  .dependsOn(lib, extras)
   .enablePlugins(ScalaJSPlugin)
 
 lazy val root = (project in file("."))
