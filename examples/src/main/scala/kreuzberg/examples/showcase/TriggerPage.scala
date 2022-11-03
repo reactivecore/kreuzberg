@@ -1,18 +1,18 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg.*
-import kreuzberg.imperative.{AssemblyContext2, ImperativeComponentBase2}
+import kreuzberg.imperative.{SimpleContext, SimpleComponentBase}
 import scalatags.Text.all.*
 
-case class Label(model: Model[String]) extends ImperativeComponentBase2 {
-  override def assemble2(implicit c: AssemblyContext2): Html = {
+case class Label(model: Model[String]) extends SimpleComponentBase {
+  override def assemble(implicit c: SimpleContext): Html = {
     val current = subscribe(model)
     span(current)
   }
 }
 
-object TriggerPage extends ImperativeComponentBase2 {
-  override def assemble2(implicit c: AssemblyContext2): Html = {
+object TriggerPage extends SimpleComponentBase {
+  override def assemble(implicit c: SimpleContext): Html = {
     val value  = model("value", "")
     val editor = child("editor", TextInput("field"))
     val shower = child("shower", Label(value))

@@ -1,12 +1,12 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg.*
-import kreuzberg.imperative.{AssemblyContext2, ImperativeComponentBase2}
+import kreuzberg.imperative.{SimpleContext, SimpleComponentBase}
 import scalatags.Text.all.*
 
-case class ErrorShower(model: Model[Option[String]]) extends ImperativeComponentBase2 {
+case class ErrorShower(model: Model[Option[String]]) extends SimpleComponentBase {
 
-  override def assemble2(implicit c: AssemblyContext2): Html = {
+  override def assemble(implicit c: SimpleContext): Html = {
     val current = subscribe(model)
     current match {
       case None    => div(style := "display:hidden")

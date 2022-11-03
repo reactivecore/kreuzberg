@@ -2,10 +2,10 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.*
 import kreuzberg.extras.RouterLink
-import kreuzberg.imperative.{AssemblyContext2, ImperativeComponentBase2, PlaceholderTag}
+import kreuzberg.imperative.{SimpleContext, SimpleComponentBase, PlaceholderTag}
 import scalatags.Text.all.*
 
-case class Menu(currentRoute: Model[String], routerBus: Bus[String]) extends ImperativeComponentBase2 {
+case class Menu(currentRoute: Model[String], routerBus: Bus[String]) extends SimpleComponentBase {
 
   val links = Seq(
     "/"         -> "Index",
@@ -17,7 +17,7 @@ case class Menu(currentRoute: Model[String], routerBus: Bus[String]) extends Imp
     "/notfound" -> "Not Found"
   )
 
-  override def assemble2(implicit c: AssemblyContext2): Html = {
+  override def assemble(implicit c: SimpleContext): Html = {
     val items: Seq[PlaceholderTag] = links.map { case (link, name) => anonymousChild(RouterLink(link, name, currentRoute, routerBus)) }
     div(items: _*)
   }

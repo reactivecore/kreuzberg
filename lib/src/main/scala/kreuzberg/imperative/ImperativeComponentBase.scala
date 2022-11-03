@@ -3,7 +3,25 @@ package kreuzberg.imperative
 import kreuzberg._
 import kreuzberg.util.Stateful
 
-/** Imperative variant if AssemblyBuider */
+/** Base class for components, which assemble imperative. Also see [[SimpleComponentBase]] for an even reduced version.
+  */
+abstract class ImperativeComponentBase extends ImperativeDsl {
+
+  def assemble(implicit c: AssemblyContext): Assembly
+
+}
+
+object ImperativeComponentBase {
+  implicit def assembler[T <: ImperativeComponentBase]: Assembler[T] = { value =>
+    Stateful.apply { state =>
+      implicit val context = new AssemblyContext(state)
+      val assembled        = value.assemble
+      (context.state, assembled)
+    }
+  }
+}
+
+/** Imperative variant if [[AssemblyState]] */
 class AssemblyContext(private var _state: AssemblyState) {
   def transform[T](f: Stateful[AssemblyState, T]): T = {
     val (nextState, value) = f(_state)
@@ -28,7 +46,10 @@ trait ImperativeDsl {
   protected def model[M](name: String, defaultValue: M)(implicit c: AssemblyContext): Model[M] =
     c.transformFn(_.withModel(name, defaultValue))
 
-  protected def child[C](name: String, value: C)(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C] = {
+  protected def child[C](
+      name: String,
+      value: C
+  )(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C] = {
     c.transform(assembler.assembleNamedChild(name, value))
   }
 
@@ -49,20 +70,4 @@ trait ImperativeDsl {
   }
 
   def from[T](rep: ComponentNode[T]): RepBuilder[T] = RepBuilder(rep)
-}
-
-abstract class ImperativeComponentBase extends ImperativeDsl {
-
-  def assemble(implicit c: AssemblyContext): Assembly
-
-}
-
-object ImperativeComponentBase {
-  implicit def assembler[T <: ImperativeComponentBase]: Assembler[T] = { value =>
-    Stateful.apply { state =>
-      implicit val context = new AssemblyContext(state)
-      val assembled        = value.assemble
-      (context.state, assembled)
-    }
-  }
 }

@@ -7,10 +7,10 @@ import scalatags.Text.all.*
 case class PlainLink(
     name: String,
     target: String
-) extends ImperativeComponentBase2 {
+) extends SimpleComponentBase {
   val click = Event.JsEvent("click", true, true)
 
-  override def assemble2(implicit c: AssemblyContext2): Html = {
+  override def assemble(implicit c: SimpleContext): Html = {
     a(name, href := target)
   }
 }
@@ -20,9 +20,9 @@ case class RouterLink(
     name: String,
     currentRoute: Model[String],
     routerBus: Bus[String]
-) extends ImperativeComponentBase2 {
+) extends SimpleComponentBase {
 
-  override def assemble2(implicit c: AssemblyContext2): Html = {
+  override def assemble(implicit c: SimpleContext): Html = {
     val link = anonymousChild(PlainLink(name, target))
     add(
       from(link)(_.click).map(_ => target),
