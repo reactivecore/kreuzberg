@@ -13,11 +13,11 @@ trait ComponentDsl {
     Stateful.pure(assembly)
   }
 
-  def namedChild[T: Assembler](name: String, value: T): Stateful[AssemblyState, Rep[T]] = {
+  def namedChild[T: Assembler](name: String, value: T): Stateful[AssemblyState, ComponentNode[T]] = {
     Assembler[T].assembleNamedChild(name, value)
   }
 
-  def anonymousChild[T: Assembler](value: T): Stateful[AssemblyState, Rep[T]] = {
+  def anonymousChild[T: Assembler](value: T): Stateful[AssemblyState, ComponentNode[T]] = {
     Assembler[T].assembleWithNewId(value)
   }
 
@@ -37,9 +37,9 @@ trait ComponentDsl {
 
   def js[J <: org.scalajs.dom.Element] = JsStateBuilder[J]()
 
-  case class RepBuilder[T](rep: Rep[T]) {
+  case class RepBuilder[T](rep: ComponentNode[T]) {
     def apply[E](f: T => Event[E]): EventSource[E] = EventSource.RepEvent(rep, f(rep.value))
   }
 
-  def from[T](rep: Rep[T]): RepBuilder[T] = RepBuilder(rep)
+  def from[T](rep: ComponentNode[T]): RepBuilder[T] = RepBuilder(rep)
 }

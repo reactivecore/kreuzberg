@@ -9,4 +9,4 @@ type ScalaJsEvent = org.scalajs.dom.Event
 
 type AssemblyResult = Stateful[AssemblyState, Assembly]
 
-type RepResult[T] = Stateful[AssemblyState, Rep[T]]
+type NodeResult[T] = Stateful[AssemblyState, ComponentNode[T]]

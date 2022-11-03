@@ -11,14 +11,14 @@ class Viewer(rootElement: Element) {
   import Viewer.*
 
   /** Redraw root node */
-  def drawRoot(node: Node): Unit = {
+  def drawRoot(node: TreeNode): Unit = {
     val html = render(node)
     rootElement.innerHTML = html.toString
     PlaceholderState.clear()
   }
 
   /** Redraw one node. */
-  def updateNode(node: Node): Unit = {
+  def updateNode(node: TreeNode): Unit = {
     val html    = render(node)
     val current = findElement(node.id)
     current.outerHTML = html.toString
@@ -41,12 +41,12 @@ class Viewer(rootElement: Element) {
 object Viewer {
 
   /** Render a single node into HTML */
-  def render(node: Node): Html = {
+  def render(node: TreeNode): Html = {
     node match
-      case rep: Rep[_] => renderRep(rep)
+      case rep: ComponentNode[_] => renderRep(rep)
   }
 
-  private def renderRep[X](rep: Rep[X]): Html = {
+  private def renderRep[X](rep: ComponentNode[X]): Html = {
     rep.assembly match
       case p: Assembly.Pure      =>
         p.html(data.id := rep.id.id)

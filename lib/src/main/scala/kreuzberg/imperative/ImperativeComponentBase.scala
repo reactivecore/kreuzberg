@@ -28,11 +28,11 @@ trait ImperativeDsl {
   protected def model[M](name: String, defaultValue: M)(implicit c: AssemblyContext): Model[M] =
     c.transformFn(_.withModel(name, defaultValue))
 
-  protected def child[C](name: String, value: C)(implicit c: AssemblyContext, assembler: Assembler[C]): Rep[C] = {
+  protected def child[C](name: String, value: C)(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C] = {
     c.transform(assembler.assembleNamedChild(name, value))
   }
 
-  protected def anonymousChild[C](value: C)(implicit c: AssemblyContext, assembler: Assembler[C]): Rep[C] = {
+  protected def anonymousChild[C](value: C)(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C] = {
     c.transform(assembler.assembleWithNewId(value))
   }
 
@@ -44,11 +44,11 @@ trait ImperativeDsl {
     c.get(_.readValue(model))
   }
 
-  case class RepBuilder[T](rep: Rep[T]) {
+  case class RepBuilder[T](rep: ComponentNode[T]) {
     def apply[E](f: T => Event[E]): EventSource[E] = EventSource.RepEvent(rep, f(rep.value))
   }
 
-  def from[T](rep: Rep[T]): RepBuilder[T] = RepBuilder(rep)
+  def from[T](rep: ComponentNode[T]): RepBuilder[T] = RepBuilder(rep)
 }
 
 abstract class ImperativeComponentBase extends ImperativeDsl {

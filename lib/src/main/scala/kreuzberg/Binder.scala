@@ -20,7 +20,7 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
   )
 
   private var _currentState: AssemblyState = AssemblyState()
-  private var _tree: Option[Node]          = None
+  private var _tree: Option[TreeNode]          = None
   private var _hasNextIteration: Boolean   = false
   private var _inIteration: Boolean        = false
 
@@ -69,7 +69,7 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
     _currentState = garbageCollect(updatedTree, updatedState)
   }
 
-  private def updateTree(node: Node, changed: Set[ComponentId]): Stateful[AssemblyState, Node] = {
+  private def updateTree(node: TreeNode, changed: Set[ComponentId]): Stateful[AssemblyState, TreeNode] = {
     if (changed.contains(node.id)) {
       reassembleNode(node)
     } else {
@@ -77,19 +77,19 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
     }
   }
 
-  private def reassembleNode(node: Node): Stateful[AssemblyState, Node] = {
+  private def reassembleNode(node: TreeNode): Stateful[AssemblyState, TreeNode] = {
     node match {
-      case r: Rep[_] =>
+      case r: ComponentNode[_] =>
         r.assembler.assembleWithId(node.id, r.value)
     }
   }
 
   private def transformNodeChildren(
-      node: Node,
-      f: Node => Stateful[AssemblyState, Node]
-  ): Stateful[AssemblyState, Node] = {
+      node: TreeNode,
+      f: TreeNode => Stateful[AssemblyState, TreeNode]
+  ): Stateful[AssemblyState, TreeNode] = {
     node match {
-      case r: Rep[_] =>
+      case r: ComponentNode[_] =>
         r.assembly match {
           case p: Assembly.Pure      => Stateful.pure(node)
           case c: Assembly.Container =>
@@ -105,7 +105,7 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
     }
   }
 
-  private def drawChangedEvents(node: Node, changed: Set[ComponentId]): Unit = {
+  private def drawChangedEvents(node: TreeNode, changed: Set[ComponentId]): Unit = {
     if (changed.contains(node.id)) {
       viewer.updateNode(node)
     } else {
@@ -113,7 +113,7 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
     }
   }
 
-  private def activateChangedEvents(node: Node, changed: Set[ComponentId]): Unit = {
+  private def activateChangedEvents(node: TreeNode, changed: Set[ComponentId]): Unit = {
     if (changed.contains(node.id)) {
       activateEvents(node)
     } else {
@@ -146,7 +146,7 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
     redrawChanged()
   }
 
-  private def garbageCollect(tree: Node, state: AssemblyState): AssemblyState = {
+  private def garbageCollect(tree: TreeNode, state: AssemblyState): AssemblyState = {
     val referencedComponents = collectReferencedComponents(tree)
 
     val componentFiltered = state.copy(
@@ -173,9 +173,9 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
     modelFiltered
   }
 
-  private def collectReferencedComponents(tree: Node): Set[ComponentId] = {
+  private def collectReferencedComponents(tree: TreeNode): Set[ComponentId] = {
     val builder                   = Set.newBuilder[ComponentId]
-    def iterate(node: Node): Unit = {
+    def iterate(node: TreeNode): Unit = {
       builder += node.id
       node.children.foreach(iterate)
     }
@@ -216,21 +216,21 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
     }
   }
 
-  def activateEvents(node: Node): Unit = {
-    node.assembly.nodes.foreach { case child: Rep[_] =>
+  def activateEvents(node: TreeNode): Unit = {
+    node.assembly.nodes.foreach { case child: ComponentNode[_] =>
       activateEvents(child)
     }
     node.assembly.bindings.foreach(activateEvent(node, _))
   }
 
-  def activateEvent(node: Node, eventBinding: EventBinding): Unit = {
+  def activateEvent(node: TreeNode, eventBinding: EventBinding): Unit = {
     eventBinding match {
       case s: EventBinding.SourceSink[_] => activateSourceSinkBinding(node, s)
     }
   }
 
   def activateSourceSinkBinding[E](
-      node: Node,
+      node: TreeNode,
       sourceSink: EventBinding.SourceSink[E]
   ): Unit = {
     val transformedSink = transformSink(sourceSink.sink)
@@ -259,7 +259,7 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
         eventData => converted.foreach(x => x(eventData))
   }
 
-  private def bindEventSource[E](ownNode: Node, eventSource: EventSource[E], sink: E => Unit): Unit = {
+  private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
     eventSource match
       case r: EventSource.RepEvent[_, _]              =>
         bindRepEvent(r, sink)
@@ -293,11 +293,11 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
     bindEvent(repEvent.rep, repEvent.event, sink)
   }
 
-  private def bindOwnEvent[E](own: Node, ownEvent: EventSource.OwnEvent[E], sink: E => Unit): Unit = {
+  private def bindOwnEvent[E](own: TreeNode, ownEvent: EventSource.OwnEvent[E], sink: E => Unit): Unit = {
     bindEvent(own, ownEvent.event, sink)
   }
 
-  private def bindEvent[T, E](node: Node, event: Event[E], sink: E => Unit): Unit = {
+  private def bindEvent[T, E](node: TreeNode, event: Event[E], sink: E => Unit): Unit = {
     event match
       case jse: Event.JsEvent              =>
         val source = viewer.findElement(node.id)
@@ -324,7 +324,7 @@ class Binder[T](rootElement: Element, main: T)(implicit assembler: Assembler[T])
     )
   }
 
-  private def bindMappedEvent[E, F](node: Node, mapped: Event.MappedEvent[E, F], sink: F => Unit): Unit = {
+  private def bindMappedEvent[E, F](node: TreeNode, mapped: Event.MappedEvent[E, F], sink: F => Unit): Unit = {
     val mappedSink: E => Unit = { in =>
       sink(mapped.mapFn(in))
     }

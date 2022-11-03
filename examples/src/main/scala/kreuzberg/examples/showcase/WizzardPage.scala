@@ -7,7 +7,7 @@ import scalatags.Text.all.*
 case class WizzardablePage[T](
     component: T
 )(implicit assembler: Assembler[T]) {
-  def assemble(name: String): RepResult[T] = assembler.assembleNamedChild(name, component)
+  def assemble(name: String): NodeResult[T] = assembler.assembleNamedChild(name, component)
 }
 
 case class SimpleText(text: String) extends ImperativeComponentBase {

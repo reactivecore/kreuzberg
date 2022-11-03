@@ -24,7 +24,6 @@ trait Assembler[T] {
 
   /** Maps the HTML Code. */
   def mapHtml(f: Html => Html): Assembler[T] = { value =>
-    // foo
     self.assemble(value).map(_.map(f))
   }
 
@@ -33,16 +32,16 @@ trait Assembler[T] {
     Assembler.seq(around)(this)
   }
 
-  def assembleWithId(id: ComponentId, value: T): RepResult[T] = {
+  def assembleWithId(id: ComponentId, value: T): NodeResult[T] = {
     for {
       _         <- Stateful.modify[AssemblyState](_.pushId(id))
       assembled <- assemble(value)
       _         <- Stateful.modify[AssemblyState](_.popId)
-    } yield Rep(id, value, assembled, this)
+    } yield ComponentNode(id, value, assembled, this)
   }
 
   /** Assemble the object as anonymous child. */
-  def assembleWithNewId(value: T): RepResult[T] = {
+  def assembleWithNewId(value: T): NodeResult[T] = {
     for {
       id        <- Stateful[AssemblyState, ComponentId](_.generateId)
       assembled <- assembleWithId(id, value)
@@ -51,7 +50,7 @@ trait Assembler[T] {
     }
   }
 
-  def assembleNamedChild(name: String, value: T): RepResult[T] = {
+  def assembleNamedChild(name: String, value: T): NodeResult[T] = {
     for {
       id        <- Stateful[AssemblyState, ComponentId](_.ensureChildren(name))
       assembled <- assembleWithId(id, value)

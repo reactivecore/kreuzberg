@@ -1,6 +1,6 @@
 package kreuzberg.util
 
-// TODO: Use Cats' State
+/** Simple Stateful monad, inspired by Cats. */
 case class Stateful[S, +T](fn: S => (S, T)) {
   self =>
 

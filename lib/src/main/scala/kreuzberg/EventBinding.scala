@@ -6,10 +6,10 @@ import org.scalajs.dom.Event as ScalaJsEvent
 sealed trait EventSource[E] {
 
   /** Extend runtime state to an event. */
-  def withState[T, S](from: Rep[T])(f: T => StateGetter[S]): EventSource[(E,S)] = EventSource.WithState(this, from.id, f(from.value))
+  def withState[T, S](from: ComponentNode[T])(f: T => StateGetter[S]): EventSource[(E,S)] = EventSource.WithState(this, from.id, f(from.value))
 
   /** Replace event state with view state. */
-  def withReplacedState[T, S](from: Rep[T])(f: T => StateGetter[S]): EventSource[S] = withState(from)(f).map(_._2)
+  def withReplacedState[T, S](from: ComponentNode[T])(f: T => StateGetter[S]): EventSource[S] = withState(from)(f).map(_._2)
 
   def map[F](f: E => F): EventSource[F] = EventSource.MapSource(this, f)
 
@@ -29,7 +29,7 @@ sealed trait EventSource[E] {
 object EventSource {
 
   /** An Event from some other's component representation. */
-  case class RepEvent[T, E](rep: Rep[T], event: Event[E]) extends EventSource[E]
+  case class RepEvent[T, E](rep: ComponentNode[T], event: Event[E]) extends EventSource[E]
 
   /** An Event from the own component. */
   case class OwnEvent[E](event: Event[E]) extends EventSource[E]

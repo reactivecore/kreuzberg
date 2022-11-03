@@ -31,7 +31,7 @@ object PlaceholderState {
   }
 }
 
-case class PlaceholderTag(node: Node) extends Modifier {
+case class PlaceholderTag(node: TreeNode) extends Modifier {
   override def applyTo(t: Builder): Unit = {
     PlaceholderState.get(node.id).applyTo(t)
   }
@@ -95,5 +95,5 @@ abstract class ImperativeComponentBase2 extends ImperativeComponentBase {
     c.eventBindings += binding
   }
 
-  implicit def nodeToPlaceholder(node: Node): PlaceholderTag = PlaceholderTag(node)
+  implicit def nodeToPlaceholder(node: TreeNode): PlaceholderTag = PlaceholderTag(node)
 }

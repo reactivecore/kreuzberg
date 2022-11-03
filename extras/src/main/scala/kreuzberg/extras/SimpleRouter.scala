@@ -9,7 +9,7 @@ trait Route {
 
   def title(path: String): String
 
-  def node(id: ComponentId, path: String): Stateful[AssemblyState, Node]
+  def node(id: ComponentId, path: String): Stateful[AssemblyState, TreeNode]
 }
 
 object Route {
@@ -27,7 +27,7 @@ object Route {
 
     override def title(path: String): String = title
 
-    override def node(id: ComponentId, path: String): Stateful[AssemblyState, Node] = {
+    override def node(id: ComponentId, path: String): Stateful[AssemblyState, TreeNode] = {
       assembler.assembleWithId(id, component)
     }
   }
@@ -41,7 +41,7 @@ object Route {
 
     override def title(path: String): String = titleFn(path)
 
-    override def node(id: ComponentId, path: String): Stateful[AssemblyState, Node] =
+    override def node(id: ComponentId, path: String): Stateful[AssemblyState, TreeNode] =
       assembler.assembleWithId(id, fn(path))
   }
 }
