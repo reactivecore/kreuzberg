@@ -58,13 +58,6 @@ object App {
   def main(args: Array[String]): Unit = {
     import kreuzberg._
     val app = App()
-    document.addEventListener(
-      "DOMContentLoaded",
-      { (e: dom.Event) =>
-        val rootElement = document.getElementById("root")
-        val binder = Binder(rootElement, app)
-        binder.run()
-      }
-    )
+    Binder.runOnLoaded(app, "root")
   }
 }

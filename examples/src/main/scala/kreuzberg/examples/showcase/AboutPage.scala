@@ -4,7 +4,7 @@ import kreuzberg._
 import scalatags.Text.all.*
 
 object AboutVersionShower extends ComponentBase {
-  override def assemble: AssemblyResult = span("1.0")
+  override def assemble: AssemblyResult = span("1.1")
 }
 
 object AboutPage extends ComponentBase {

@@ -1,17 +1,15 @@
 package kreuzberg
 
-import org.scalajs.dom.Element
 
 /** Something which can extract java script states from Components. */
 trait StateGetter[S] {
-  def get(id: ComponentId, viewer: Viewer): S
+  def get(element: ScalaJsElement): S
 }
 
 object StateGetter {
 
-  case class JsRepresentationState[J <: Element, S](f: J => S) extends StateGetter[S] {
-    override def get(id: ComponentId, viewer: Viewer): S = {
-      val element = viewer.findElement(id)
+  case class JsRepresentationState[J <: ScalaJsElement, S](f: J => S) extends StateGetter[S] {
+    override def get(element: ScalaJsElement): S = {
       val casted  = element.asInstanceOf[J]
       f(casted)
     }

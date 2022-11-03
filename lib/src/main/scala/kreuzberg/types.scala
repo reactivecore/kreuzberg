@@ -7,6 +7,8 @@ type Html = TypedTag[String]
 
 type ScalaJsEvent = org.scalajs.dom.Event
 
+type ScalaJsElement = org.scalajs.dom.Element
+
 type AssemblyResult = Stateful[AssemblyState, Assembly]
 
 type NodeResult[T] = Stateful[AssemblyState, ComponentNode[T]]

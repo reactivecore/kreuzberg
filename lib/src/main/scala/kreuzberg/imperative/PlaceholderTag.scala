@@ -30,8 +30,8 @@ object PlaceholderTag {
             result.addOne(e)
           case s: TypedTag[String] =>
             walk(s)
-          case ignore              =>
-            println(s"Ignoring tag: ${ignore} Class: ${ignore.getClass}")
+          case _              =>
+            // println(s"Ignoring tag: ${ignore} Class: ${ignore.getClass}")
         }
       }
     }
