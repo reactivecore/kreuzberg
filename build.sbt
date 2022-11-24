@@ -1,51 +1,62 @@
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "0.1.1-SNAPSHOT"
 
 ThisBuild / scalaVersion := "3.2.1"
 
 ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
 
-lazy val lib = (project in file("lib"))
+ThisBuild / organization := "net.reactivecore"
+
+val scalaTestDeps = Seq(
+  "org.scalatest" %% "scalatest" % "3.2.14" % Test,
+  "org.scalatest" %% "scalatest-flatspec" % "3.2.14" % Test
+)
+
+lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   .settings(
     name := "kreuzberg",
     libraryDependencies ++= Seq(
       "com.lihaoyi"   %% "scalatags"   % "0.11.1",
-      "com.lihaoyi"  %%% "scalatags"   % "0.11.1",
-      "org.scala-js" %%% "scalajs-dom" % "2.3.0" // Bricht das?
+      "com.lihaoyi"  %%% "scalatags"   % "0.11.1"
+    ) ++ scalaTestDeps
+  )
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "org.scala-js" %%% "scalajs-dom" % "2.3.0"
     )
   )
-  .enablePlugins(ScalaJSPlugin)
 
-lazy val extras = (project in file("extras"))
+lazy val extras = (crossProject(JSPlatform, JVMPlatform) in file("extras"))
   .settings(
-    name := "extras"
+    name := "kreuzberg-extras"
   )
   .dependsOn(lib)
-  .enablePlugins(ScalaJSPlugin)
 
-lazy val examples = (project in file("examples"))
+lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
-    name                            := "examples",
-    scalaJSUseMainModuleInitializer := true,
-
+    name            := "examples",
+    publishArtifact := false,
+    publish         := {},
+    publishLocal    := {}
+  )
+  .jsSettings(
     // Moving JavaScript to a place, where we can easily find it by the server
     Compile / fastOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/fast/main.js",
-    Compile / fullOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/opt/main.js"
+    Compile / fullOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/opt/main.js",
+    scalaJSUseMainModuleInitializer    := true
   )
   .dependsOn(lib, extras)
-  .enablePlugins(ScalaJSPlugin)
 
 lazy val miniserver = (project in file("miniserver"))
   .settings(
-    name := "miniserver",
+    name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
-      "io.d11"                     %% "zhttp"           % "2.0.0-RC10",
+      "io.d11"                     %% "zhttp"           % "2.0.0-RC11",
       "ch.qos.logback"              % "logback-classic" % "1.2.11",
       "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
-    )
+    ) ++ scalaTestDeps
   )
-  .dependsOn(examples)
-
+  .dependsOn(lib.jvm)
 
 lazy val root = (project in file("."))
   .settings(
@@ -56,8 +67,11 @@ lazy val root = (project in file("."))
     publishArtifact := false
   )
   .aggregate(
-    lib,
-    extras,
+    lib.js,
+    lib.jvm,
+    extras.js,
+    extras.jvm,
     miniserver,
-    examples
+    examples.js,
+    examples.jvm
   )
