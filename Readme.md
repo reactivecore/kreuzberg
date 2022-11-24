@@ -23,7 +23,7 @@ Note: this is Alpha Software with no tests.
 - Compile JavaScript code, in SBT
   
   ```
-  examples/fastOptJS
+  examplesJS/fastOptJS
   ```
 - Start Mini Server, in SBT
   ```

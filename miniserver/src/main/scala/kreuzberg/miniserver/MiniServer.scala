@@ -8,39 +8,41 @@ import zio.*
 import java.io.File
 import java.nio.file.{Files, Paths}
 
-object MiniServer extends ZIOAppDefault {
+class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
   val log = Logger(getClass)
 
-  val candidatePaths = Seq(
-    "examples/target/client_bundle/client/fast",
-    "../examples/target/client_bundle/client/fast"
-  )
-
-  val clientPath = candidatePaths.find(s => Files.isDirectory(Paths.get(s))).getOrElse {
-    println(s"Could not find client javascript code, searched in ${candidatePaths}")
+  if (config.locateAsset("main.js").isEmpty) {
+    println(s"Could not find client javascript code, searched in ${config.assetPaths}")
     sys.exit(1)
   }
 
-  val nioPath = Paths.get(clientPath)
-  val app     = Http.collectHttp[Request] {
+  val indexCode = Index(config).index.toString
+
+  val app = Http.collectHttp[Request] {
     case Method.GET -> "" /: "assets" /: path =>
       log.info(s"Requested ${path}")
-      // TODO: Escape attack
-      val fullPath = nioPath.resolve(path.encode)
-      log.info(s"Full path ${fullPath}")
-      Http.fromFile(fullPath.toFile)
+      config.locateAsset(path.encode) match {
+        case None                              =>
+          log.warn(s"Path ${path} not found")
+          Http.notFound
+        case Some(Location.File(file))         =>
+          Http.fromFile(file)
+        case Some(Location.ResourcePath(path)) =>
+          log.info(s"Serving path ${path} from resource")
+          Http.fromResource(path)
+      }
     case Method.GET -> !!                     =>
       log.info("Root")
       Http(
-        Response.html(Index.index.toString)
+        Response.html(indexCode)
       )
     case Method.GET -> "" /: path             =>
       log.info(s"Sub path ${path}")
       Http(
-        Response.html(Index.index.toString)
+        Response.html(Index(config).index.toString)
       )
   }
 
-  log.info(s"Going to listen on 8090")
-  val run = Server.start(8090, app)
+  log.info(s"Going to listen on ${config.port}")
+  val run = Server.start(config.port, app)
 }
