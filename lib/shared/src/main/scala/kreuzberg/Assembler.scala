@@ -71,6 +71,13 @@ object Assembler {
     a
   }
 
+  /**
+   * Assemble a value as a single component discarding the state. For testcases.
+   */
+  def single[T](value: T)(using a: Assembler[T]): Assembly = {
+    a.assemble(value)(AssemblyState())._2
+  }
+
   /** Concatenates some html */
   def seq[T](around: Html)(implicit a: Assembler[T]): Assembler[Seq[T]] = { values =>
     for {
@@ -78,7 +85,7 @@ object Assembler {
     } yield {
       Assembly.Container(
         children,
-        renderer = htmls => around(htmls: _*)
+        renderer = htmls => around.addInner(htmls)
       )
     }
   }

@@ -1,8 +1,9 @@
 package kreuzberg.extras
 
-import kreuzberg.*
+import scalatags.Text.all._
+import kreuzberg._
 import kreuzberg.imperative._
-import scalatags.Text.all.*
+import kreuzberg.scalatags._
 
 case class PlainLink(
     name: String,
@@ -29,9 +30,9 @@ case class RouterLink(
       EventSink.ModelChange(state.currentRoute, (_, _) => target)
     )
     if (deco) {
-      span("[", link, "]")
+      span("[", link.wrap, "]")
     } else {
-      span(link)
+      span(link.wrap)
     }
   }
 }

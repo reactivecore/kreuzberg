@@ -1,7 +1,5 @@
 package kreuzberg
 
-import scalatags.Text.TypedTag
-
 /** Represents an assembled node in a tree. */
 sealed trait TreeNode {
   def id: ComponentId
@@ -9,6 +7,11 @@ sealed trait TreeNode {
 
   /** Returns children nodes. */
   def children: Vector[TreeNode] = assembly.nodes
+
+  /** Renders the tree node. */
+  def render(): Html = {
+    assembly.renderWithId(id)
+  }
 }
 
 /** A Representation of the component. */

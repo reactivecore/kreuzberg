@@ -2,7 +2,9 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.*
 import kreuzberg.imperative.{SimpleContext, SimpleComponentBase}
-import scalatags.Text.all.*
+import kreuzberg.scalatags.*
+import kreuzberg.scalatags.all.*
+
 
 case class ErrorShower(model: Model[Option[String]]) extends SimpleComponentBase {
 

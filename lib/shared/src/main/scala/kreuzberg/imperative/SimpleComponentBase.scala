@@ -2,9 +2,6 @@ package kreuzberg.imperative
 
 import kreuzberg.*
 import kreuzberg.util.Stateful
-import scalatags.Text.TypedTag
-import scalatags.Text.all.*
-import scalatags.text.Builder
 
 import scala.language.implicitConversions
 
@@ -19,8 +16,9 @@ class SimpleContext(state: AssemblyState) extends AssemblyContext(state) {
   def eventBindings(): Vector[EventBinding] = _eventBindings.result()
 }
 
-/** A component base which lets the user build HTML and Elements are inserted using PlaceholderTags
-  */
+/**
+ * A component base which lets the user build HTML and Elements are inserted using PlaceholderTags
+ */
 abstract class SimpleComponentBase extends ImperativeDsl {
   def assemble(implicit c: SimpleContext): Html
 
@@ -31,12 +29,6 @@ abstract class SimpleComponentBase extends ImperativeDsl {
   protected def add(binding: EventBinding)(implicit c: SimpleContext): Unit = {
     c.addEventBinding(binding)
   }
-
-  implicit def nodeToPlaceholder(node: TreeNode): PlaceholderTag = PlaceholderTag(node)
-
-  implicit def componentToAnonymousPlaceholder[T: Assembler](node: T)(implicit c: SimpleContext): PlaceholderTag = {
-    PlaceholderTag(anonymousChild(node))
-  }
 }
 
 object SimpleComponentBase {
@@ -44,18 +36,18 @@ object SimpleComponentBase {
     Stateful { state =>
       implicit val sc  = new SimpleContext(state)
       val html         = value.assemble
-      val placeholders = PlaceholderTag.collectFrom(html)
+      val placeholders = html.placeholders.toVector
       if (placeholders.isEmpty) {
         // Naked HTML
         sc.state -> Assembly.Pure(html, sc.eventBindings())
       } else {
         val renderFn: Vector[Html] => Html = { renderedComponents =>
           placeholders.zip(renderedComponents).foreach { case (placeholder, renderedComponent) =>
-            PlaceholderState.set(placeholder.node.id, renderedComponent)
+            PlaceholderState.set(placeholder.id, renderedComponent)
           }
           html
         }
-        sc.state -> Assembly.Container(placeholders.map(_.node), renderFn, sc.eventBindings())
+        sc.state -> Assembly.Container(placeholders, renderFn, sc.eventBindings())
       }
     }
   }

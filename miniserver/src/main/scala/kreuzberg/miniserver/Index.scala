@@ -1,6 +1,7 @@
 package kreuzberg.miniserver
 import scalatags.Text.all.*
 import scalatags.Text.tags2.noscript
+import kreuzberg.scalatags._
 
 case class Index(config: MiniServerConfig) {
   def index = html(
@@ -12,8 +13,7 @@ case class Index(config: MiniServerConfig) {
       config.extraCss.map { name =>
         link(rel := "stylesheet", href := config.hashedUrl(name))
       },
-      config.extraHtmlHeader
-    ),
+    ).addInner(config.extraHtmlHeader),
     body(
       div(id := "root"),
       noscript(

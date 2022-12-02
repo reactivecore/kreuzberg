@@ -2,7 +2,8 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.*
 import kreuzberg.extras.{Route, SimpleRouter}
-import scalatags.Text.all.*
+import kreuzberg.scalatags.*
+import kreuzberg.scalatags.all.*
 
 case class App()
     extends ComponentBase(

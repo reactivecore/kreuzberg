@@ -2,8 +2,9 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.*
 import kreuzberg.extras.RouterLink
-import kreuzberg.imperative.{SimpleContext, SimpleComponentBase, PlaceholderTag}
-import scalatags.Text.all.*
+import kreuzberg.imperative.{SimpleContext, SimpleComponentBase}
+import kreuzberg.scalatags.*
+import kreuzberg.scalatags.all.*
 
 case object Menu extends SimpleComponentBase {
 
@@ -18,7 +19,7 @@ case object Menu extends SimpleComponentBase {
   )
 
   override def assemble(implicit c: SimpleContext): Html = {
-    val items: Seq[PlaceholderTag] = links.map { case (link, name) => anonymousChild(RouterLink(link, name, deco = true)) }
+    val items = links.map { case (link, name) => anonymousChild(RouterLink(link, name, deco = true)).wrap }
     div(items: _*)
   }
 }

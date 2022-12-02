@@ -2,7 +2,8 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.*
 import kreuzberg.imperative.{AssemblyContext, ImperativeComponentBase}
-import scalatags.Text.all.*
+import kreuzberg.scalatags.*
+import kreuzberg.scalatags.all.*
 
 case class WizzardablePage[T](
     component: T
