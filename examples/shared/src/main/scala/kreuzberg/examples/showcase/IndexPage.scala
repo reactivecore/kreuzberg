@@ -1,7 +1,8 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg._
-import scalatags.Text.all.*
+import kreuzberg.scalatags.*
+import kreuzberg.scalatags.all.*
 
 object IndexPage extends ComponentBase {
   override def assemble: AssemblyResult = {

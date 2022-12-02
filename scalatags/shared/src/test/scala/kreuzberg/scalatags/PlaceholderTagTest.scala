@@ -1,11 +1,10 @@
-package kreuzberg.imperative
+package kreuzberg.scalatags
 
-import kreuzberg.TestBase
-import kreuzberg._
-import scalatags.Text.all._
+import kreuzberg.{Assembler, AssemblyState, ComponentBase, ComponentId, ComponentNode, AssemblyResult}
+import kreuzberg.scalatags.*
+import kreuzberg.scalatags.all.*
 
-class PlacerholderTagTest extends TestBase {
-
+class PlaceholderTagTest extends TestBase {
   case class DummyComponent(i: Int) extends ComponentBase {
     def assemble: AssemblyResult = {
       div(s"Hello World ${i}")
@@ -40,5 +39,4 @@ class PlacerholderTagTest extends TestBase {
     )
     PlaceholderTag.collectFrom(html) shouldBe Vector(p0, p1, p2, p3)
   }
-
 }

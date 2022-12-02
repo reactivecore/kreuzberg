@@ -2,7 +2,8 @@ package kreuzberg.extras
 
 import kreuzberg.*
 import kreuzberg.util.Stateful
-import scalatags.Text.all.*
+import kreuzberg.scalatags._
+import kreuzberg.scalatags.all._
 
 /**
  * A Simple router implementation.

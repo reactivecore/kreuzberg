@@ -1,4 +1,4 @@
-ThisBuild / version := "0.1.1-SNAPSHOT"
+ThisBuild / version := "0.2.0-SNAPSHOT"
 
 ThisBuild / scalaVersion := "3.2.1"
 
@@ -8,17 +8,14 @@ ThisBuild / Test / run / fork    := true
 ThisBuild / organization := "net.reactivecore"
 
 val scalaTestDeps = Seq(
-  "org.scalatest" %% "scalatest" % "3.2.14" % Test,
+  "org.scalatest" %% "scalatest"          % "3.2.14" % Test,
   "org.scalatest" %% "scalatest-flatspec" % "3.2.14" % Test
 )
 
 lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   .settings(
     name := "kreuzberg",
-    libraryDependencies ++= Seq(
-      "com.lihaoyi"   %% "scalatags"   % "0.11.1",
-      "com.lihaoyi"  %%% "scalatags"   % "0.11.1"
-    ) ++ scalaTestDeps
+    libraryDependencies ++= scalaTestDeps
   )
   .jsSettings(
     libraryDependencies ++= Seq(
@@ -26,11 +23,31 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
     )
   )
 
+lazy val xml = (crossProject(JSPlatform, JVMPlatform) in file("xml"))
+  .settings(
+    name := "kreuzberg-xml",
+    libraryDependencies ++= Seq(
+      "org.scala-lang.modules"  %% "scala-xml" % "2.1.0",
+      "org.scala-lang.modules" %%% "scala-xml" % "2.1.0"
+    ) ++ scalaTestDeps
+  )
+  .dependsOn(lib)
+
+lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags"))
+  .settings(
+    name := "kreuzberg-scalatags",
+    libraryDependencies ++= Seq(
+      "com.lihaoyi" %% "scalatags" % "0.11.1",
+      "com.lihaoyi" %%% "scalatags" % "0.11.1"
+    ) ++ scalaTestDeps
+  )
+  .dependsOn(lib)
+
 lazy val extras = (crossProject(JSPlatform, JVMPlatform) in file("extras"))
   .settings(
     name := "kreuzberg-extras"
   )
-  .dependsOn(lib)
+  .dependsOn(lib, scalatags)
 
 lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
@@ -45,7 +62,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     Compile / fullOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/opt/main.js",
     scalaJSUseMainModuleInitializer    := true
   )
-  .dependsOn(lib, extras)
+  .dependsOn(lib, xml, scalatags, extras)
 
 lazy val miniserver = (project in file("miniserver"))
   .settings(
@@ -56,7 +73,7 @@ lazy val miniserver = (project in file("miniserver"))
       "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
     ) ++ scalaTestDeps
   )
-  .dependsOn(lib.jvm)
+  .dependsOn(lib.jvm, scalatags.jvm)
 
 lazy val root = (project in file("."))
   .settings(
@@ -69,6 +86,10 @@ lazy val root = (project in file("."))
   .aggregate(
     lib.js,
     lib.jvm,
+    xml.js,
+    xml.jvm,
+    scalatags.js,
+    scalatags.jvm,
     extras.js,
     extras.jvm,
     miniserver,

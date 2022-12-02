@@ -1,6 +1,6 @@
 package kreuzberg.imperative
 
-import kreuzberg._
+import kreuzberg.*
 import kreuzberg.util.Stateful
 
 /**
@@ -75,4 +75,8 @@ trait ImperativeDsl {
   }
 
   def from[T](rep: ComponentNode[T]): RepBuilder[T] = RepBuilder(rep)
+
+  implicit def htmlToAssembly(in: Html): Assembly = {
+    Assembly(in)
+  }
 }

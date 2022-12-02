@@ -14,6 +14,8 @@ Note: this is Alpha Software with no tests.
 
 - `lib` the main Kreuzberg Library
 - `extras` some components, especially a simple router.
+- `xml` Scala XML Support. Will add at least 50kb (13kb compressed)
+- `scalatags` ScalaTags Support
 - `examples` sample application
 - `miniserver` simple ZIO-ZHTTP based server for starting the example application.
 

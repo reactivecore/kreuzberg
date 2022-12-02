@@ -1,11 +1,11 @@
-package kreuzberg.imperative
+package kreuzberg.scalatags
 
-import kreuzberg.*
+import kreuzberg.{Html, TreeNode}
+import kreuzberg.imperative.PlaceholderState
 import kreuzberg.util.SimpleThreadLocal
-import scalatags.Text.TypedTag
-import scalatags.Text.all.*
-import scalatags.text
+import scalatags.Text.all._
 import scalatags.text.Builder
+import scalatags.Text.TypedTag
 
 import scala.collection.mutable
 
@@ -13,7 +13,11 @@ import scala.collection.mutable
 case class PlaceholderTag(node: TreeNode) extends Modifier {
   override def applyTo(t: Builder): Unit = {
     if (!PlaceholderCollector.collectingPhase(this)) {
-      PlaceholderState.get(node.id).applyTo(t)
+      val html = PlaceholderState.maybeGet(node.id).getOrElse(node.render())
+      html match {
+        case ScalaTagsHtml(inner) => inner.applyTo(t)
+        case otherHtml            => ScalaTagsHtmlEmbed(otherHtml).applyTo(t)
+      }
     }
   }
 }
@@ -21,7 +25,7 @@ case class PlaceholderTag(node: TreeNode) extends Modifier {
 object PlaceholderTag {
 
   /** Collect extended tags inside html */
-  def collectFrom(html: Html): Vector[PlaceholderTag] = {
+  def collectFrom(html: TypedTag[String]): Vector[PlaceholderTag] = {
     /*
     There is no simple way to deconstruct the HTML and it is also not designed for that use case.
     Hower we can just render it, and collect all placeholders using ThreadLocal variable.s
@@ -29,28 +33,6 @@ object PlaceholderTag {
     PlaceholderCollector.begin()
     html.toString
     PlaceholderCollector.end()
-  }
-}
-
-/** Threadlocal helper for using [[PlaceHolderState]] */
-object PlaceholderState {
-  private val renderings: ThreadLocal[mutable.Map[ComponentId, Html]] =
-    new ThreadLocal[mutable.Map[ComponentId, Html]] {
-      override def initialValue(): mutable.Map[ComponentId, Html] = {
-        mutable.Map()
-      }
-    }
-
-  def get(componentId: ComponentId): Html = {
-    renderings.get().apply(componentId)
-  }
-
-  def set(componentId: ComponentId, html: Html) = {
-    renderings.get().addOne(componentId, html)
-  }
-
-  def clear(): Unit = {
-    renderings.get().clear()
   }
 }
 

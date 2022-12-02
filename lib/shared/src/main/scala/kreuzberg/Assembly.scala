@@ -14,6 +14,8 @@ sealed trait Assembly {
   def bindings: Vector[EventBinding]
 
   def nodes: Vector[TreeNode]
+
+  def renderWithId(id: ComponentId): Html
 }
 
 object Assembly {
@@ -21,12 +23,16 @@ object Assembly {
 
   /** Simple puts the nodes as base of the current html */
   def apply(base: Html, nodes: Vector[TreeNode], handlers: Vector[EventBinding] = Vector.empty): Container = {
-    Container(nodes, htmls => base(htmls: _*), handlers)
+    Container(nodes, htmls => base.addInner(htmls), handlers)
   }
 
   /** Has a raw HTML representation. */
   case class Pure(html: Html, bindings: Vector[EventBinding] = Vector.empty) extends Assembly {
     override def nodes: Vector[TreeNode] = Vector.empty
+
+    override def renderWithId(id: ComponentId): Html = {
+      html.withId(id)
+    }
   }
 
   /** Is a container with sub nodes. */
@@ -34,5 +40,9 @@ object Assembly {
       nodes: Vector[TreeNode],
       renderer: Vector[Html] => Html,
       bindings: Vector[EventBinding] = Vector.empty
-  ) extends Assembly
+  ) extends Assembly {
+    override def renderWithId(id: ComponentId): Html = {
+      renderer(nodes.map(_.render())).withId(id)
+    }
+  }
 }
