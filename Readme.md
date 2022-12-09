@@ -31,3 +31,8 @@ Note: this is Alpha Software with no tests.
   ```
   miniserver/run
   ```
+- Watching for changes
+  
+  - ScalaJS Only: `~examplesJS/fastOptJS`
+  - Miniserver Only: `~miniserver/reStart serve`
+  - Full: `~runner/reStart`
