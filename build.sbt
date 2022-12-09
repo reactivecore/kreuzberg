@@ -7,7 +7,6 @@ val versionTag = sys.env
 val snapshotVersion = "0.2-SNAPSHOT"
 val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
-
 ThisBuild / version := artefactVersion
 
 ThisBuild / scalaVersion := "3.2.1"
@@ -110,9 +109,20 @@ lazy val miniserver = (project in file("miniserver"))
       "ch.qos.logback"              % "logback-classic" % "1.2.11",
       "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
     ) ++ scalaTestDeps,
-    publishSettings
+    publishSettings,
+    run  := ((Compile / run) dependsOn (examples.js / Compile / fastOptJS)).evaluated
   )
   .dependsOn(lib.jvm, scalatags.jvm)
+
+
+lazy val runner = (project in file("runner"))
+  .settings(
+    Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
+    Compile / run / mainClass := (miniserver / Compile / run / mainClass).value,
+    reStartArgs := Seq("serve")
+  )
+  .dependsOn(miniserver)
+
 
 lazy val root = (project in file("."))
   .settings(
