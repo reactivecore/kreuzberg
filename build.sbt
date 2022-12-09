@@ -1,4 +1,14 @@
-ThisBuild / version := "0.2.0-SNAPSHOT"
+// If there is a Tag starting with v, e.g. v0.3.0 use it as the build artefact version (e.g. 0.3.0)
+val versionTag = sys.env
+  .get("CI_COMMIT_TAG")
+  .filter(_.startsWith("v"))
+  .map(_.stripPrefix("v"))
+
+val snapshotVersion = "0.2-SNAPSHOT"
+val artefactVersion = versionTag.getOrElse(snapshotVersion)
+
+
+ThisBuild / version := artefactVersion
 
 ThisBuild / scalaVersion := "3.2.1"
 
@@ -6,6 +16,29 @@ ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
+
+val publishSettings = Seq(
+  publishTo           := {
+    val nexus = "https://sonatype.rcxt.de/repository/reactivecore/"
+    if (isSnapshot.value)
+      Some("snapshots" at nexus)
+    else
+      Some("releases" at nexus)
+  },
+  publishMavenStyle   := true,
+  credentials += {
+    for {
+      username <- sys.env.get("SONATYPE_USERNAME")
+      password <- sys.env.get("SONATYPE_PASSWORD")
+    } yield {
+      Credentials("Sonatype Nexus Repository Manager", "sonatype.rcxt.de", username, password)
+    }
+  }.getOrElse(
+    Credentials(Path.userHome / ".sbt" / "sonatype.rcxt.de.credentials")
+  ),
+  publish / test      := {},
+  publishLocal / test := {}
+)
 
 val scalaTestDeps = Seq(
   "org.scalatest" %% "scalatest"          % "3.2.14" % Test,
@@ -15,7 +48,8 @@ val scalaTestDeps = Seq(
 lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   .settings(
     name := "kreuzberg",
-    libraryDependencies ++= scalaTestDeps
+    libraryDependencies ++= scalaTestDeps,
+    publishSettings
   )
   .jsSettings(
     libraryDependencies ++= Seq(
@@ -29,7 +63,8 @@ lazy val xml = (crossProject(JSPlatform, JVMPlatform) in file("xml"))
     libraryDependencies ++= Seq(
       "org.scala-lang.modules"  %% "scala-xml" % "2.1.0",
       "org.scala-lang.modules" %%% "scala-xml" % "2.1.0"
-    ) ++ scalaTestDeps
+    ) ++ scalaTestDeps,
+    publishSettings
   )
   .dependsOn(lib)
 
@@ -37,15 +72,17 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags")
   .settings(
     name := "kreuzberg-scalatags",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %% "scalatags" % "0.11.1",
+      "com.lihaoyi"  %% "scalatags" % "0.11.1",
       "com.lihaoyi" %%% "scalatags" % "0.11.1"
-    ) ++ scalaTestDeps
+    ) ++ scalaTestDeps,
+    publishSettings
   )
   .dependsOn(lib)
 
 lazy val extras = (crossProject(JSPlatform, JVMPlatform) in file("extras"))
   .settings(
-    name := "kreuzberg-extras"
+    name := "kreuzberg-extras",
+    publishSettings
   )
   .dependsOn(lib, scalatags)
 
@@ -54,7 +91,8 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     name            := "examples",
     publishArtifact := false,
     publish         := {},
-    publishLocal    := {}
+    publishLocal    := {},
+    publishSettings
   )
   .jsSettings(
     // Moving JavaScript to a place, where we can easily find it by the server
@@ -71,7 +109,8 @@ lazy val miniserver = (project in file("miniserver"))
       "io.d11"                     %% "zhttp"           % "2.0.0-RC11",
       "ch.qos.logback"              % "logback-classic" % "1.2.11",
       "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
-    ) ++ scalaTestDeps
+    ) ++ scalaTestDeps,
+    publishSettings
   )
   .dependsOn(lib.jvm, scalatags.jvm)
 
