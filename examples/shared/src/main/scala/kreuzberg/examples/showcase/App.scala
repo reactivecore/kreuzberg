@@ -10,24 +10,24 @@ case class App()
     ) {
   override def assemble: AssemblyResult = {
     for {
-      model        <- Model.make(
-                        "main",
-                        TodoList(
-                          Seq(
-                            "Hello",
-                            "World"
-                          )
-                        )
-                      )
-      menu         <- namedChild("menu", Menu)
+      model  <- Model.make(
+                  "main",
+                  TodoList(
+                    Seq(
+                      "Hello",
+                      "World"
+                    )
+                  )
+                )
+      menu   <- namedChild("menu", Menu)
       // _            <- subscribe(currentRoute)
-      router       <- namedChild(
-                        "router",
-                        SimpleRouter(
-                          routes(model),
-                          Route.DependentRoute({ case s => NotFoundPage(s) }, _ => "Not Found")
-                        )
-                      )
+      router <- namedChild(
+                  "router",
+                  SimpleRouter(
+                    routes(model),
+                    Route.DependentRoute({ case s => NotFoundPage(s) }, _ => "Not Found")
+                  )
+                )
     } yield {
       Assembly(
         div(),
@@ -43,6 +43,7 @@ case class App()
     Route.SimpleRoute("/", "Welcome", IndexPage),
     Route.SimpleRoute("/about", "About", AboutPage),
     Route.SimpleRoute("/todo", "Todo App", TodoPage(model)),
+    Route.SimpleRoute("/todoapi", "Todo App (API)", TodoPageWithApi),
     Route.SimpleRoute("/form", "Form", FormPage),
     Route.SimpleRoute("/wizzard", "Wizzard", WizzardPage),
     Route.SimpleRoute("/trigger", "Trigger", TriggerPage)

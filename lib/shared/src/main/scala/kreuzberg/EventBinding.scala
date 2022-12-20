@@ -1,6 +1,8 @@
 package kreuzberg
 
 import kreuzberg.Event.JsEvent
+import scala.concurrent.Future
+import scala.util.Try
 
 sealed trait EventSource[E] {
 
@@ -14,10 +16,17 @@ sealed trait EventSource[E] {
 
   def map[F](f: E => F): EventSource[F] = EventSource.MapSource(this, f)
 
+  def flatMap[F](f: E => EventSource[F]) = EventSource.FlatMapSource(this, f)
+
   /** Shortcut for building event bindings */
   def toModel[M](model: Model[M])(f: (E, M) => M): EventBinding.SourceSink[E] = {
     val sink = EventSink.ModelChange(model, f)
     EventBinding(this, sink)
+  }
+
+  /** Change model without caring about the value of the model. */
+  def intoModel[M](model: Model[M])(f: E => M): EventBinding.SourceSink[E] = {
+    toModel(model)((e, _) => f(e))
   }
 
   /** Change model without caring about the value of the event. */
@@ -38,6 +47,9 @@ object EventSource {
   /** A JS Event from window-Object */
   case class WindowJsEvent(js: JsEvent) extends EventSource[ScalaJsEvent]
 
+  /** An event from a future. */
+  case class FutureEvent[T](future: Future[T]) extends EventSource[Try[T]]
+
   /** Extend with runtime state. */
   case class WithState[E, F](
       inner: EventSource[E],
@@ -52,6 +64,11 @@ object EventSource {
   case class MapSource[E, F](
       from: EventSource[E],
       fn: E => F
+  ) extends EventSource[F]
+
+  case class FlatMapSource[E, F](
+      from: EventSource[E],
+      fn: E => EventSource[F]
   ) extends EventSource[F]
 }
 
