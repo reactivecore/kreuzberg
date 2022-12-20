@@ -11,7 +11,8 @@ case class MiniServerConfig(
     produktionBlacklist: Seq[String] = Seq(
       ".*\\.js\\.map",
       ".*\\.css\\.map"
-    )
+    ),
+    api: Seq[ZioDispatcher] = Nil
 ) {
   def hashedUrl(name: String): String = assetPaths.hashedUrl(name, deploymentType)
 

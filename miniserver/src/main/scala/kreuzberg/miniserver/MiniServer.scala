@@ -7,16 +7,21 @@ import zio.*
 
 import java.io.File
 import java.nio.file.{Files, Paths}
+import kreuzberg.rpc.Dispatchers
+import ZioEffect.effect
 
 class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
   val log = Logger(getClass)
 
   if (config.locateAsset("main.js").isEmpty) {
     println(s"Could not find client javascript code, searched in ${config.assetPaths}")
+    println(s"Current working directory: ${Paths.get("").toAbsolutePath()}")
     sys.exit(1)
   }
 
   val indexCode = Index(config).index.toString
+
+  val apiDispatcher = ApiDispatcher(Dispatchers(config.api))
 
   val app = Http.collectHttp[Request] {
     case Method.GET -> "" /: "assets" /: path =>
@@ -43,6 +48,8 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
       )
   }
 
+  val all = apiDispatcher.app() ++ app
+
   log.info(s"Going to listen on ${config.port}")
-  val run = Server.start(config.port, app)
+  val run = Server.start(config.port, all)
 }

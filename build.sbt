@@ -11,6 +11,8 @@ ThisBuild / version := artefactVersion
 
 ThisBuild / scalaVersion := "3.2.1"
 
+ThisBuild / scalacOptions += "-Xcheck-macros"
+
 ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
 
@@ -78,12 +80,35 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags")
   )
   .dependsOn(lib)
 
+lazy val rpc = (crossProject(JSPlatform, JVMPlatform) in file("rpc"))
+  .settings(
+    name := "kreuzberg-rpc",
+    libraryDependencies ++= Seq(
+      "com.lihaoyi"  %% "upickle" % "2.0.0",
+      "com.lihaoyi" %%% "upickle" % "2.0.0"
+    ) ++ scalaTestDeps,
+    publishSettings
+  )
+  .dependsOn(lib)
+
 lazy val extras = (crossProject(JSPlatform, JVMPlatform) in file("extras"))
   .settings(
     name := "kreuzberg-extras",
     publishSettings
   )
   .dependsOn(lib, scalatags)
+
+lazy val miniserver = (project in file("miniserver"))
+  .settings(
+    name := "kreuzberg-miniserver",
+    libraryDependencies ++= Seq(
+      "io.d11"                     %% "zhttp"           % "2.0.0-RC11",
+      "ch.qos.logback"              % "logback-classic" % "1.2.11",
+      "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
+    ) ++ scalaTestDeps,
+    publishSettings
+  )
+  .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm)
 
 lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
@@ -99,30 +124,16 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     Compile / fullOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/opt/main.js",
     scalaJSUseMainModuleInitializer    := true
   )
-  .dependsOn(lib, xml, scalatags, extras)
-
-lazy val miniserver = (project in file("miniserver"))
-  .settings(
-    name := "kreuzberg-miniserver",
-    libraryDependencies ++= Seq(
-      "io.d11"                     %% "zhttp"           % "2.0.0-RC11",
-      "ch.qos.logback"              % "logback-classic" % "1.2.11",
-      "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
-    ) ++ scalaTestDeps,
-    publishSettings,
-    run  := ((Compile / run) dependsOn (examples.js / Compile / fastOptJS)).evaluated
-  )
-  .dependsOn(lib.jvm, scalatags.jvm)
-
+  .jvmConfigure(_.dependsOn(miniserver))
+  .dependsOn(lib, xml, scalatags, extras, rpc)
 
 lazy val runner = (project in file("runner"))
   .settings(
     Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
-    Compile / run / mainClass := (miniserver / Compile / run / mainClass).value,
-    reStartArgs := Seq("serve")
+    Compile / run / mainClass := (examples.jvm / Compile / run / mainClass).value,
+    reStartArgs               := Seq("serve")
   )
-  .dependsOn(miniserver)
-
+  .dependsOn(examples.jvm)
 
 lazy val root = (project in file("."))
   .settings(
@@ -143,5 +154,7 @@ lazy val root = (project in file("."))
     extras.jvm,
     miniserver,
     examples.js,
-    examples.jvm
+    examples.jvm,
+    rpc.js,
+    rpc.jvm
   )

@@ -4,6 +4,8 @@ import kreuzberg.util.MutableMultimap
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
+import scala.util.Try
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Callback for EventManager. */
 trait EventManagerDelegate {
@@ -153,6 +155,15 @@ class EventManager(delegate: EventManagerDelegate) {
             sink(mapped)
           }
         )
+      case EventSource.FlatMapSource(from, fn)        =>
+        bindEventSource(
+          ownNode,
+          from,
+          x => {
+            val mapped = fn(x)
+            bindEventSource(ownNode, mapped, sink)
+          }
+        )
       case m: EventSource.ModelChange[_]              =>
         bindModelChange(
           ownNode,
@@ -161,6 +172,8 @@ class EventManager(delegate: EventManagerDelegate) {
             sink(from, to)
           }
         )
+      case f: EventSource.FutureEvent[_]              =>
+        bindFuture(f, sink)
   }
 
   private def bindModelChange[T](ownNode: TreeNode, source: EventSource.ModelChange[T], sink: (T, T) => Unit): Unit = {
@@ -173,6 +186,12 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def bindOwnEvent[E](own: TreeNode, ownEvent: EventSource.OwnEvent[E], sink: E => Unit): Unit = {
     bindEvent(own, ownEvent.event, sink)
+  }
+
+  private def bindFuture[T](event: EventSource.FutureEvent[T], sink: Try[T] => Unit): Unit = {
+    event.future.andThen { case result =>
+      sink(result)
+    }
   }
 
   private def bindEvent[T, E](node: TreeNode, event: Event[E], sink: E => Unit): Unit = {
@@ -256,7 +275,9 @@ class EventManager(delegate: EventManagerDelegate) {
     val value   = _currentState.modelValues(change.id).asInstanceOf[T]
     val updated = change.fn(value)
     if (value != updated) {
-      Logger.debug(s"Updating ${change.id} from ${value} to ${updated}, bindings: ${_modelBindings.sizeForKey(change.id)}")
+      Logger.debug(
+        s"Updating ${change.id} from ${value} to ${updated}, bindings: ${_modelBindings.sizeForKey(change.id)}"
+      )
       _currentState = _currentState.withModelValue(change.id, updated)
       _changedModel.add(change.id)
       _modelBindings.foreachKey(change.id) { binding =>

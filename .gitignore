@@ -1,5 +1,10 @@
 target
 .bsp
 .idea
+.bloop
+.metals
+.vscode
 dist/
+metals.sbt
+
 

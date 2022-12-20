@@ -1,5 +1,6 @@
 package kreuzberg
 
+import kreuzberg.AssemblyState.RootComponent
 import kreuzberg.util.{NamedMap, Stateful}
 
 /**
@@ -21,7 +22,8 @@ case class AssemblyState(
     children: NamedMap[ComponentId, ComponentId] = NamedMap.empty,
     models: NamedMap[ComponentId, Model[_]] = NamedMap.empty,
     modelValues: Map[ModelId, Any] = Map.empty,
-    subscribers: Vector[(ModelId, ComponentId)] = Vector.empty // Convert to some multimap?
+    subscribers: Vector[(ModelId, ComponentId)] = Vector.empty, // Convert to some multimap?
+    services: NamedMap[ComponentId, Any] = NamedMap.empty
 ) {
 
   def generateId: (AssemblyState, ComponentId) = {
@@ -105,6 +107,27 @@ case class AssemblyState(
   /** Read a value without subscribing it (doesn't make component dependent from it) */
   def readValue[T](model: Model[T]): T = {
     modelValues(model.id).asInstanceOf[T]
+  }
+
+  /** Create a service. */
+  def service[T](name: String, initializer: () => T): (AssemblyState, T) = {
+    serviceWithOwner(ownId, name, initializer)
+  }
+
+  /** Create a root service. */
+  def rootService[T](name: String, initializer: () => T): (AssemblyState, T) = {
+    serviceWithOwner(RootComponent, name, initializer)
+  }
+
+  private def serviceWithOwner[T](ownerId: ComponentId, name: String, initializer: () => T): (AssemblyState, T) = {
+    services.get(ownerId, name) match {
+      case None          =>
+        val created = initializer()
+        copy(
+          services = services.withValue(ownerId, name, created)
+        ) -> created
+      case Some(service) => this -> service.asInstanceOf[T]
+    }
   }
 }
 

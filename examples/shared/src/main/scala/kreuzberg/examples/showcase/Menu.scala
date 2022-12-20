@@ -11,6 +11,7 @@ case object Menu extends SimpleComponentBase {
   val links = Seq(
     "/"         -> "Index",
     "/todo"     -> "Todo App",
+    "/todoapi"  -> "Todo App API",
     "/about"    -> "About",
     "/form"     -> "Form",
     "/wizzard"  -> "Wizzard",

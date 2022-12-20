@@ -130,7 +130,8 @@ class Binder[T](rootElement: ScalaJsElement, main: T)(implicit assembler: Assemb
 
     val componentFiltered = state.copy(
       children = state.children.filterKeys(referencedComponents.contains),
-      models = state.models.filterKeys(referencedComponents.contains)
+      models = state.models.filterKeys(referencedComponents.contains),
+      services = state.services.filterKeys(referencedComponents.contains)
     )
 
     val referencedModels = componentFiltered.models.values.map(_.id).toSet
@@ -143,7 +144,9 @@ class Binder[T](rootElement: ScalaJsElement, main: T)(implicit assembler: Assemb
 
     eventManager.garbageCollect(referencedComponents, referencedModels)
 
-    Logger.debug(s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models")
+    Logger.debug(
+      s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models"
+    )
     Logger.debug(s"  Children: ${state.children.size} -> ${modelFiltered.children.size}")
     Logger.debug(s"  Models:   ${state.models.size}   -> ${modelFiltered.models.size}")
     Logger.debug(s"  Values:   ${state.modelValues.size} -> ${modelFiltered.modelValues.size}")
