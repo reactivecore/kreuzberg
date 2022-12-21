@@ -15,9 +15,9 @@ object TodoAdder extends ComponentDsl {
       button    <- namedChild("addButton", Button("Add"))
       binding    =
         from(button)(_.clicked)
-          .withState(textInput)(_.text)
+          .addState(textInput)(_.text)
           .map(_._2)
-          .toModel(value.model) { (t, current) =>
+          .changeModel(value.model) { (t, current) =>
             Logger.debug(s"Appending ${t}")
             val result = current.append(t)
             Logger.debug(s"Result ${result}")

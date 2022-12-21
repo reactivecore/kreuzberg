@@ -7,32 +7,37 @@ import scala.util.Try
 sealed trait EventSource[E] {
 
   /** Extend runtime state to an event. */
-  def withState[T, S](from: ComponentNode[T])(f: T => StateGetter[S]): EventSource[(E, S)] =
+  def addState[T, S](from: ComponentNode[T])(f: T => StateGetter[S]): EventSource[(E, S)] =
     EventSource.WithState(this, from.id, f(from.value))
 
   /** Replace event state with view state. */
-  def withReplacedState[T, S](from: ComponentNode[T])(f: T => StateGetter[S]): EventSource[S] =
-    withState(from)(f).map(_._2)
+  def withState[T, S](from: ComponentNode[T])(f: T => StateGetter[S]): EventSource[S] =
+    addState(from)(f).map(_._2)
 
   def map[F](f: E => F): EventSource[F] = EventSource.MapSource(this, f)
 
   def flatMap[F](f: E => EventSource[F]) = EventSource.FlatMapSource(this, f)
 
   /** Shortcut for building event bindings */
-  def toModel[M](model: Model[M])(f: (E, M) => M): EventBinding.SourceSink[E] = {
+  def changeModel[M](model: Model[M])(f: (E, M) => M): EventBinding.SourceSink[E] = {
     val sink = EventSink.ModelChange(model, f)
     EventBinding(this, sink)
   }
 
-  /** Change model without caring about the value of the model. */
-  def intoModel[M](model: Model[M])(f: E => M): EventBinding.SourceSink[E] = {
-    toModel(model)((e, _) => f(e))
-  }
-
   /** Change model without caring about the value of the event. */
-  def toModelChange[M](model: Model[M])(f: M => M): EventBinding.SourceSink[E] = {
+  def changeModelDirect[M](model: Model[M])(f: M => M): EventBinding.SourceSink[E] = {
     val sink = EventSink.ModelChange(model, (_, m) => f(m))
     EventBinding(this, sink)
+  }
+
+  /** Change model without caring about the previous value of the model. */
+  def intoModel[M](model: Model[M])(f: E => M): EventBinding.SourceSink[E] = {
+    changeModel(model)((e, _) => f(e))
+  }
+
+  /** Change model without caring about the previous value of the model. */
+  def intoModel(model: Model[E]): EventBinding.SourceSink[E] = {
+    changeModel(model)((e, _) => e)
   }
 }
 

@@ -79,4 +79,10 @@ trait ImperativeDsl {
   implicit def htmlToAssembly(in: Html): Assembly = {
     Assembly(in)
   }
+
+  case class JsStateBuilder[J <: ScalaJsElement]() {
+    def get[T](f: J => T): StateGetter.JsRepresentationState[J, T] = StateGetter.JsRepresentationState(f)
+  }
+
+  def js[J <: ScalaJsElement] = JsStateBuilder[J]()
 }
