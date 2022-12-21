@@ -45,7 +45,7 @@ object TodoPageWithApi extends SimpleComponentBase {
 
         add(
           from(button)(_.clicked)
-            .withState(textInput)(_.text)
+            .addState(textInput)(_.text)
             .flatMap { case (_, text) =>
               EventSource.FutureEvent(lister.addItem(text))
             }

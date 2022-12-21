@@ -29,8 +29,8 @@ case class Wizzard(
     val nextButton  = child("next", Button("next"))
 
     val bindings = Vector(
-      from(prevButton)(_.clicked).toModelChange(pageModel)(x => Math.max(0, x - 1)),
-      from(nextButton)(_.clicked).toModelChange(pageModel)(x => Math.min(pages.size - 1, x + 1))
+      from(prevButton)(_.clicked).changeModelDirect(pageModel)(x => Math.max(0, x - 1)),
+      from(nextButton)(_.clicked).changeModelDirect(pageModel)(x => Math.min(pages.size - 1, x + 1))
     )
 
     Assembly(

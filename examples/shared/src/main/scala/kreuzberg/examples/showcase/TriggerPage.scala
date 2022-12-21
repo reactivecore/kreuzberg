@@ -21,8 +21,8 @@ object TriggerPage extends SimpleComponentBase {
 
     add(
       from(editor)(_.inputEvent)
-        .withReplacedState(editor)(_.text)
-        .toModel(value)((n, _) => n)
+        .withState(editor)(_.text)
+        .changeModel(value)((n, _) => n)
     )
     div(
       "Bitte geben sie was ein: ",
@@ -30,7 +30,8 @@ object TriggerPage extends SimpleComponentBase {
       "Das hier haben sie eingegeben: ",
       shower.wrap,
       br,
-      "Und das: ", xmlLabel.wrap
+      "Und das: ",
+      xmlLabel.wrap
     )
   }
 }

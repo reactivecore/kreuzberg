@@ -16,7 +16,7 @@ implicit def scalaTagsToAssemblyResult(st: TypedTag[String]): AssemblyResult = {
   AssemblyResult.fromHtml(scalaTagsToHtml(st))
 }
 
-implicit def scalaTagsToAssembly(st: TypedTag[String])(implicit x: AssemblyContext): Assembly = {
+implicit def scalaTagsToAssembly(st: TypedTag[String]): Assembly = {
   Assembly(scalaTagsToHtml(st))
 }
 
@@ -24,7 +24,7 @@ extension (tn: TreeNode) {
   def wrap: PlaceholderTag = PlaceholderTag(tn)
 }
 
-extension[T] (component: T)(using a: Assembler[T]) {
+extension [T](component: T)(using a: Assembler[T]) {
   def wrap(implicit c: AssemblyContext): PlaceholderTag = {
     c.transform(a.assembleWithNewId(component)).wrap
   }

@@ -5,7 +5,6 @@ import kreuzberg.imperative.{SimpleContext, SimpleComponentBase}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-
 case class ErrorShower(model: Model[Option[String]]) extends SimpleComponentBase {
 
   override def assemble(implicit c: SimpleContext): Html = {
@@ -17,11 +16,12 @@ case class ErrorShower(model: Model[Option[String]]) extends SimpleComponentBase
   }
 }
 
-/** A Simple validating text input to demonstrate the case of updating only part of the components.
-  *
-  * @param validator
-  *   maps current value into error message
-  */
+/**
+ * A Simple validating text input to demonstrate the case of updating only part of the components.
+ *
+ * @param validator
+ *   maps current value into error message
+ */
 case class ValidatingTextInput(
     name: String,
     validator: String => Option[String]
@@ -35,7 +35,7 @@ case class ValidatingTextInput(
       errorShower  <- namedChild("error", ErrorShower(errorModel))
       bindError     = EventBinding(
                         from(textInput)(_.inputEvent)
-                          .withReplacedState(textInput)(_.text),
+                          .withState(textInput)(_.text),
                         EventSink
                           .ModelChange[String, String](
                             valueModel,
