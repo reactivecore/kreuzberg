@@ -2,6 +2,7 @@ package kreuzberg.miniserver
 
 import java.io.File
 import java.nio.file.{Files, Path, Paths, StandardCopyOption}
+import java.util.jar.{JarEntry, JarFile}
 import scala.jdk.StreamConverters.*
 import scala.jdk.CollectionConverters.*
 
@@ -86,19 +87,23 @@ class Bootstrapper(config: MiniServerConfig) {
       file.entries().asScala.foreach { jarEntry =>
         println(s"Testing ${jarEntry.getName}")
         if (jarEntry.getName.startsWith(pathInJar) && !jarEntry.isDirectory && !isBlacklisted(jarEntry.getName)) {
-          val plainName   = jarEntry.getName.stripPrefix(pathInJar).stripPrefix("/")
-          val dstName     = prefixedAssetDir.resolve(plainName)
-          println(s"Copying ${jarEntry.getName} -> ${dstName}")
-          Option(dstName.getParent).foreach { parent =>
-            Files.createDirectories(parent)
-          }
-          val inputStream = file.getInputStream(jarEntry)
-          Files.copy(inputStream, dstName, StandardCopyOption.REPLACE_EXISTING)
+          val plainName = jarEntry.getName.stripPrefix(pathInJar).stripPrefix("/")
+          val dstName   = prefixedAssetDir.resolve(plainName)
+          niceCopyFromJar(file, jarEntry, dstName)
         }
       }
     } finally {
       file.close()
     }
+  }
+
+  private def niceCopyFromJar(file: JarFile, jarEntry: JarEntry, dstName: Path): Unit = {
+    println(s"Copying ${jarEntry.getName} -> ${dstName}")
+    Option(dstName.getParent).foreach { parent =>
+      Files.createDirectories(parent)
+    }
+    val inputStream = file.getInputStream(jarEntry)
+    Files.copy(inputStream, dstName, StandardCopyOption.REPLACE_EXISTING)
   }
 
   private def isBlacklisted(s: String): Boolean = {
@@ -127,6 +132,7 @@ class Bootstrapper(config: MiniServerConfig) {
 
   private def niceCopy(from: Path, to: Path): Unit = {
     Option(to.getParent).foreach(Files.createDirectories(_))
+    println(s"Copy ${from} to ${to}")
     Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING)
   }
 }
