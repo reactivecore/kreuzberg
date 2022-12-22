@@ -4,7 +4,7 @@ val versionTag = sys.env
   .filter(_.startsWith("v"))
   .map(_.stripPrefix("v"))
 
-val snapshotVersion = "0.2-SNAPSHOT"
+val snapshotVersion = "0.3-SNAPSHOT"
 val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
@@ -17,6 +17,8 @@ ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
+
+ThisBuild / evictionErrorLevel := Level.Warn // FIXME
 
 val publishSettings = Seq(
   publishTo           := {
@@ -73,8 +75,7 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags")
   .settings(
     name := "kreuzberg-scalatags",
     libraryDependencies ++= Seq(
-      "com.lihaoyi"  %% "scalatags" % "0.11.1",
-      "com.lihaoyi" %%% "scalatags" % "0.11.1"
+      "com.lihaoyi" %%% "scalatags" % "0.12.0"
     ) ++ scalaTestDeps,
     publishSettings
   )
@@ -82,11 +83,11 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags")
 
 lazy val rpc = (crossProject(JSPlatform, JVMPlatform) in file("rpc"))
   .settings(
-    name := "kreuzberg-rpc",
+    name               := "kreuzberg-rpc",
     libraryDependencies ++= Seq(
-      "com.lihaoyi"  %% "upickle" % "2.0.0",
       "com.lihaoyi" %%% "upickle" % "2.0.0"
     ) ++ scalaTestDeps,
+    evictionErrorLevel := Level.Warn,
     publishSettings
   )
   .dependsOn(lib)
@@ -103,8 +104,8 @@ lazy val miniserver = (project in file("miniserver"))
     name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
       "io.d11"                     %% "zhttp"           % "2.0.0-RC11",
-      "ch.qos.logback"              % "logback-classic" % "1.2.11",
-      "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
+      "ch.qos.logback"              % "logback-classic" % "1.4.5",
+      "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.5"
     ) ++ scalaTestDeps,
     publishSettings
   )
