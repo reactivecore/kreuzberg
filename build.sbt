@@ -103,7 +103,7 @@ lazy val miniserver = (project in file("miniserver"))
   .settings(
     name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
-      "io.d11"                     %% "zhttp"           % "2.0.0-RC11",
+      "dev.zio"                    %% "zio-http"        % "0.0.3",
       "ch.qos.logback"              % "logback-classic" % "1.4.5",
       "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.5"
     ) ++ scalaTestDeps,
