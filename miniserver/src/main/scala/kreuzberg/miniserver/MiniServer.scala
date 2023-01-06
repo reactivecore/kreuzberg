@@ -1,14 +1,14 @@
 package kreuzberg.miniserver
 
 import com.typesafe.scalalogging.Logger
-import zhttp.http.*
-import zhttp.service.Server
+import zio.http.*
 import zio.*
 
 import java.io.File
 import java.nio.file.{Files, Paths}
 import kreuzberg.rpc.Dispatchers
 import ZioEffect.effect
+import zio.http.model.Method
 
 class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
   val log = Logger(getClass)
@@ -51,5 +51,11 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
   val all = apiDispatcher.app() ++ app
 
   log.info(s"Going to listen on ${config.port}")
-  val run = Server.start(config.port, all)
+  val serverConfig = ServerConfig.default
+    .port(config.port)
+  val configLayer  = ServerConfig.live(serverConfig)
+  val run          = (Server.install(all).flatMap { port =>
+    Console.printLine(s"Started server on port: $port")
+  } *> ZIO.never)
+    .provide(configLayer, Server.live)
 }

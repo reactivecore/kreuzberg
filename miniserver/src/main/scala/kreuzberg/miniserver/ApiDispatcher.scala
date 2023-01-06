@@ -3,7 +3,8 @@ package kreuzberg.miniserver
 import kreuzberg.rpc.Dispatcher
 import zio.{ZIO, IO, Task, UIO}
 import kreuzberg.rpc.Failure
-import zhttp.http.*
+import zio.http.*
+import zio.http.model.*
 import kreuzberg.rpc.CodecError
 import kreuzberg.rpc.ServiceExecutionError
 import scala.util.control.NonFatal
