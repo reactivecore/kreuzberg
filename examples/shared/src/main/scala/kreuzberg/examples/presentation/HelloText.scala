@@ -1,7 +1,6 @@
 package kreuzberg.examples.presentation
 
 import kreuzberg.*
-import kreuzberg.imperative.*
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 import kreuzberg.examples.showcase.JsInput
