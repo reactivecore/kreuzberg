@@ -12,12 +12,14 @@ case class Index(config: MiniServerConfig) {
       },
       config.extraCss.map { name =>
         link(rel := "stylesheet", href := config.hashedUrl(name))
-      },
+      }
     ).addInner(config.extraHtmlHeader),
     body(
       div(id := "root"),
       noscript(
-        "Please enable JavaScript in order to use this page."
+        config.noScriptText.getOrElse(
+          "Please enable JavaScript in order to use this page."
+        )
       )
     )
   )

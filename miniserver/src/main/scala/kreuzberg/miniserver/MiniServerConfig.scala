@@ -12,7 +12,8 @@ case class MiniServerConfig(
       ".*\\.js\\.map",
       ".*\\.css\\.map"
     ),
-    api: Seq[ZioDispatcher] = Nil
+    api: Seq[ZioDispatcher] = Nil,
+    noScriptText: Option[String] = None // if not given, use default.
 ) {
   def hashedUrl(name: String): String = assetPaths.hashedUrl(name, deploymentType)
 
