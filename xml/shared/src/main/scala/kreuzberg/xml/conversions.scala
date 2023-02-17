@@ -1,6 +1,7 @@
 package kreuzberg.xml
 
-import kreuzberg.{Html, TreeNode}
+import kreuzberg.imperative.AssemblyContext
+import kreuzberg.{Assembler, Html, TreeNode}
 
 import scala.language.implicitConversions
 import scala.xml.Elem
@@ -11,5 +12,12 @@ import scala.xml.Elem
 implicit def elemToHtml(e: Elem): Html = ScalaXmlHtml(e)
 
 extension (tn: TreeNode) {
-  def wrap: ScalaXmlPlaceholder = ScalaXmlPlaceholder(tn)
+  def wrap: ScalaXmlHtmlEmbed = ScalaXmlHtmlEmbed(Html.treeNodeToHtml(tn))
 }
+
+extension [T](component: T)(using a: Assembler[T]) {
+  def wrap(implicit c: AssemblyContext): ScalaXmlHtmlEmbed = {
+    c.transform(a.assembleWithNewId(component)).wrap
+  }
+}
+

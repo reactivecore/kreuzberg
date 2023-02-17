@@ -1,7 +1,7 @@
 package kreuzberg
 
 import kreuzberg.util.{MutableMultimap, Stateful}
-
+import kreuzberg.dom.*
 import scala.collection.mutable
 import scala.util.control.NonFatal
 

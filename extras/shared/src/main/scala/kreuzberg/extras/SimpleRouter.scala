@@ -24,9 +24,10 @@ case class SimpleRouter(
 
   override def assemble: AssemblyResult = {
     for {
-      state             <- provide[RoutingState]
-      routeValue        <- subscribe(state.currentRoute)
-      _                  = Logger.debug(s"Rendering SimpleRouter with value ${routeValue} on model ${state.currentRoute.id}")
+      routingStateModel <- provide[Model[RoutingState]]
+      routingState      <- subscribe(routingStateModel)
+      _                  = Logger.debug(s"Rendering SimpleRouter with value ${routingState} on model ${routingStateModel.id}")
+      routeValue         = routingState.currentRoute
       id                <- Stateful[AssemblyState, ComponentId](_.ensureChildren(routeValue))
       route              = decideRoute(routeValue)
       assembled         <- route.node(id, routeValue)
@@ -34,11 +35,11 @@ case class SimpleRouter(
                              EventSource.WindowJsEvent(Event.JsEvent("load")),
                              EventSink
                                .ModelChange(
-                                 state.currentRoute,
+                                 routingStateModel,
                                  (_, m) => {
                                    val path = BrowserRouting.getCurrentPath()
                                    Logger.debug(s"Load Event: ${path}")
-                                   path
+                                   RoutingState(path)
                                  }
                                )
                                .and(EventSink.Custom { _ =>
@@ -48,14 +49,14 @@ case class SimpleRouter(
                                })
                            )
       routeChangeBinding = EventBinding(
-                             EventSource.ModelChange(state.currentRoute),
-                             EventSink.Custom[(String, String)] { case (from, target) =>
-                               val title = decideRoute(target).title(target)
+                             EventSource.ModelChange(routingStateModel),
+                             EventSink.Custom[(RoutingState, RoutingState)] { case (from, target) =>
+                               val title = decideRoute(target.currentRoute).title(target.currentRoute)
                                Logger.debug(s"Model change ${from} -> ${target}")
                                val path  = BrowserRouting.getCurrentPath()
-                               if (target != path) { // Otherwise we would also push a state change on a pop change
+                               if (target.currentRoute != path) { // Otherwise we would also push a state change on a pop change
                                  Logger.debug(s"Push state ${title}/${target}")
-                                 BrowserRouting.pushState(title, target)
+                                 BrowserRouting.pushState(title, target.currentRoute)
                                }
                                BrowserRouting.setDocumentTitle(titlePrefix + title)
                              }
@@ -63,11 +64,11 @@ case class SimpleRouter(
       popStateBinding    = EventBinding(
                              EventSource.WindowJsEvent(Event.JsEvent("popstate")),
                              EventSink.ModelChange(
-                               state.currentRoute,
+                               routingStateModel,
                                { (_, current) =>
                                  val path = BrowserRouting.getCurrentPath()
                                  Logger.debug(s"Popstate event ${path}")
-                                 path
+                                 RoutingState(path)
                                }
                              )
                            )

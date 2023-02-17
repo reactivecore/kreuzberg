@@ -67,7 +67,7 @@ object Assembler {
     )
   }
 
-  def apply[T](implicit a: Assembler[T]): Assembler[T] = {
+  def apply[T](using a: Assembler[T]): Assembler[T] = {
     a
   }
 
@@ -75,7 +75,14 @@ object Assembler {
    * Assemble a value as a single component discarding the state. For testcases.
    */
   def single[T](value: T)(using a: Assembler[T]): Assembly = {
-    a.assemble(value)(AssemblyState())._2
+    assemble(value)(AssemblyState())._2
+  }
+
+  /**
+   * Assemble a value as a single component
+   */
+  def assemble[T](value: T)(using a: Assembler[T]): AssemblyResult = {
+    a.assemble(value)
   }
 
   /** Concatenates some html */

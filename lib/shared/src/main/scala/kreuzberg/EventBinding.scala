@@ -4,6 +4,7 @@ import kreuzberg.Event.JsEvent
 import scala.concurrent.Future
 import scala.util.Try
 
+import kreuzberg.dom.ScalaJsEvent
 sealed trait EventSource[E] {
 
   /** Extend runtime state to an event. */
@@ -39,6 +40,14 @@ sealed trait EventSource[E] {
   def intoModel(model: Model[E]): EventBinding.SourceSink[E] = {
     changeModel(model)((e, _) => e)
   }
+
+  /** Trigger some component event. */
+  def trigger(ce: Event.ComponentEvent[E]): EventBinding.SourceSink[E] = {
+    EventBinding(this, EventSink.TriggerComponentEvent(ce))
+  }
+
+  /** Connect this source to a sink */
+  def to(sink: EventSink[E]): EventBinding.SourceSink[E] = EventBinding.SourceSink(this, sink)
 }
 
 object EventSource {
@@ -75,6 +84,11 @@ object EventSource {
       from: EventSource[E],
       fn: E => EventSource[F]
   ) extends EventSource[F]
+
+  /** Pseudo Event source, to chain multiple reactions on one source. */
+  case class AndSource[E](
+      binding: EventBinding.SourceSink[E]
+  ) extends EventSource[E]
 }
 
 sealed trait EventSink[-E] {
@@ -100,6 +114,9 @@ object EventSink {
 
   /** Chain multiple sinks. */
   case class Multiple[E](sinks: Vector[EventSink[E]]) extends EventSink[E]
+
+  /** Trigger a component event. */
+  case class TriggerComponentEvent[E](componentEvent: Event.ComponentEvent[E]) extends EventSink[E]
 }
 
 sealed trait EventBinding
@@ -110,7 +127,11 @@ object EventBinding {
   case class SourceSink[E](
       source: EventSource[E],
       sink: EventSink[E]
-  ) extends EventBinding
+  ) extends EventBinding {
+
+    /** Helper for adding more sinks on one source. */
+    def and: EventSource.AndSource[E] = EventSource.AndSource(this)
+  }
 
   def apply[E](
       source: EventSource[E],

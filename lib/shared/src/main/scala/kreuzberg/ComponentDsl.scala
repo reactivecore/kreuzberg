@@ -4,6 +4,7 @@ import kreuzberg.util.Stateful
 
 import scala.language.implicitConversions
 
+import kreuzberg.dom.ScalaJsElement
 trait ComponentDsl {
   implicit def htmlToAssemblyResult(in: Html): AssemblyResult = {
     Stateful.pure(Assembly(in))

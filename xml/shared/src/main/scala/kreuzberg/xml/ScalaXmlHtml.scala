@@ -36,7 +36,7 @@ case class ScalaXmlHtml(elem: Elem) extends Html {
 
     def traverse(node: Node): Unit = {
       node match {
-        case p: ScalaXmlPlaceholder => collector += p.item
+        case h: ScalaXmlHtmlEmbed   => collector ++= h.html.placeholders
         case other                  =>
           other.child.foreach(traverse)
       }
@@ -49,17 +49,6 @@ case class ScalaXmlHtml(elem: Elem) extends Html {
   override def render(sb: StringBuilder): Unit = {
     Utility.serialize(elem, sb = sb)
   }
-}
-
-/** Wraps some item within ScalaXml. */
-case class ScalaXmlPlaceholder(item: TreeNode) extends SpecialNode {
-  override def buildString(sb: StringBuilder): StringBuilder = {
-    val html = PlaceholderState.maybeGet(item.id).getOrElse(item.render())
-    html.render(sb)
-    sb
-  }
-
-  override def label: String = "#Placeholder"
 }
 
 case class ScalaXmlHtmlEmbed(html: Html) extends SpecialNode {

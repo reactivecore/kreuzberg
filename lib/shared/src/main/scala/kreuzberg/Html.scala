@@ -29,3 +29,26 @@ trait Html {
     renderToString()
   }
 }
+
+object Html {
+  implicit def treeNodeToHtml(treeNode: TreeNode): Html = TreeNodePlaceholder(treeNode)
+}
+
+/** Wraps a TreeNode inside Html. */
+case class TreeNodePlaceholder(treeNode: TreeNode) extends Html {
+  def withId(id: ComponentId): Html = {
+    treeNode.render().withId(id)
+  }
+
+  def addInner(inner: Seq[Html]): Html = {
+    treeNode.render().addInner(inner)
+  }
+
+  def placeholders: Iterable[TreeNode] = {
+    List(treeNode)
+  }
+
+  def render(sb: StringBuilder): Unit = {
+    treeNode.render().render(sb)
+  }
+}

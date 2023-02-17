@@ -1,14 +1,19 @@
-package kreuzberg
+package kreuzberg.dom
 
-/** Dummy Event for Scala JVM */
+// Dummy Implementations for JVM
+
 trait ScalaJsEvent()
 
-/** Dummy Node. */
 trait ScalaJsNode {
   def addEventListener[T <: ScalaJsEvent](`type`: String, listener: T => _, useCapture: Boolean = false): Unit
 }
 
-/** Dummy Element for Scala JVM */
 trait ScalaJsElement {
   def querySelector(selectors: String): ScalaJsElement
+}
+
+trait ScalaJsInput extends ScalaJsElement {
+
+  /** Text Input of input field */
+  def value: String
 }

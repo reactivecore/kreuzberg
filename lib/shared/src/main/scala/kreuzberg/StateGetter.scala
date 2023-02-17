@@ -1,5 +1,6 @@
 package kreuzberg
 
+import kreuzberg.dom.ScalaJsElement
 
 /** Something which can extract java script states from Components. */
 trait StateGetter[S] {

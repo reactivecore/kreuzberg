@@ -1,5 +1,7 @@
 package kreuzberg
 
+import kreuzberg.dom.ScalaJsEvent
+
 /** An Event which can be triggered by some component. */
 sealed trait Event[E] {
   def map[F](f: E => F): Event[F] = Event.MappedEvent(this, f)
@@ -13,6 +15,11 @@ object Event {
       preventDefault: Boolean = false,
       capture: Boolean = false
   ) extends Event[ScalaJsEvent]
+
+  /** Custom Component event, which can be triggered by a component. */
+  case class ComponentEvent[E](
+      name: String
+  ) extends Event[E]
 
   /** Maps event data. */
   case class MappedEvent[E, F](
