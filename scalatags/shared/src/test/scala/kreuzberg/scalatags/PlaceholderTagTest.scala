@@ -19,11 +19,11 @@ class PlaceholderTagTest extends TestBase {
   )
 
   "collectFrom" should "work" in {
-    val p0          = PlaceholderTag(node(0))
-    val p1          = PlaceholderTag(node(1))
-    val p2          = PlaceholderTag(node(2))
-    val p3          = PlaceholderTag(node(2))
-    val placeholder = PlaceholderTag(node(3))
+    val p0          = node(0).wrap
+    val p1          = node(1).wrap
+    val p2          = node(2).wrap
+    val p3          = node(2).wrap
+    val placeholder = node(3).wrap
     val html        = div(
       div(
         "foo"
@@ -37,6 +37,6 @@ class PlaceholderTagTest extends TestBase {
         )
       )
     )
-    PlaceholderTag.collectFrom(html) shouldBe Vector(p0, p1, p2, p3)
+    ScalaTagsHtmlEmbed.collectFrom(html) shouldBe Vector(p0, p1, p2, p3)
   }
 }

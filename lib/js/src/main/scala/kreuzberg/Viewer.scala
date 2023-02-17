@@ -1,7 +1,7 @@
 package kreuzberg
 
 import kreuzberg.imperative.PlaceholderState
-
+import kreuzberg.dom.*
 import scala.util.control.NonFatal
 
 /** Responsible for drawing componnent trees. */

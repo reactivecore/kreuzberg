@@ -17,6 +17,25 @@ object LoadingModel {
   case class Error(f: Throwable)  extends LoadingModel[Nothing] // TODO: Use RPC Errors
 }
 
+object TodoAdderForm extends SimpleComponentBase {
+  def assemble(implicit c: SimpleContext): Html = {
+    val textInput = child("input", TextInput("name"))
+    val button    = child("addButton", Button("Add"))
+    add(
+      from(button)(_.clicked)
+        .withState(textInput)(_.text)
+        .trigger(addEvent)
+    )
+    form(
+      label("Element: "),
+      textInput.wrap,
+      button.wrap
+    )
+  }
+
+  val addEvent = Event.ComponentEvent[String]("add")
+}
+
 object TodoPageWithApi extends SimpleComponentBase {
 
   private def decodeResult(t: Try[Seq[String]]): LoadingModel[TodoList] = {
@@ -39,16 +58,16 @@ object TodoPageWithApi extends SimpleComponentBase {
       case LoadingModel.Error(e)  => div(s"Could not load model ${e}")
       case LoadingModel.Loading   => div("Loading")
       case LoadingModel.Loaded(v) =>
-        val shower    = child("shower", TodoShower(v))
-        val textInput = child("input", TextInput("name"))
-        val button    = child("addButton", Button("Add"))
+        val shower = child("shower", TodoShower(v))
+        val form   = child("form", TodoAdderForm)
 
         add(
-          from(button)(_.clicked)
-            .addState(textInput)(_.text)
-            .flatMap { case (_, text) =>
+          from(form)(_.addEvent)
+            .flatMap { text =>
               EventSource.FutureEvent(lister.addItem(text))
             }
+            .intoModel(m)(_ => LoadingModel.Loading)
+            .and
             .flatMap { _ =>
               EventSource.FutureEvent(lister.listItems())
             }
@@ -57,8 +76,7 @@ object TodoPageWithApi extends SimpleComponentBase {
 
         div(
           shower.wrap,
-          textInput.wrap,
-          button.wrap
+          form.wrap
         )
     }
   }

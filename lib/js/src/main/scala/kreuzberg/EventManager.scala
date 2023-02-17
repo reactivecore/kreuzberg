@@ -1,7 +1,7 @@
 package kreuzberg
 
 import kreuzberg.util.MutableMultimap
-
+import kreuzberg.dom.*
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.util.Try
@@ -55,10 +55,24 @@ class EventManager(delegate: EventManagerDelegate) {
       preventDefault: Boolean
   )
 
+  /** Binding to Component Events. */
+  private case class ComponentEventBinding[T](
+      handler: T => Unit,
+      owner: ComponentId
+  )
+
   /** Pending Changes. */
-  private val _pending                = new mutable.Queue[PendingChange]()
-  private val _modelBindings          = new MutableMultimap[ModelId, ModelBindings[_]]()
-  private val _windowEventBindings    = new MutableMultimap[String, WindowEventBinding]()
+  private val _pending = new mutable.Queue[PendingChange]()
+
+  /** Bindings to Model changes. */
+  private val _modelBindings = new MutableMultimap[ModelId, ModelBindings[_]]()
+
+  /** Bindings to Window Events. */
+  private val _windowEventBindings = new MutableMultimap[String, WindowEventBinding]()
+
+  /** Bindings to Component Events. */
+  private val _componentEventBindings = new MutableMultimap[(ComponentId, String), ComponentEventBinding[_]]()
+
   // Keeping track of registered window events (we do not yet remove them)
   private val _registeredWindowEvents = mutable.Set[String]()
 
@@ -69,6 +83,7 @@ class EventManager(delegate: EventManagerDelegate) {
     // Drop Existing model bindings
     _modelBindings.filterValuesInPlace(_.owner != node.id)
     _windowEventBindings.filterValuesInPlace(_.owner != node.id)
+    _componentEventBindings.filterValuesInPlace(_.owner != node.id)
 
     node.assembly.nodes.foreach { case child: ComponentNode[_] =>
       activateEvents(child)
@@ -86,6 +101,7 @@ class EventManager(delegate: EventManagerDelegate) {
     _modelBindings.filterKeysInPlace(referencedModels.contains)
     _modelBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _windowEventBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
+    _componentEventBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
   }
 
   private def activateEvent(node: TreeNode, eventBinding: EventBinding): Unit = {
@@ -98,13 +114,13 @@ class EventManager(delegate: EventManagerDelegate) {
       node: TreeNode,
       sourceSink: EventBinding.SourceSink[E]
   ): Unit = {
-    val transformedSink = transformSink(sourceSink.sink)
+    val transformedSink = transformSink(node, sourceSink.sink)
     bindEventSource(node, sourceSink.source, transformedSink)
   }
 
-  private def transformSink[T](eventSink: EventSink[T]): T => Unit = {
+  private def transformSink[T](node: TreeNode, eventSink: EventSink[T]): T => Unit = {
     eventSink match
-      case EventSink.ModelChange(model, f) =>
+      case EventSink.ModelChange(model, f)     =>
         eventData =>
           val change = PendingModelChange(
             model.id,
@@ -112,10 +128,15 @@ class EventManager(delegate: EventManagerDelegate) {
           )
           _pending.append(change)
           ensureNextIteration()
-      case EventSink.Custom(f)             => f
-      case EventSink.Multiple(sinks)       =>
-        val converted = sinks.map(transformSink)
+      case EventSink.Custom(f)                 => f
+      case EventSink.Multiple(sinks)           =>
+        val converted = sinks.map(transformSink(node, _))
         eventData => converted.foreach(x => x(eventData))
+      case EventSink.TriggerComponentEvent(ce) =>
+        eventData =>
+          _componentEventBindings.foreachKey(node.id -> ce.name) { binding =>
+            binding.asInstanceOf[ComponentEventBinding[T]].handler(eventData)
+          }
   }
 
   private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
@@ -174,6 +195,8 @@ class EventManager(delegate: EventManagerDelegate) {
         )
       case f: EventSource.FutureEvent[_]              =>
         bindFuture(f, sink)
+      case a: EventSource.AndSource[_]                =>
+        bindAnd(ownNode, a, sink)
   }
 
   private def bindModelChange[T](ownNode: TreeNode, source: EventSource.ModelChange[T], sink: (T, T) => Unit): Unit = {
@@ -194,11 +217,23 @@ class EventManager(delegate: EventManagerDelegate) {
     }
   }
 
+  private def bindAnd[T](ownNode: TreeNode, event: EventSource.AndSource[T], sink1: T => Unit): Unit = {
+    val sink0               = transformSink(ownNode, event.binding.sink)
+    val combined: T => Unit = { value =>
+      sink0(value)
+      sink1(value)
+    }
+    bindEventSource(ownNode, event.binding.source, combined)
+  }
+
   private def bindEvent[T, E](node: TreeNode, event: Event[E], sink: E => Unit): Unit = {
     event match
       case jse: Event.JsEvent              =>
         val source = delegate.locate(node.id)
         bindJsEvent(source, jse, sink)
+      case ce: Event.ComponentEvent[E]     =>
+        val handler = ComponentEventBinding(sink, node.id)
+        _componentEventBindings.add(node.id -> ce.name, handler)
       case mapped: Event.MappedEvent[_, E] =>
         bindMappedEvent(node, mapped, sink)
   }

@@ -3,6 +3,8 @@ package kreuzberg.imperative
 import kreuzberg.*
 import kreuzberg.util.Stateful
 
+import kreuzberg.dom.ScalaJsElement
+
 /**
  * Base class for components, which assemble imperative. Also see [[SimpleComponentBase]] for an even reduced version.
  */
@@ -14,10 +16,8 @@ abstract class ImperativeComponentBase extends ImperativeDsl {
 
 object ImperativeComponentBase {
   implicit def assembler[T <: ImperativeComponentBase]: Assembler[T] = { value =>
-    Stateful.apply { state =>
-      implicit val context = new AssemblyContext(state)
-      val assembled        = value.assemble
-      (context.state, assembled)
+    AssemblyContext.transform { context =>
+      value.assemble(context)
     }
   }
 }
@@ -43,6 +43,18 @@ class AssemblyContext(private var _state: AssemblyState) {
   def state: AssemblyState = _state
 }
 
+object AssemblyContext {
+
+  /** Transform an imperative function using assembly context back into a stateful instance. */
+  def transform[T](f: AssemblyContext => T): Stateful[AssemblyState, T] = {
+    Stateful.apply { state =>
+      val context = new AssemblyContext(state)
+      val result  = f(context)
+      (context.state, result)
+    }
+  }
+}
+
 trait ImperativeDsl {
   protected def model[M](name: String, defaultValue: M)(implicit c: AssemblyContext): Model[M] =
     c.transformFn(_.withModel(name, defaultValue))
@@ -60,6 +72,11 @@ trait ImperativeDsl {
 
   protected def subscribe[M](model: Model[M])(implicit c: AssemblyContext): M = {
     c.transformFn(_.subscribe(model))
+  }
+
+  /** Shortcut for subscribing provided Models. */
+  protected def subscribe[M](implicit provider: Provider[Model[M]], c: AssemblyContext): M = {
+    subscribe(provide[Model[M]])
   }
 
   protected def read[M](model: Model[M])(implicit c: AssemblyContext): M = {
