@@ -1,5 +1,5 @@
 package kreuzberg.examples.showcase
-import kreuzberg.rpc.ServiceExecutionError
+
 import zio.IO
 import zio.ZIO
 import zio.Task

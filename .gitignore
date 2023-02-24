@@ -4,6 +4,7 @@ target
 .bloop
 .metals
 .vscode
+*.sc
 dist/
 metals.sbt
 

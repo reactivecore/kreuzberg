@@ -50,7 +50,10 @@ object TodoPageWithApi extends SimpleComponentBase {
 
     if (todolist == LoadingModel.Loading) {
       add {
-        EventSource.FutureEvent(lister.listItems()).intoModel(m)(decodeResult)
+        EventSource
+          .OwnEvent(Event.Assembled)
+          .effect(_ => lister.listItems())
+          .intoModel(m)(decodeResult)
       }
     }
 
@@ -63,14 +66,10 @@ object TodoPageWithApi extends SimpleComponentBase {
 
         add(
           from(form)(_.addEvent)
-            .flatMap { text =>
-              EventSource.FutureEvent(lister.addItem(text))
-            }
+            .effect(text => lister.addItem(text))
             .intoModel(m)(_ => LoadingModel.Loading)
             .and
-            .flatMap { _ =>
-              EventSource.FutureEvent(lister.listItems())
-            }
+            .effect(_ => lister.listItems())
             .intoModel(m)(decodeResult)
         )
 
