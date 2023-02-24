@@ -16,6 +16,9 @@ object Event {
       capture: Boolean = false
   ) extends Event[ScalaJsEvent]
 
+  /** Trivial event that something assembled. */
+  case object Assembled extends Event[Unit]
+
   /** Custom Component event, which can be triggered by a component. */
   case class ComponentEvent[E](
       name: String

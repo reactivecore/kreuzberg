@@ -1,10 +1,12 @@
 package kreuzberg
 
 object Logger {
-  private var isDebug = false
+  private var _isDebug = false
+  
+  inline def isDebug: Boolean = _isDebug
 
   def enableDebug(): Unit = {
-    isDebug = true
+    _isDebug = true
   }
 
   def debug(str: => String): Unit = {

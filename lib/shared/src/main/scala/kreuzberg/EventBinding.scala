@@ -1,9 +1,9 @@
 package kreuzberg
 
 import kreuzberg.Event.JsEvent
-import scala.concurrent.Future
-import scala.util.Try
 
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 import kreuzberg.dom.ScalaJsEvent
 sealed trait EventSource[E] {
 
@@ -17,7 +17,9 @@ sealed trait EventSource[E] {
 
   def map[F](f: E => F): EventSource[F] = EventSource.MapSource(this, f)
 
-  def flatMap[F](f: E => EventSource[F]) = EventSource.FlatMapSource(this, f)
+  def effect[F](op: EffectOperation[E, F]): EventSource.EffectEvent[E, F] = EventSource.EffectEvent(this, op)
+
+  def effect[F](f: E => Future[F]): EventSource.EffectEvent[E, F] = EventSource.EffectEvent(this, EffectOperation((e, _) => f(e)))
 
   /** Shortcut for building event bindings */
   def changeModel[M](model: Model[M])(f: (E, M) => M): EventBinding.SourceSink[E] = {
@@ -61,8 +63,11 @@ object EventSource {
   /** A JS Event from window-Object */
   case class WindowJsEvent(js: JsEvent) extends EventSource[ScalaJsEvent]
 
-  /** An event from a future. */
-  case class FutureEvent[T](future: Future[T]) extends EventSource[Try[T]]
+  /** Some side effect operatio (e.g. API Call) */
+  case class EffectEvent[E, F](
+      trigger: EventSource[E],
+      effectOperation: EffectOperation[E, F]
+  ) extends EventSource[Try[F]]
 
   /** Extend with runtime state. */
   case class WithState[E, F](
@@ -78,11 +83,6 @@ object EventSource {
   case class MapSource[E, F](
       from: EventSource[E],
       fn: E => F
-  ) extends EventSource[F]
-
-  case class FlatMapSource[E, F](
-      from: EventSource[E],
-      fn: E => EventSource[F]
   ) extends EventSource[F]
 
   /** Pseudo Event source, to chain multiple reactions on one source. */
