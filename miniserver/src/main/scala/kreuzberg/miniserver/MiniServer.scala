@@ -8,7 +8,7 @@ import java.io.File
 import java.nio.file.{Files, Paths}
 import kreuzberg.rpc.Dispatchers
 import ZioEffect.effect
-import zio.http.model.Method
+import zio.http.model.{HttpError, Method, Status}
 
 class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
   val log = Logger(getClass)
@@ -23,13 +23,13 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
 
   val apiDispatcher = ApiDispatcher(Dispatchers(config.api))
 
-  val app = Http.collectHttp[Request] {
+  val app: HttpApp[Any, Throwable] = Http.collectRoute[Request] {
     case Method.GET -> "" /: "assets" /: path =>
       log.info(s"Requested ${path}")
       config.locateAsset(path.encode) match {
         case None                              =>
           log.warn(s"Path ${path} not found")
-          Http.notFound
+          Http.fromHandler(Handler.notFound)
         case Some(Location.File(file))         =>
           Http.fromFile(file)
         case Some(Location.ResourcePath(path)) =>
@@ -38,17 +38,21 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
       }
     case Method.GET -> !!                     =>
       log.info("Root")
-      Http(
-        Response.html(indexCode)
+      Http.fromHandler(
+        Handler.html(
+          indexCode
+        )
       )
     case Method.GET -> "" /: path             =>
       log.info(s"Sub path ${path}")
-      Http(
-        Response.html(Index(config).index.toString)
+      Http.fromHandler(
+        Handler.html(
+          Index(config).index.toString
+        )
       )
   }
 
-  val all = apiDispatcher.app() ++ app
+  val all = (apiDispatcher.app() ++ app).withDefaultErrorResponse
 
   log.info(s"Going to listen on ${config.port}")
   val serverConfig = ServerConfig.default

@@ -18,8 +18,6 @@ ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
 
-ThisBuild / evictionErrorLevel := Level.Warn // FIXME
-
 val publishSettings = Seq(
   publishTo           := {
     val nexus = "https://sonatype.rcxt.de/repository/reactivecore/"
@@ -48,7 +46,7 @@ val testSettings = libraryDependencies ++= Seq(
   "org.scalatest" %%% "scalatest-flatspec" % "3.2.14" % Test
 )
 
-val zioVersion = "2.0.6"
+val zioVersion = "2.0.9"
 
 lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   .settings(
@@ -114,7 +112,7 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform) in file("rpc"))
   .settings(
     name               := "kreuzberg-rpc",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "upickle" % "2.0.0"
+      "com.lihaoyi" %%% "upickle" % "3.0.0-M2"
     ),
     evictionErrorLevel := Level.Warn,
     publishSettings,
@@ -134,7 +132,7 @@ lazy val miniserver = (project in file("miniserver"))
   .settings(
     name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
-      "dev.zio"                    %% "zio-http"        % "0.0.3",
+      "dev.zio"                    %% "zio-http"        % "0.0.4",
       "ch.qos.logback"              % "logback-classic" % "1.4.5",
       "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.5"
     ),
