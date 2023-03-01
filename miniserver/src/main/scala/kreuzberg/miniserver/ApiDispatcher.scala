@@ -17,7 +17,7 @@ case class ApiDispatcher(backend: ZioDispatcher) {
 
   private lazy val logger = Logger(getClass)
 
-  def app(): HttpApp[Any, Nothing] = Http.collectZIO[Request] {
+  def app(): HttpApp[Any, Throwable] = Http.collectZIO[Request] {
     case Method.GET -> "" /: "api" /: path                      =>
       ZIO.succeed(Response.text("API Requests requires POST").setStatus(Status.MethodNotAllowed))
     case r @ Method.POST -> !! / "api" / serviceName / callName =>
