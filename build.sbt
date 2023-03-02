@@ -42,7 +42,7 @@ val publishSettings = Seq(
 )
 
 val testSettings = libraryDependencies ++= Seq(
-  "org.scalatest" %%% "scalatest" % "3.2.14" % Test,
+  "org.scalatest" %%% "scalatest"          % "3.2.14" % Test,
   "org.scalatest" %%% "scalatest-flatspec" % "3.2.14" % Test
 )
 
@@ -66,6 +66,7 @@ lazy val engineNaive = (project in file("engine-naive"))
   .dependsOn(lib.js)
   .settings(
     name := "kreuzberg-engine-naive",
+    publishSettings,
     testSettings
   )
 
@@ -75,6 +76,7 @@ lazy val engineZio = (project in file("engine-zio"))
   .dependsOn(lib.js)
   .settings(
     name := "kreuzberg-engine-zio",
+    publishSettings,
     libraryDependencies ++= Seq(
       "dev.zio"           %%% "zio"                  % zioVersion,
       "dev.zio"           %%% "zio-streams"          % zioVersion,
@@ -173,7 +175,7 @@ lazy val examplesZio = (crossProject(JSPlatform, JVMPlatform) in file("examples-
     Compile / fastOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/fast/main.js",
     Compile / fullOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/opt/main.js",
     scalaJSUseMainModuleInitializer    := true,
-    Compile / mainClass := Some("kreuzberg.examples.showcasezio.Main")
+    Compile / mainClass                := Some("kreuzberg.examples.showcasezio.Main")
   )
   .jvmSettings(
     Compile / mainClass := Some("kreuzberg.examples.showcase.ServerMainZio")
@@ -185,7 +187,9 @@ lazy val runner = (project in file("runner"))
   .settings(
     Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
     Compile / run / mainClass := (examples.jvm / Compile / run / mainClass).value,
-    reStartArgs               := Seq("serve")
+    reStartArgs               := Seq("serve"),
+    publish                   := {},
+    publishLocal              := {}
   )
   .dependsOn(examples.jvm)
 
@@ -193,10 +197,11 @@ lazy val runnerZio = (project in file("runner-zio"))
   .settings(
     Compile / compile         := (Compile / compile).dependsOn(examplesZio.js / Compile / fastOptJS).value,
     Compile / run / mainClass := (examplesZio.jvm / Compile / run / mainClass).value,
-    reStartArgs               := Seq("serve")
+    reStartArgs               := Seq("serve"),
+    publish                   := {},
+    publishLocal              := {}
   )
   .dependsOn(examplesZio.jvm)
-
 
 lazy val root = (project in file("."))
   .settings(
