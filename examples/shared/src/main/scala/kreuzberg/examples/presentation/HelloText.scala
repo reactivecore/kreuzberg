@@ -3,7 +3,8 @@ package kreuzberg.examples.presentation
 import kreuzberg.*
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
-import kreuzberg.dom.ScalaJsInput
+import kreuzberg.dom.{ScalaJsElement, ScalaJsInput}
+import kreuzberg.imperative.SimpleComponentBaseWithRuntime
 
 case class Label(model: Model[String]) extends SimpleComponentBase {
   def assemble(implicit c: SimpleContext): Html = {
@@ -12,14 +13,22 @@ case class Label(model: Model[String]) extends SimpleComponentBase {
   }
 }
 
-case class InputField(fieldName: String) extends SimpleComponentBase {
-  def assemble(implicit c: SimpleContext): Html = {
-    input(name := fieldName)
+case class InputField(fieldName: String) extends SimpleComponentBaseWithRuntime[InputField.Rep] {
+  def assemble(implicit c: SimpleContext): HtmlWithRuntime = {
+    html(input(name := fieldName)).withRuntime { provider =>
+      val casted = provider.jsElement.asInstanceOf[ScalaJsInput]
+      new InputField.Rep:
+        override def text: String = casted.value
+    }
   }
 
   def inputEvent = Event.JsEvent("input")
+}
 
-  def text: StateGetter[String] = js[ScalaJsInput].get(_.value)
+object InputField {
+  trait Rep {
+    def text: String
+  }
 }
 
 object Shower extends SimpleComponentBase {

@@ -1,4 +1,6 @@
 package kreuzberg.rpc
+import zio.Task
+
 import scala.annotation.experimental
 import scala.quoted.*
 import scala.concurrent.Future
@@ -20,6 +22,10 @@ object Stub {
   /** Generates a Stub for T */
   inline def makeStub[T](backend: CallingBackend[Future, String]): T = ${
     makeStubMacro[Future, String, T]('backend)
+  }
+
+  inline def makeZioStub[T](backend: CallingBackend[Task, String]): T = ${
+    makeStubMacro[Task, String, T]('backend)
   }
 
   // Note: Can't be private, see  https://github.com/lampepfl/dotty/issues/16091

@@ -27,9 +27,9 @@ class Viewer(rootElement: ScalaJsElement) {
       result
     }
     for {
-      html <- htmlEffect
+      html    <- htmlEffect
       current <- findElement(node.id)
-      _ <- {
+      _       <- {
         ZIO.attempt {
           current.outerHTML = html.toString
         }
@@ -43,13 +43,17 @@ class Viewer(rootElement: ScalaJsElement) {
   def findElement(id: ComponentId): Task[ScalaJsElement] = {
     ZIO
       .attempt {
-        val element = rootElement
-          .querySelector(s"[data-id=\"${id.id}\"]")
-        if (element == null) {
-          throw new RuntimeException(s"Could not find element with id ${id}")
-        }
-        element
+        findElementUnsafe(id)
       }
       .logError(s"Could not find element ${id}")
+  }
+
+  def findElementUnsafe(id: ComponentId): ScalaJsElement = {
+    val element = rootElement
+      .querySelector(s"[data-id=\"${id.id}\"]")
+    if (element == null) {
+      throw new RuntimeException(s"Could not find element with id ${id}")
+    }
+    element
   }
 }

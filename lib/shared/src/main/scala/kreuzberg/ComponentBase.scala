@@ -4,13 +4,13 @@ package kreuzberg
 trait ComponentBase extends ComponentDsl {
 
   /** Assemble the object. */
-  def assemble: AssemblyResult
+  def assemble: AssemblyResult[Unit]
 
 }
 
 object ComponentBase {
 
-  implicit def assembler[T <: ComponentBase]: Assembler[T] = { value =>
+  implicit def assembler[T <: ComponentBase]: Assembler.Aux[T, Unit] = { value =>
     value.assemble
   }
 }

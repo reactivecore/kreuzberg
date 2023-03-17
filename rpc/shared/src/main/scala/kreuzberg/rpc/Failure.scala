@@ -39,8 +39,19 @@ case class UnknownCallError(serviceName: String, call: String)
 }
 
 /** Generic execution error on server side. */
-case class ServiceExecutionError(message: String, code: Option[Int] = None) extends Failure(message) {
+case class ServiceExecutionError(message: String, code: Option[Int] = None, cause: Throwable = null)
+    extends Failure(message, cause) {
   def encode: EncodedError = EncodedError("ServiceExecution", message, None, code)
+}
+
+/** Some validation failed" */
+case class ValidationFailed(message: String, cause: Throwable = null) extends Failure(message, cause) {
+  override def encode: EncodedError = EncodedError("ValidationFailed", message)
+}
+
+/** Some resource was not found. */
+case class NotFound(message: String, cause: Throwable = null) extends Failure(message, cause) {
+  override def encode: EncodedError = EncodedError("NotFound", message)
 }
 
 /** JSON Encoded error. */
@@ -58,6 +69,8 @@ case class EncodedError(
       case "UnknownService"   => UnknownServiceError(message)
       case "UnknownCall"      => UnknownCallError(extra.getOrElse(""), message)
       case "ServiceExecution" => ServiceExecutionError(message, code)
+      case "ValidationFailed" => ValidationFailed(message)
+      case "NotFound"         => NotFound(message)
       case other              => ServiceExecutionError(message, code)
     }
   }

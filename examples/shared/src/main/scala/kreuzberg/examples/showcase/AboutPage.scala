@@ -5,14 +5,16 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 object AboutVersionShower extends ComponentBase {
-  override def assemble: AssemblyResult = span("1.2")
+  override def assemble: AssemblyResult[Unit] = span("1.2")
 }
 
 object AboutPage extends ComponentBase {
 
-  override def assemble: AssemblyResult = {
+  override def assemble: AssemblyResult[Unit] = {
     for {
-      version <- anonymousChild(AboutVersionShower) // This is used for testing if we garbage collect anonymous children correctly
+      version <- anonymousChild(
+                   AboutVersionShower
+                 ) // This is used for testing if we garbage collect anonymous children correctly
     } yield {
       Assembly(
         div("Hello World"),

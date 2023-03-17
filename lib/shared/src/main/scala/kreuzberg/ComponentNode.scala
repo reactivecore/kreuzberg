@@ -3,7 +3,7 @@ package kreuzberg
 /** Represents an assembled node in a tree. */
 sealed trait TreeNode {
   def id: ComponentId
-  def assembly: Assembly
+  def assembly: Assembly[Any]
 
   /** Returns children nodes. */
   def children: Vector[TreeNode] = assembly.nodes
@@ -29,7 +29,7 @@ sealed trait TreeNode {
 
 object TreeNode {
 
-  val empty = ComponentNode[Unit](
+  val empty = ComponentNode[Unit, Unit](
     AssemblyState.RootComponent,
     (),
     emptyRootHtml,
@@ -40,11 +40,17 @@ object TreeNode {
     SimpleHtml("div", children = Vector(SimpleHtmlNode.Text("Empty Root"))).withId(AssemblyState.RootComponent)
 }
 
-/** A Representation of the component. */
-case class ComponentNode[T](
+/**
+ * A Representation of the component.
+ * @tparam T
+ *   value of the component
+ * @tparam R
+ *   runtime type
+ */
+case class ComponentNode[T, +R](
     id: ComponentId,
     value: T,
-    assembly: Assembly,
+    assembly: Assembly[R],
     assembler: Assembler[T]
 ) extends TreeNode {
   override def toString: String = s"Component ${id}/${value}"

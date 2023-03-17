@@ -19,8 +19,10 @@ object Event {
   /** Trivial event that something assembled. */
   case object Assembled extends Event[Unit]
 
-  /** Custom Component event, which can be triggered by a component. */
-  case class ComponentEvent[E](
+  /**
+   * Custom Component event, which can be triggered by a component and can be subscribed by components.
+   */
+  case class Custom[E](
       name: String
   ) extends Event[E]
 

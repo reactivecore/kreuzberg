@@ -33,7 +33,7 @@ object TodoAdderForm extends SimpleComponentBase {
     )
   }
 
-  val addEvent = Event.ComponentEvent[String]("add")
+  val addEvent = Event.Custom[String]("add")
 }
 
 object TodoPageWithApi extends SimpleComponentBase {
@@ -51,7 +51,7 @@ object TodoPageWithApi extends SimpleComponentBase {
     if (todolist == LoadingModel.Loading) {
       add {
         EventSource
-          .OwnEvent(Event.Assembled)
+          .ComponentEvent(Event.Assembled)
           .effect(_ => lister.listItems())
           .intoModel(m)(decodeResult)
       }

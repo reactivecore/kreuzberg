@@ -16,12 +16,7 @@ class SimpleContext(state: AssemblyState) extends AssemblyContext(state) {
   def eventBindings(): Vector[EventBinding] = _eventBindings.result()
 }
 
-/**
- * A component base which lets the user build HTML and Elements are inserted using PlaceholderTags
- */
-abstract class SimpleComponentBase extends ImperativeDsl {
-  def assemble(implicit c: SimpleContext): Html
-
+trait SimpleContextDsl extends ImperativeDsl {
   protected def add[E](source: EventSource[E], sink: EventSink[E])(implicit c: SimpleContext): Unit = {
     add(EventBinding(source, sink))
   }
@@ -31,8 +26,15 @@ abstract class SimpleComponentBase extends ImperativeDsl {
   }
 }
 
+/**
+ * A component base which lets the user build HTML and Elements are inserted using PlaceholderTags
+ */
+abstract class SimpleComponentBase extends SimpleContextDsl {
+  def assemble(implicit c: SimpleContext): Html
+}
+
 object SimpleComponentBase {
-  implicit def assembler[T <: SimpleComponentBase]: Assembler[T] = { value =>
+  implicit def assembler[T <: SimpleComponentBase]: Assembler.Aux[T, Unit] = { value =>
     Stateful { state =>
       implicit val sc  = new SimpleContext(state)
       val html         = value.assemble
@@ -48,6 +50,35 @@ object SimpleComponentBase {
           html
         }
         sc.state -> Assembly.Container(placeholders, renderFn, sc.eventBindings())
+      }
+    }
+  }
+}
+
+abstract class SimpleComponentBaseWithRuntime[R] extends SimpleContextDsl {
+
+  type HtmlWithRuntime = (Html, RuntimeProvider[R])
+
+  def assemble(implicit c: SimpleContext): HtmlWithRuntime
+}
+
+object SimpleComponentBaseWithRuntime {
+  implicit def assembler[R, T <: SimpleComponentBaseWithRuntime[R]]: Assembler.Aux[T, R] = { value =>
+    Stateful { state =>
+      implicit val sc      = new SimpleContext(state)
+      val (html, provider) = value.assemble
+      val placeholders     = html.placeholders.toVector
+      if (placeholders.isEmpty) {
+        // Naked HTML
+        sc.state -> Assembly.Pure(html, sc.eventBindings(), provider)
+      } else {
+        val renderFn: Vector[Html] => Html = { renderedComponents =>
+          placeholders.zip(renderedComponents).foreach { case (placeholder, renderedComponent) =>
+            PlaceholderState.set(placeholder.id, renderedComponent)
+          }
+          html
+        }
+        sc.state -> Assembly.Container(placeholders, renderFn, sc.eventBindings(), provider)
       }
     }
   }

@@ -22,7 +22,7 @@ case class SimpleRouter(
     titlePrefix: String = ""
 ) extends ComponentBase {
 
-  override def assemble: AssemblyResult = {
+  override def assemble: AssemblyResult[Unit] = {
     for {
       routingStateModel <- provide[Model[RoutingState]]
       routingState      <- subscribe(routingStateModel)
@@ -42,7 +42,7 @@ case class SimpleRouter(
                                    RoutingState(path)
                                  }
                                )
-                               .and(EventSink.Custom { _ =>
+                               .and(EventSink.ExecuteCode { _ =>
                                  val path  = BrowserRouting.getCurrentPath()
                                  val title = decideRoute(path).title(path)
                                  BrowserRouting.setDocumentTitle(titlePrefix + title)
@@ -50,7 +50,7 @@ case class SimpleRouter(
                            )
       routeChangeBinding = EventBinding(
                              EventSource.ModelChange(routingStateModel),
-                             EventSink.Custom[(RoutingState, RoutingState)] { case (from, target) =>
+                             EventSink.ExecuteCode[(RoutingState, RoutingState)] { case (from, target) =>
                                val title = decideRoute(target.currentRoute).title(target.currentRoute)
                                Logger.debug(s"Model change ${from} -> ${target}")
                                val path  = BrowserRouting.getCurrentPath()

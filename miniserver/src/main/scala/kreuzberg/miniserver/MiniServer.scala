@@ -1,65 +1,70 @@
 package kreuzberg.miniserver
 
-import com.typesafe.scalalogging.Logger
 import zio.http.*
 import zio.*
 
 import java.io.File
 import java.nio.file.{Files, Paths}
-import kreuzberg.rpc.Dispatchers
-import ZioEffect.effect
+import kreuzberg.rpc.{Dispatcher, Dispatchers}
 import zio.http.model.{HttpError, Method, Status}
+import zio.logging.backend.SLF4J
 
 class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
-  val log = Logger(getClass)
-
-  if (config.locateAsset("main.js").isEmpty) {
-    println(s"Could not find client javascript code, searched in ${config.assetPaths}")
-    println(s"Current working directory: ${Paths.get("").toAbsolutePath()}")
-    sys.exit(1)
+  val preflightCheck: Task[Location] = {
+    ZIO.fromOption(config.locateAsset("main.js")).mapError { _ =>
+      val cwd = Paths.get("").toAbsolutePath
+      new IllegalStateException(
+        s"Could not find client javascript code, searched in ${config.assetPaths}, working directory=$cwd"
+      )
+    }
   }
 
-  val indexCode = Index(config).index.toString
+  val indexHtml = Index(config).index.toString
 
-  val apiDispatcher = ApiDispatcher(Dispatchers(config.api))
-
-  val app: HttpApp[Any, Throwable] = Http.collectRoute[Request] {
+  val assetProvider: HttpApp[Any, Throwable] = Http.collectRoute[Request] {
     case Method.GET -> "" /: "assets" /: path =>
-      log.info(s"Requested ${path}")
       config.locateAsset(path.encode) match {
         case None                              =>
-          log.warn(s"Path ${path} not found")
           Http.fromHandler(Handler.notFound)
         case Some(Location.File(file))         =>
           Http.fromFile(file)
         case Some(Location.ResourcePath(path)) =>
-          log.info(s"Serving path ${path} from resource")
           Http.fromResource(path)
       }
     case Method.GET -> !!                     =>
-      log.info("Root")
       Http.fromHandler(
         Handler.html(
-          indexCode
+          indexHtml
         )
       )
     case Method.GET -> "" /: path             =>
-      log.info(s"Sub path ${path}")
       Http.fromHandler(
         Handler.html(
           Index(config).index.toString
         )
       )
+  } @@ Middleware.requestLogging()
+
+  val serverConfig: ServerConfig = ServerConfig.default
+    .port(config.port)
+
+  val configLayer: ZLayer[Any, Nothing, ServerConfig] = ServerConfig.live(serverConfig)
+
+  val myApp = for {
+    _            <- preflightCheck
+    _            <- ZIO.logInfo(s"Going to listen on ${config.port}")
+    apiEffect    = config.api.getOrElse(ZIO.succeed(Dispatcher.empty: ZioDispatcher))
+    dispatcher   <- apiEffect
+    apiDispatcher = ApiDispatcher(dispatcher)
+    all           = (apiDispatcher.app() ++ assetProvider).withDefaultErrorResponse
+    port         <- Server.install(all)
+    _            <- ZIO.logInfo(s"Started server on port: ${port}")
+    _            <- ZIO.never
+  } yield {
+    ()
   }
 
-  val all = (apiDispatcher.app() ++ app).withDefaultErrorResponse
+  val switchToSlf4j = Runtime.removeDefaultLoggers >>> SLF4J.slf4j
 
-  log.info(s"Going to listen on ${config.port}")
-  val serverConfig = ServerConfig.default
-    .port(config.port)
-  val configLayer  = ServerConfig.live(serverConfig)
-  val run          = (Server.install(all).flatMap { port =>
-    Console.printLine(s"Started server on port: $port")
-  } *> ZIO.never)
-    .provide(configLayer, Server.live)
+  val run = myApp.provide(switchToSlf4j, configLayer, Server.live)
 }

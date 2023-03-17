@@ -27,7 +27,7 @@ object Binder {
 /** Binds a root element to a Node. */
 class Binder[T](rootElement: ScalaJsElement, main: T)(implicit assembler: Assembler[T]) extends EventManagerDelegate {
   private var _currentState: AssemblyState = AssemblyState()
-  private var _tree: TreeNode      = TreeNode.empty
+  private var _tree: TreeNode              = TreeNode.empty
 
   override def state: AssemblyState = _currentState
 
@@ -87,7 +87,7 @@ class Binder[T](rootElement: ScalaJsElement, main: T)(implicit assembler: Assemb
 
   private def reassembleNode(node: TreeNode): Stateful[AssemblyState, TreeNode] = {
     node match {
-      case r: ComponentNode[_] =>
+      case r: ComponentNode[_, _] =>
         r.assembler.assembleWithId(node.id, r.value)
     }
   }
@@ -97,10 +97,10 @@ class Binder[T](rootElement: ScalaJsElement, main: T)(implicit assembler: Assemb
       f: TreeNode => Stateful[AssemblyState, TreeNode]
   ): Stateful[AssemblyState, TreeNode] = {
     node match {
-      case r: ComponentNode[_] =>
+      case r: ComponentNode[_, _] =>
         r.assembly match {
-          case p: Assembly.Pure      => Stateful.pure(node)
-          case c: Assembly.Container =>
+          case p: Assembly.Pure[_]      => Stateful.pure(node)
+          case c: Assembly.Container[_] =>
             for {
               updated <- Stateful.accumulate(c.nodes)(f)
             } yield {

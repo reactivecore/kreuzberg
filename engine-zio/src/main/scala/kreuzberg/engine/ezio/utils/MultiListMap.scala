@@ -6,7 +6,7 @@ opaque type MultiListMap[K, V] = Map[K, List[V]]
 object MultiListMap {
   def apply[K, V](in: Map[K, List[V]] = Map.empty[K, List[V]]): MultiListMap[K, V] = in
 
-  def from[K, V](in: Iterable[(K, V)]): MultiListMap[K,V] = {
+  def from[K, V](in: Iterable[(K, V)]): MultiListMap[K, V] = {
     in.groupBy(_._1).view.mapValues(_.map(_._2).toList).toMap
   }
 
@@ -16,7 +16,10 @@ object MultiListMap {
     def add(key: K, value: V): MultiListMap[K, V] = {
       m.get(key) match {
         case None         => m + (key -> List(value))
-        case Some(values) => m + (key -> (value :: values))
+        case Some(values) =>
+          val valuesUpdated = (value :: values)
+          val result        = m + (key -> valuesUpdated)
+          result
       }
     }
 
@@ -48,10 +51,13 @@ object MultiListMap {
     }
 
     def asIterable: Iterable[(K, V)] = {
-      for {
-        (k, values) <- m
-        value       <- values
-      } yield (k, value)
+      // Note: not working with simple iterating, scala js issue?!
+      (for {
+        case (k, values) <- m.iterator
+        value <- values.iterator
+      } yield {
+        (k, value)
+      }).iterator.to(Iterable)
     }
 
     /** Returns all values. */

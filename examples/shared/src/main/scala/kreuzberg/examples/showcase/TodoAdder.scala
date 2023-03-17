@@ -9,14 +9,13 @@ case class TodoAdder(
 )
 
 object TodoAdder extends ComponentDsl {
-  implicit val assembler: Assembler[TodoAdder] = (value: TodoAdder) => {
+  implicit val assembler: Assembler.Aux[TodoAdder, Unit] = (value: TodoAdder) => {
     for {
       textInput <- namedChild("input", TextInput("name"))
       button    <- namedChild("addButton", Button("Add"))
       binding    =
         from(button)(_.clicked)
-          .addState(textInput)(_.text)
-          .map(_._2)
+          .withState(textInput)(_.text)
           .changeModel(value.model) { (t, current) =>
             Logger.debug(s"Appending ${t}")
             val result = current.append(t)

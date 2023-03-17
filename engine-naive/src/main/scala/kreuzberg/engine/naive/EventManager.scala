@@ -3,7 +3,9 @@ package kreuzberg.engine.naive
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
 import kreuzberg.dom.*
+
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.util.Try
 import scala.util.control.NonFatal
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -71,7 +73,7 @@ class EventManager(delegate: EventManagerDelegate) {
     _windowEventBindings.filterValuesInPlace(_.owner != node.id)
     _componentEventBindings.filterValuesInPlace(_.owner != node.id)
 
-    node.assembly.nodes.foreach { case child: ComponentNode[_] =>
+    node.assembly.nodes.foreach { case child: ComponentNode[_, _] =>
       activateEvents(child)
     }
     node.assembly.bindings.foreach(activateEvent(node, _))
@@ -106,7 +108,7 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def transformSink[T](node: TreeNode, eventSink: EventSink[T]): T => Unit = {
     eventSink match
-      case EventSink.ModelChange(model, f)     =>
+      case EventSink.ModelChange(model, f)    =>
         eventData =>
           val change = PendingModelChange(
             model.id,
@@ -114,24 +116,30 @@ class EventManager(delegate: EventManagerDelegate) {
           )
           _pending.append(change)
           ensureNextIteration()
-      case EventSink.Custom(f)                 => f
-      case EventSink.Multiple(sinks)           =>
+      case EventSink.ExecuteCode(f)           => f
+      case EventSink.Multiple(sinks)          =>
         val converted = sinks.map(transformSink(node, _))
         eventData => converted.foreach(x => x(eventData))
-      case EventSink.TriggerComponentEvent(ce) =>
+      case EventSink.CustomEventSink(dst, ce) =>
         eventData =>
-          _componentEventBindings.foreachKey(node.id -> ce.name) { binding =>
+          _componentEventBindings.foreachKey(dst.getOrElse(node.id) -> ce.name) { binding =>
             binding.asInstanceOf[ComponentEventBinding[T]].handler(eventData)
           }
   }
 
+  private def buildRuntimeContext(id: ComponentId): RuntimeContext = {
+    new RuntimeContext {
+      def jsElement: ScalaJsElement = delegate.locate(id) // TODO: Wir brauchen eine unsafeDelegate was die Dinger sofort heraussucht.
+
+      def jump(componentId: ComponentId): RuntimeContext = buildRuntimeContext(componentId)
+    }
+  }
+
   private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
     eventSource match
-      case r: EventSource.RepEvent[_, _]              =>
-        bindRepEvent(r, sink)
-      case o: EventSource.OwnEvent[_]                 =>
-        bindOwnEvent(ownNode, o, sink)
-      case EventSource.WindowJsEvent(js)              =>
+      case r: EventSource.ComponentEvent[_]                     =>
+        bindRepEvent(ownNode, r, sink)
+      case EventSource.WindowJsEvent(js)                        =>
         _windowEventBindings.add(
           js.name,
           WindowEventBinding(sink, ownNode.id, js.preventDefault)
@@ -144,16 +152,17 @@ class EventManager(delegate: EventManagerDelegate) {
           _registeredWindowEvents.add(js.name)
           Logger.debug(s"Fresh bound ${js.name} on window")
         }
-      case EventSource.WithState(inner, from, getter) =>
+      case EventSource.WithState(inner, componentId, provider, decoder) =>
         bindEventSource(
           ownNode,
           inner,
           x => {
-            val mapped = getter.get(delegate.locate(from))
+            val context = buildRuntimeContext(componentId)
+            val mapped = decoder(provider(context))
             sink((x, mapped))
           }
         )
-      case EventSource.MapSource(from, fn)            =>
+      case EventSource.MapSource(from, fn)                      =>
         bindEventSource(
           ownNode,
           from,
@@ -162,9 +171,9 @@ class EventManager(delegate: EventManagerDelegate) {
             sink(mapped)
           }
         )
-      case e: EventSource.EffectEvent[_, _]           =>
+      case e: EventSource.EffectEvent[_, _, _]                  =>
         bindEffect(ownNode, e, sink)
-      case m: EventSource.ModelChange[_]              =>
+      case m: EventSource.ModelChange[_]                        =>
         bindModelChange(
           ownNode,
           m,
@@ -172,7 +181,7 @@ class EventManager(delegate: EventManagerDelegate) {
             sink(from, to)
           }
         )
-      case a: EventSource.AndSource[_]                =>
+      case a: EventSource.AndSource[_]                          =>
         bindAnd(ownNode, a, sink)
   }
 
@@ -180,20 +189,26 @@ class EventManager(delegate: EventManagerDelegate) {
     _modelBindings.add(source.model.id, ModelBindings(sink, ownNode.id))
   }
 
-  private def bindRepEvent[T, E](repEvent: EventSource.RepEvent[T, E], sink: E => Unit): Unit = {
-    bindEvent(repEvent.rep, repEvent.event, sink)
+  private def bindRepEvent[E](ownNode: TreeNode, repEvent: EventSource.ComponentEvent[E], sink: E => Unit): Unit = {
+    val id = repEvent.component.getOrElse(ownNode.id)
+    bindEvent(id, repEvent.event, sink)
   }
 
-  private def bindOwnEvent[E](own: TreeNode, ownEvent: EventSource.OwnEvent[E], sink: E => Unit): Unit = {
-    bindEvent(own, ownEvent.event, sink)
-  }
-
-  private def bindEffect[E, F](own: TreeNode, event: EventSource.EffectEvent[E, F], sink: Try[F] => Unit): Unit = {
+  private def bindEffect[E, F[_], R](
+      own: TreeNode,
+      event: EventSource.EffectEvent[E, F, R],
+      sink: Try[R] => Unit
+  ): Unit = {
+    val decoder: F[R] => Future[R] = event.effectOperation.support.name match {
+      case EffectSupport.FutureName => in => in.asInstanceOf[Future[R]]
+      case unknown                  =>
+        throw new NotImplementedError(s"Unsupported effect type ${unknown}")
+    }
     bindEventSource(
       own,
       event.trigger,
       v =>
-        event.effectOperation.fn(v, queue).andThen { case result =>
+        decoder(event.effectOperation.fn(v)).andThen { case result =>
           sink(result)
         }
     )
@@ -208,16 +223,16 @@ class EventManager(delegate: EventManagerDelegate) {
     bindEventSource(ownNode, event.binding.source, combined)
   }
 
-  private def bindEvent[T, E](node: TreeNode, event: Event[E], sink: E => Unit): Unit = {
+  private def bindEvent[E](componentId: ComponentId, event: Event[E], sink: E => Unit): Unit = {
     event match
       case jse: Event.JsEvent              =>
-        val source = delegate.locate(node.id)
+        val source = delegate.locate(componentId)
         bindJsEvent(source, jse, sink)
-      case ce: Event.ComponentEvent[E]     =>
-        val handler = ComponentEventBinding(sink, node.id)
-        _componentEventBindings.add(node.id -> ce.name, handler)
+      case ce: Event.Custom[E]             =>
+        val handler = ComponentEventBinding(sink, componentId)
+        _componentEventBindings.add(componentId -> ce.name, handler)
       case mapped: Event.MappedEvent[_, E] =>
-        bindMappedEvent(node, mapped, sink)
+        bindMappedEvent(componentId, mapped, sink)
       case Event.Assembled                 =>
         scalajs.js.timers.setTimeout(0) {
           sink(())
@@ -242,11 +257,15 @@ class EventManager(delegate: EventManagerDelegate) {
     )
   }
 
-  private def bindMappedEvent[E, F](node: TreeNode, mapped: Event.MappedEvent[E, F], sink: F => Unit): Unit = {
+  private def bindMappedEvent[E, F](
+      componentId: ComponentId,
+      mapped: Event.MappedEvent[E, F],
+      sink: F => Unit
+  ): Unit = {
     val mappedSink: E => Unit = { in =>
       sink(mapped.mapFn(in))
     }
-    bindEvent(node, mapped.underlying, mappedSink)
+    bindEvent(componentId, mapped.underlying, mappedSink)
   }
 
   private def ensureNextIteration(): Unit = {
