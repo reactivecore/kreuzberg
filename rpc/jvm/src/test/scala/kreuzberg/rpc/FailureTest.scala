@@ -8,7 +8,9 @@ class FailureTest extends TestBase {
     CodecError("boom"),
     UnknownServiceError("service1"),
     UnknownCallError("service1", "call1"),
-    ServiceExecutionError("message1", Some(42))
+    ServiceExecutionError("message1", Some(42)),
+    ValidationFailed("BAM"),
+    NotFound("BIM")
   )
 
   it should "serialize and deserialize all examples" in {

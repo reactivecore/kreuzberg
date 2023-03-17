@@ -11,3 +11,5 @@ type ScalaJsNode = org.scalajs.dom.Node
 type ScalaJsDocument = org.scalajs.dom.Document
 
 type ScalaJsInput = org.scalajs.dom.html.Input
+
+type ScalaJsTextArea = org.scalajs.dom.html.TextArea

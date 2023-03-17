@@ -1,5 +1,6 @@
 package kreuzberg.rpc
 import scala.concurrent.{ExecutionContext, Future}
+import zio.{Task, ZIO}
 
 /** Defines necessary properties of the used effect */
 trait Effect[F[_]] {
@@ -59,5 +60,24 @@ object Effect {
     override def flatMap[A, B](in: Future[A])(f: A => Future[B]): Future[B] = in.flatMap(f)
 
     override def map[A, B](in: Future[A])(f: A => B): Future[B] = in.map(f)
+  }
+
+  // Note: Only available for clients which do have ZIO Imported
+  implicit def zioEffect: Effect[Task] = new Effect[Task] {
+    override def failure[A](failure: Failure): Task[A] = {
+      ZIO.fail(failure)
+    }
+
+    override def success[A](value: A): Task[A] = {
+      ZIO.succeed(value)
+    }
+
+    override def flatMap[A, B](in: Task[A])(f: A => Task[B]): Task[B] = {
+      in.flatMap(f)
+    }
+
+    override def map[A, B](in: Task[A])(f: A => B): Task[B] = {
+      in.map(f)
+    }
   }
 }

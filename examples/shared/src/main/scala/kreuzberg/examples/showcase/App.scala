@@ -8,7 +8,7 @@ import kreuzberg.scalatags.all.*
 case class App()
     extends ComponentBase(
     ) {
-  override def assemble: AssemblyResult = {
+  override def assemble: AssemblyResult[Unit] = {
     for {
       model  <- Model.make(
                   "main",

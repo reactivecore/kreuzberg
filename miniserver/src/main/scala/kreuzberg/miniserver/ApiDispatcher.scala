@@ -1,8 +1,7 @@
 package kreuzberg.miniserver
 
-import com.typesafe.scalalogging.Logger
 import kreuzberg.rpc.Dispatcher
-import zio.{IO, Task, UIO, ZIO}
+import zio.{Cause, IO, Task, UIO, ZIO}
 import kreuzberg.rpc.Failure
 import zio.http.*
 import zio.http.model.*
@@ -14,8 +13,6 @@ import scala.util.control.NonFatal
 type ZioDispatcher = Dispatcher[Task, String]
 
 case class ApiDispatcher(backend: ZioDispatcher) {
-
-  private lazy val logger = Logger(getClass)
 
   def app(): HttpApp[Any, Throwable] = Http.collectZIO[Request] {
     case Method.GET -> "" /: "api" /: path                      =>
@@ -36,22 +33,27 @@ case class ApiDispatcher(backend: ZioDispatcher) {
   def encodeErrors(serviceName: String, callName: String)(in: Task[Response]): UIO[Response] = {
     in.catchAll {
       case f: Failure  =>
-        logger.info(s"Failed request ${serviceName}/${callName}", f)
-        ZIO.succeed(Response.json(f.encode.toJson).setStatus(Status.BadRequest))
+        for {
+          _ <- ZIO.logInfoCause(s"Failed request ${serviceName}/${callName}", Cause.fail(f))
+        } yield {
+          Response.json(f.encode.toJson).setStatus(Status.BadRequest)
+        }
       case NonFatal(e) =>
-        logger.warn(s"Failed Request ${serviceName}/${callName}", e)
-        // Do not add internal information, this may leak sensitive information to the user
-        val wrapped = ServiceExecutionError("Internal Error")
-        ZIO.succeed(
+        for {
+          _ <- ZIO.logWarningCause(s"Failed Request ${serviceName}/${callName}", Cause.fail(e))
+        } yield {
+          // Do not add internal information, this may leak sensitive information to the user
+          val wrapped = ServiceExecutionError("Internal Error")
           Response.json(wrapped.encode.toJson).setStatus(Status.InternalServerError)
-        )
+        }
       case e           =>
-        logger.error(s"Fatal failed request ${serviceName}/${callName}", e)
-        // Do not add internal information, this may leak sensitive information to the user
-        val wrapped = ServiceExecutionError("Fatal Error")
-        ZIO.succeed(
+        for {
+          _ <- ZIO.logErrorCause(s"Fatal failed request ${serviceName}/${callName}", Cause.fail(e))
+        } yield {
+          // Do not add internal information, this may leak sensitive information to the user
+          val wrapped = ServiceExecutionError("Fatal Error")
           Response.json(wrapped.encode.toJson).setStatus(Status.InternalServerError)
-        )
+        }
     }
 
   }

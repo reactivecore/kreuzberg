@@ -9,8 +9,8 @@ case class Button(title: Model[String]) {
 }
 
 object Button extends ComponentDsl {
-  given Assembler[Button] with {
-    override def assemble(value: Button): AssemblyResult = {
+  given Assembler.Aux[Button, Unit] with {
+    override def assemble(value: Button): AssemblyResult[Unit] = {
       for {
         titleValue <- subscribe(value.title)
       } yield {

@@ -1,25 +1,32 @@
 package kreuzberg
 
-import kreuzberg.Event.JsEvent
+import kreuzberg.Event.{Custom, JsEvent}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import kreuzberg.dom.ScalaJsEvent
 sealed trait EventSource[E] {
 
-  /** Extend runtime state to an event. */
-  def addState[T, S](from: ComponentNode[T])(f: T => StateGetter[S]): EventSource[(E, S)] =
-    EventSource.WithState(this, from.id, f(from.value))
+  /** Extend runtime state to event. */
+  def addState[T, R, S](from: ComponentNode[T, R])(fn: R => S): EventSource[(E, S)] = {
+    EventSource.WithState(this, from.id, from.assembly.provider, fn)
+  }
 
-  /** Replace event state with view state. */
-  def withState[T, S](from: ComponentNode[T])(f: T => StateGetter[S]): EventSource[S] =
-    addState(from)(f).map(_._2)
+  /** Replace event state with runtime state */
+  def withState[T, R, S](from: ComponentNode[T, R])(fn: R => S): EventSource[S] = {
+    addState(from)(fn).map(_._2)
+  }
 
   def map[F](f: E => F): EventSource[F] = EventSource.MapSource(this, f)
 
-  def effect[F](op: EffectOperation[E, F]): EventSource.EffectEvent[E, F] = EventSource.EffectEvent(this, op)
+  /** Throw away any data. */
+  def mapUnit: EventSource[Unit] = map(_ => ())
 
-  def effect[F](f: E => Future[F]): EventSource.EffectEvent[E, F] = EventSource.EffectEvent(this, EffectOperation((e, _) => f(e)))
+  def effect[F[_], R](op: EffectOperation[E, F, R]): EventSource.EffectEvent[E, F, R] =
+    EventSource.EffectEvent(this, op)
+
+  def effect[F[_], R](f: E => F[R])(implicit effectSupport: EffectSupport[F]): EventSource.EffectEvent[E, F, R] =
+    EventSource.EffectEvent(this, EffectOperation(e => f(e)))
 
   /** Shortcut for building event bindings */
   def changeModel[M](model: Model[M])(f: (E, M) => M): EventBinding.SourceSink[E] = {
@@ -33,6 +40,12 @@ sealed trait EventSource[E] {
     EventBinding(this, sink)
   }
 
+  /** Set the model to a value without caring about the value of the event or model before */
+  def setModel[M](model: Model[M], value: M): EventBinding.SourceSink[E] = {
+    val sink = EventSink.ModelChange(model, (_, _) => value)
+    EventBinding(this, sink)
+  }
+
   /** Change model without caring about the previous value of the model. */
   def intoModel[M](model: Model[M])(f: E => M): EventBinding.SourceSink[E] = {
     changeModel(model)((e, _) => f(e))
@@ -43,9 +56,20 @@ sealed trait EventSource[E] {
     changeModel(model)((e, _) => e)
   }
 
-  /** Trigger some component event. */
-  def trigger(ce: Event.ComponentEvent[E]): EventBinding.SourceSink[E] = {
-    EventBinding(this, EventSink.TriggerComponentEvent(ce))
+  /** Trigger some custom event. */
+  def trigger(ce: Event.Custom[E]): EventBinding.SourceSink[E] = {
+    EventBinding(this, EventSink.CustomEventSink(None, ce))
+  }
+
+  /** Trigger some other (usually child) components event. */
+  def trigger[T](c: ComponentNode[T, _])(selector: T => Custom[E]) = {
+    EventBinding(
+      this,
+      EventSink.CustomEventSink(
+        Some(c.id),
+        selector(c.value)
+      )
+    )
   }
 
   /** Connect this source to a sink */
@@ -54,27 +78,24 @@ sealed trait EventSource[E] {
 
 object EventSource {
 
-  /** An Event from some other's component representation. */
-  case class RepEvent[T, E](rep: ComponentNode[T], event: Event[E]) extends EventSource[E]
-
-  /** An Event from the own component. */
-  case class OwnEvent[E](event: Event[E]) extends EventSource[E]
+  /** Some come components' event. */
+  case class ComponentEvent[E](event: Event[E], component: Option[ComponentId] = None) extends EventSource[E]
 
   /** A JS Event from window-Object */
   case class WindowJsEvent(js: JsEvent) extends EventSource[ScalaJsEvent]
 
   /** Some side effect operatio (e.g. API Call) */
-  case class EffectEvent[E, F](
+  case class EffectEvent[E, F[_], R](
       trigger: EventSource[E],
-      effectOperation: EffectOperation[E, F]
-  ) extends EventSource[Try[F]]
+      effectOperation: EffectOperation[E, F, R]
+  ) extends EventSource[Try[R]]
 
-  /** Extend with runtime state. */
-  case class WithState[E, F](
+  case class WithState[E, F, S](
       inner: EventSource[E],
-      from: ComponentId,
-      getter: StateGetter[F]
-  ) extends EventSource[(E, F)]
+      componentId: ComponentId,
+      provider: RuntimeProvider[F],
+      fetcher: F => S
+  ) extends EventSource[(E, S)]
 
   case class ModelChange[M](
       model: Model[M]
@@ -110,13 +131,17 @@ object EventSink {
   case class ModelChange[E, M](model: Model[M], f: (E, M) => M) extends EventSink[E]
 
   /** Execute some custom Code */
-  case class Custom[E](f: E => Unit) extends EventSink[E]
+  case class ExecuteCode[E](f: E => Unit) extends EventSink[E]
 
   /** Chain multiple sinks. */
   case class Multiple[E](sinks: Vector[EventSink[E]]) extends EventSink[E]
 
-  /** Trigger a component event. */
-  case class TriggerComponentEvent[E](componentEvent: Event.ComponentEvent[E]) extends EventSink[E]
+  /**
+   * Trigger a component event.
+   * @param dst
+   *   if set, send messages to other components Ids.
+   */
+  case class CustomEventSink[E](componentId: Option[ComponentId], event: Event.Custom[E]) extends EventSink[E]
 }
 
 sealed trait EventBinding
@@ -146,14 +171,14 @@ object EventBinding {
       f: ScalaJsEvent => Unit
   ): EventBinding = {
     EventBinding(
-      EventSource.OwnEvent[ScalaJsEvent](
+      EventSource.ComponentEvent[ScalaJsEvent](
         Event.JsEvent(
           name,
           preventDefault,
           capture
         )
       ),
-      EventSink.Custom(f)
+      EventSink.ExecuteCode(f)
     )
   }
 }

@@ -12,11 +12,11 @@ implicit def scalaTagsToHtml(st: TypedTag[String]): Html = {
 
 implicit def htmlToScalaTags(in: Html): ScalaTagsHtmlEmbed = ScalaTagsHtmlEmbed(in)
 
-implicit def scalaTagsToAssemblyResult(st: TypedTag[String]): AssemblyResult = {
+implicit def scalaTagsToAssemblyResult(st: TypedTag[String]): AssemblyResult[Unit] = {
   AssemblyResult.fromHtml(scalaTagsToHtml(st))
 }
 
-implicit def scalaTagsToAssembly(st: TypedTag[String]): Assembly = {
+implicit def scalaTagsToAssembly(st: TypedTag[String]): Assembly[Unit] = {
   Assembly(scalaTagsToHtml(st))
 }
 

@@ -6,7 +6,7 @@ import kreuzberg.scalatags.all.*
 
 class PlaceholderTagTest extends TestBase {
   case class DummyComponent(i: Int) extends ComponentBase {
-    def assemble: AssemblyResult = {
+    def assemble: AssemblyResult[Unit] = {
       div(s"Hello World ${i}")
     }
   }

@@ -7,7 +7,7 @@ import kreuzberg.scalatags.all.*
 import scala.util.{Success, Try}
 
 object FormPage extends ComponentBase {
-  override def assemble: AssemblyResult = {
+  override def assemble: AssemblyResult[Unit] = {
     for {
       nameForm  <- namedChild(
                      "name",

@@ -26,7 +26,7 @@ case class ValidatingTextInput(
     name: String,
     validator: String => Option[String]
 ) extends ComponentBase {
-  override def assemble: AssemblyResult = {
+  override def assemble: AssemblyResult[Unit] = {
     for {
       valueModel   <- Model.make("value", "")
       initialValue <- read(valueModel)

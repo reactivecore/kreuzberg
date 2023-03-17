@@ -1,5 +1,6 @@
 package kreuzberg.miniserver
-import kreuzberg._
+import kreuzberg.*
+import zio.{Task, ZIO}
 
 case class MiniServerConfig(
     assetPaths: AssetPaths,
@@ -12,7 +13,7 @@ case class MiniServerConfig(
       ".*\\.js\\.map",
       ".*\\.css\\.map"
     ),
-    api: Seq[ZioDispatcher] = Nil,
+    api: Option[Task[ZioDispatcher]] = None,
     noScriptText: Option[String] = None // if not given, use default.
 ) {
   def hashedUrl(name: String): String = assetPaths.hashedUrl(name, deploymentType)

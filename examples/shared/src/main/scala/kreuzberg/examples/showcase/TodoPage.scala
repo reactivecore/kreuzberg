@@ -6,7 +6,7 @@ import kreuzberg.scalatags.all.*
 
 
 case class TodoPage(model: Model[TodoList]) extends ComponentBase {
-  override def assemble: AssemblyResult = {
+  override def assemble: AssemblyResult[Unit] = {
     for {
       value  <- subscribe(model)
       shower <- namedChild("shower", TodoShower(value))

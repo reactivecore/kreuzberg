@@ -1,7 +1,9 @@
 package kreuzberg.rpc
+
 import scala.annotation.experimental
 import scala.quoted.*
 import scala.concurrent.Future
+import zio.Task
 
 /** A wrapped service. */
 trait Dispatcher[F[_], T] {
@@ -20,10 +22,27 @@ object Dispatcher {
     ${ makeDispatcherMacro[Future, String, A]('handler) }
   }
 
+  inline def makeZioDispatcher[A](handler: A): Dispatcher[Task, String] = {
+    ${ makeDispatcherMacro[Task, String, A]('handler) }
+  }
+
   /** Create a dispatcher for an Interface A with custom Effect and Transport type. */
   inline def makeCustomDispatcher[F[_], T, A](handler: A): Dispatcher[F, T] = {
     ${ makeDispatcherMacro[F, T, A]('handler) }
   }
+
+  def empty[F[_], T](implicit effect: Effect[F]): Dispatcher[F, T] = new Dispatcher[F, T] {
+    override def handles(serviceName: String): Boolean = false
+
+    override def call(serviceName: String, name: String, input: T): F[T] = effect.failure(
+      UnknownServiceError("Empty Dispatcher")
+    )
+  }
+
+  /** Comboine multiple Dispatchers into one. */
+  def combine[F[_], T](dispatchers: Dispatcher[F, T]*)(implicit effect: Effect[F]): Dispatcher[F, T] = Dispatchers(
+    dispatchers
+  )
 
   @experimental
   def makeDispatcherMacro[F[_], T, A](

@@ -45,7 +45,7 @@ object Binder {
   /** Create a Binder. */
   def create[T: Assembler](rootElement: ScalaJsElement, main: T): Task[Binder[T]] = {
     val viewer                        = new Viewer(rootElement)
-    val locator: EventManager.Locator = id => viewer.findElement(id)
+    val locator: EventManager.Locator = id => viewer.findElementUnsafe(id)
     for {
       state         <- Ref.make(AssemblyState())
       eventManager2 <- EventManager.create(state, locator)
@@ -71,7 +71,7 @@ class Binder[T](
 
   def run(): Task[Unit] = {
     for {
-      _ <- eventManager2.iterationStream.runForeach(onChangedModels).ignoreLogged.fork
+      _ <- eventManager2.iterationStream.runForeach(onChangedModels).forkZioLogged("Iteration Stream")
       _ <- firstDraw()
       _ <- ZIO.never
     } yield {
@@ -144,7 +144,7 @@ class Binder[T](
   }
 
   /** Rebuild a subtree. */
-  private def updateSubtree(node: TreeNode, changed: Set[ComponentId]): UIO[TreeNode] = {
+  private def updateSubtree(node: TreeNode, changed: Set[ComponentId]): Task[TreeNode] = {
     if (changed.contains(node.id)) {
       reassembleNode(node)
     } else {
@@ -153,20 +153,20 @@ class Binder[T](
   }
 
   /** Reassemble a single node. */
-  private def reassembleNode(node: TreeNode): UIO[TreeNode] = {
+  private def reassembleNode(node: TreeNode): Task[TreeNode] = {
     node match {
-      case r: ComponentNode[_] =>
+      case r: ComponentNode[_, _] =>
         r.assembler.assembleWithId(node.id, r.value).onRef(state)
     }
   }
 
   /** Transform node children using f */
-  private def transformNodeChildren(node: TreeNode, f: TreeNode => UIO[TreeNode]): UIO[TreeNode] = {
+  private def transformNodeChildren(node: TreeNode, f: TreeNode => Task[TreeNode]): Task[TreeNode] = {
     node match {
-      case r: ComponentNode[_] =>
+      case r: ComponentNode[_, _] =>
         r.assembly match {
-          case p: Assembly.Pure      => ZIO.succeed(node)
-          case c: Assembly.Container => {
+          case p: Assembly.Pure[_]      => ZIO.succeed(node)
+          case c: Assembly.Container[_] => {
             ZIO.foreach(c.nodes)(f).map { x =>
               val updatedAssembly = c.copy(
                 nodes = x

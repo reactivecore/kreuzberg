@@ -12,6 +12,7 @@ ThisBuild / version := artefactVersion
 ThisBuild / scalaVersion := "3.2.1"
 
 ThisBuild / scalacOptions += "-Xcheck-macros"
+// ThisBuild / scalacOptions += "-explain"
 
 ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
@@ -48,11 +49,18 @@ val testSettings = libraryDependencies ++= Seq(
 
 val zioVersion = "2.0.9"
 
+val logsettings = libraryDependencies ++= Seq(
+  "ch.qos.logback" % "logback-classic" % "1.4.5"
+)
+
 lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   .settings(
-    name := "kreuzberg",
+    name         := "kreuzberg",
     publishSettings,
-    testSettings
+    testSettings,
+    libraryDependencies += (
+      "dev.zio" %%% "zio" % zioVersion % Provided
+    )
   )
   .jsSettings(
     libraryDependencies ++= Seq(
@@ -65,7 +73,7 @@ lazy val engineNaive = (project in file("engine-naive"))
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(lib.js)
   .settings(
-    name := "kreuzberg-engine-naive",
+    name         := "kreuzberg-engine-naive",
     publishSettings,
     testSettings
   )
@@ -114,7 +122,8 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform) in file("rpc"))
   .settings(
     name               := "kreuzberg-rpc",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "upickle" % "3.0.0-M2"
+      "com.lihaoyi" %%% "upickle" % "3.0.0-M2",
+      "dev.zio"     %%% "zio"     % zioVersion % Provided
     ),
     evictionErrorLevel := Level.Warn,
     publishSettings,
@@ -134,9 +143,8 @@ lazy val miniserver = (project in file("miniserver"))
   .settings(
     name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
-      "dev.zio"                    %% "zio-http"        % "0.0.4",
-      "ch.qos.logback"              % "logback-classic" % "1.4.5",
-      "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.5"
+      "dev.zio" %% "zio-http"           % "0.0.4",
+      "dev.zio" %% "zio-logging-slf4j2" % "2.1.10"
     ),
     publishSettings,
     testSettings
@@ -148,8 +156,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     name            := "examples",
     publishArtifact := false,
     publish         := {},
-    publishLocal    := {},
-    publishSettings
+    publishLocal    := {}
   )
   .jsSettings(
     // Moving JavaScript to a place, where we can easily find it by the server
@@ -157,6 +164,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     Compile / fullOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/opt/main.js",
     scalaJSUseMainModuleInitializer    := true
   )
+  .jvmSettings(logsettings)
   .jvmConfigure(_.dependsOn(miniserver))
   .jsConfigure(_.dependsOn(engineNaive))
   .dependsOn(lib, xml, scalatags, extras, rpc)
@@ -167,8 +175,7 @@ lazy val examplesZio = (crossProject(JSPlatform, JVMPlatform) in file("examples-
     name            := "examples-zio",
     publishArtifact := false,
     publish         := {},
-    publishLocal    := {},
-    publishSettings
+    publishLocal    := {}
   )
   .jsSettings(
     // Moving JavaScript to a place, where we can easily find it by the server

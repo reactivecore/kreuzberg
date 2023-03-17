@@ -3,7 +3,7 @@ package kreuzberg.rpc
 import kreuzberg.{AssemblyState, Logger, Provider}
 import kreuzberg.util.Stateful
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import org.scalajs.dom.Fetch
 import org.scalajs.dom.Request
 import org.scalajs.dom.RequestInit
@@ -11,11 +11,10 @@ import org.scalajs.dom.HttpMethod
 import org.scalajs.dom.Headers
 
 import scala.scalajs.js.Thenable.Implicits.*
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.dom.Response
 
 /** Rest client for API Calls. */
-class ApiRestClient(baseUrl: String) extends CallingBackend[Future, String] {
+class ApiRestClient(baseUrl: String)(implicit ec: ExecutionContext) extends CallingBackend[Future, String] {
   def call(service: String, name: String, input: String): Future[String] = {
     val url = baseUrl + service + "/" + name
 
@@ -49,6 +48,8 @@ class ApiRestClient(baseUrl: String) extends CallingBackend[Future, String] {
 }
 
 object ApiRestClient {
+  import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+
   given provider: Provider[CallingBackend[Future, String]] with {
     override def provide: Stateful[AssemblyState, ApiRestClient] = {
       val url = "/api/"

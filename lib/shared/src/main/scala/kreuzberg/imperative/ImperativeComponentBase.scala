@@ -10,12 +10,12 @@ import kreuzberg.dom.ScalaJsElement
  */
 abstract class ImperativeComponentBase extends ImperativeDsl {
 
-  def assemble(implicit c: AssemblyContext): Assembly
+  def assemble(implicit c: AssemblyContext): Assembly[Unit]
 
 }
 
 object ImperativeComponentBase {
-  implicit def assembler[T <: ImperativeComponentBase]: Assembler[T] = { value =>
+  implicit def assembler[T <: ImperativeComponentBase]: Assembler.Aux[T, Unit] = { value =>
     AssemblyContext.transform { context =>
       value.assemble(context)
     }
@@ -62,11 +62,13 @@ trait ImperativeDsl {
   protected def child[C](
       name: String,
       value: C
-  )(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C] = {
+  )(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C, assembler.RuntimeNode] = {
     c.transform(assembler.assembleNamedChild(name, value))
   }
 
-  protected def anonymousChild[C](value: C)(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C] = {
+  protected def anonymousChild[C](
+      value: C
+  )(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C, assembler.RuntimeNode] = {
     c.transform(assembler.assembleWithNewId(value))
   }
 
@@ -87,19 +89,34 @@ trait ImperativeDsl {
     c.transformFn(_.provide[T])
   }
 
-  case class RepBuilder[T](rep: ComponentNode[T]) {
-    def apply[E](f: T => Event[E]): EventSource[E] = EventSource.RepEvent(rep, f(rep.value))
+  case class RepBuilder[T](rep: ComponentNode[T, _]) {
+    def apply[E](f: T => Event[E]): EventSource[E] = EventSource.ComponentEvent(f(rep.value), Some(rep.id))
   }
 
-  def from[T](rep: ComponentNode[T]): RepBuilder[T] = RepBuilder(rep)
+  /** Helper for selecting events from children. */
+  def from[T](rep: ComponentNode[T, _]): RepBuilder[T] = RepBuilder(rep)
 
-  implicit def htmlToAssembly(in: Html): Assembly = {
+  /** Helper for selecting own events. */
+  def own[E](event: Event[E]): EventSource[E] = EventSource.ComponentEvent(event)
+
+  implicit def htmlToAssembly(in: Html): Assembly[Unit] = {
     Assembly(in)
   }
 
-  case class JsStateBuilder[J <: ScalaJsElement]() {
-    def get[T](f: J => T): StateGetter.JsRepresentationState[J, T] = StateGetter.JsRepresentationState(f)
+  def html[T](in: T)(implicit f: T => Html): Html = f(in)
+
+  extension (html: Html) {
+    def withRuntime[T](f: RuntimeContext => T): (Html, RuntimeProvider[T]) = {
+      html -> f
+    }
   }
 
-  def js[J <: ScalaJsElement] = JsStateBuilder[J]()
+  extension [T, R](node: ComponentNode[T, R]) {
+
+    /** Accessor for runtime node. */
+    def state(implicit runtimeContext: RuntimeContext): R = {
+      val subContext = runtimeContext.jump(node.id)
+      node.assembly.provider(subContext)
+    }
+  }
 }

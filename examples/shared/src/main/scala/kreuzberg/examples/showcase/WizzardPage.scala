@@ -7,12 +7,12 @@ import kreuzberg.scalatags.all.*
 
 case class WizzardablePage[T](
     component: T
-)(implicit assembler: Assembler[T]) {
-  def assemble(name: String): NodeResult[T] = assembler.assembleNamedChild(name, component)
+)(implicit val assembler: Assembler[T]) {
+  def assemble(name: String): NodeResult[T, assembler.RuntimeNode] = assembler.assembleNamedChild(name, component)
 }
 
 case class SimpleText(text: String) extends ImperativeComponentBase {
-  override def assemble(implicit c: AssemblyContext): Assembly = {
+  override def assemble(implicit c: AssemblyContext): Assembly[Unit] = {
     div(text)
   }
 }
@@ -20,7 +20,7 @@ case class SimpleText(text: String) extends ImperativeComponentBase {
 case class Wizzard(
     pages: Seq[WizzardablePage[_]]
 ) extends ImperativeComponentBase {
-  override def assemble(implicit c: AssemblyContext): Assembly = {
+  override def assemble(implicit c: AssemblyContext): Assembly[Unit] = {
     val pageModel   = model("page", 0)
     val currentPage = subscribe(pageModel)
     val selected    = pages(currentPage)
@@ -42,7 +42,7 @@ case class Wizzard(
 }
 
 object WizzardPage extends ImperativeComponentBase {
-  override def assemble(implicit c: AssemblyContext): Assembly = {
+  override def assemble(implicit c: AssemblyContext): Assembly[Unit] = {
     val page1   = WizzardablePage(SimpleText("This is page 1"))
     val page2   = WizzardablePage(SimpleText("This is page 2"))
     val page3   = WizzardablePage(SimpleText("This is page 3"))

@@ -6,20 +6,24 @@ import scala.language.implicitConversions
 
 import kreuzberg.dom.ScalaJsElement
 trait ComponentDsl {
-  implicit def htmlToAssemblyResult(in: Html): AssemblyResult = {
+  implicit def htmlToAssemblyResult(in: Html): AssemblyResult[Unit] = {
     Stateful.pure(Assembly(in))
   }
 
-  implicit def assemblyToAssemblyResult(assembly: Assembly): AssemblyResult = {
+  implicit def assemblyToAssemblyResult[R](assembly: Assembly[R]): AssemblyResult[R] = {
     Stateful.pure(assembly)
   }
 
-  def namedChild[T: Assembler](name: String, value: T): Stateful[AssemblyState, ComponentNode[T]] = {
-    Assembler[T].assembleNamedChild(name, value)
+  def namedChild[T](name: String, value: T)(
+      implicit a: Assembler[T]
+  ): Stateful[AssemblyState, ComponentNode[T, a.RuntimeNode]] = {
+    a.assembleNamedChild(name, value)
   }
 
-  def anonymousChild[T: Assembler](value: T): Stateful[AssemblyState, ComponentNode[T]] = {
-    Assembler[T].assembleWithNewId(value)
+  def anonymousChild[T](
+      value: T
+  )(implicit a: Assembler[T]): Stateful[AssemblyState, ComponentNode[T, a.RuntimeNode]] = {
+    a.assembleWithNewId(value)
   }
 
   def subscribe[T](model: Model[T]): Stateful[AssemblyState, T] = {
@@ -36,15 +40,9 @@ trait ComponentDsl {
     Stateful.get(_.readValue(model))
   }
 
-  case class JsStateBuilder[J <: ScalaJsElement]() {
-    def get[T](f: J => T): StateGetter.JsRepresentationState[J, T] = StateGetter.JsRepresentationState(f)
+  case class RepBuilder[T](rep: ComponentNode[T, _]) {
+    def apply[E](f: T => Event[E]): EventSource[E] = EventSource.ComponentEvent(f(rep.value), Some(rep.id))
   }
 
-  def js[J <: ScalaJsElement] = JsStateBuilder[J]()
-
-  case class RepBuilder[T](rep: ComponentNode[T]) {
-    def apply[E](f: T => Event[E]): EventSource[E] = EventSource.RepEvent(rep, f(rep.value))
-  }
-
-  def from[T](rep: ComponentNode[T]): RepBuilder[T] = RepBuilder(rep)
+  def from[T](rep: ComponentNode[T, _]): RepBuilder[T] = RepBuilder(rep)
 }

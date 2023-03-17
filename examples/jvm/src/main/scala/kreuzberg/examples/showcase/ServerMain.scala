@@ -2,7 +2,7 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.miniserver.*
 import kreuzberg.rpc.Dispatcher
-import ZioEffect._
+import zio.ZIO
 
 object ServerMain
     extends Bootstrapper(
@@ -14,8 +14,8 @@ object ServerMain
             AssetCandidatePath("../../examples/js/target/client_bundle/client/fast")
           )
         ),
-        api = Seq(
-          Dispatcher.makeCustomDispatcher[zio.Task, String, Lister[zio.Task]](new ListerImpl)
-        )
+        api = Some(ZIO.attempt {
+          Dispatcher.makeZioDispatcher[Lister[zio.Task]](new ListerImpl)
+        })
       )
     )

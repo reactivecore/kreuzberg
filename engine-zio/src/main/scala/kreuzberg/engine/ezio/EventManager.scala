@@ -71,7 +71,10 @@ class EventManager(
     componentSubscribers
       .modify { subscribers =>
         val (alive, toGo) = subscribers.partition { (k, v) =>
-          k != id && v.owner != id
+          // Only kick by subscriber (owner), but not by source, otherwise
+          // Parents can't subscribe to children properly.
+          /*k != id &&*/
+          v.owner != id
         }
         toGo -> alive
       }
@@ -96,49 +99,47 @@ class EventManager(
     sourceToStream(owner, source).flatMap { stream =>
       val handler = convertSink(owner, sink)
       stream
-        .tap { e =>
-          Logger.debugZio(s"Signal on source: ${owner.id} ${e}")
-        }
         .runForeach(handler)
-        .fork
+        .forkZioLogged(s"Source Sink on ${owner.id}")
         .ignoreLogged
     }
   }
 
   private def sourceToStream[E](owner: TreeNode, source: EventSource[E]): Task[XStream[E]] = {
     source match
-      case EventSource.RepEvent(rep, event) => repEventSource(owner, rep, event)
-      case EventSource.OwnEvent(event)      => repEventSource(owner, owner, event)
-      case EventSource.WindowJsEvent(js)    =>
-        registeredJsEvent(owner, org.scalajs.dom.window, js.copy(preventDefault = false))
-      case e: EventSource.WithState[_, _]   => {
+      case EventSource.ComponentEvent(event, id) =>
+        val componentId = id.getOrElse(owner.id)
+        repEventSource(owner, componentId, event)
+      case EventSource.WindowJsEvent(js)         =>
+        registeredJsEvent(owner.id, org.scalajs.dom.window, js.copy(preventDefault = false))
+      case e: EventSource.WithState[_, _, _]     => {
         convertWithState(owner, e)
       }
-      case m: EventSource.ModelChange[_]    => {
+      case m: EventSource.ModelChange[_]         => {
         convertModelChange(owner, m)
       }
-      case e: EventSource.EffectEvent[_, _] =>
+      case e: EventSource.EffectEvent[_, _, _]   =>
         effectEvent(owner, e)
-      case EventSource.MapSource(from, fn)  =>
+      case EventSource.MapSource(from, fn)       =>
         sourceToStream(owner, from).map(_.map(fn))
-      case a: EventSource.AndSource[_]      =>
+      case a: EventSource.AndSource[_]           =>
         andEvent(owner, a)
   }
 
   private def convertSink[E](node: TreeNode, sink: EventSink[E]): E => Task[Unit] = {
     sink match {
-      case c: EventSink.ModelChange[_, _]        =>
+      case c: EventSink.ModelChange[_, _]  =>
         convertModelChangeSink(node, c)
-      case EventSink.Custom(f)                   =>
+      case EventSink.ExecuteCode(f)        =>
         input => ZIO.attempt(f(input))
-      case EventSink.Multiple(sinks)             =>
+      case EventSink.Multiple(sinks)       =>
         val converted = sinks.map(convertSink(node, _))
         input => {
           ZIO.collectAllDiscard {
             converted.map(_.apply(input))
           }
         }
-      case t: EventSink.TriggerComponentEvent[_] =>
+      case t: EventSink.CustomEventSink[_] =>
         convertComponentTriggerSink(node, t)
     }
   }
@@ -151,11 +152,10 @@ class EventManager(
           update      <- state.modify { state =>
                            val oldValue     = state.modelValues(change.model.id).asInstanceOf[M]
                            val updated      = change.f(input, oldValue)
-                           Logger.debug(s"Model Change ${change.model.id} ${oldValue} -> ${updated}")
+                           Logger.trace(s"Model Change ${change.model.id} ${oldValue} -> ${updated}")
                            val updatedState = state.withModelValue(change.model.id, updated)
                            (oldValue, updated) -> updatedState
                          }
-          _           <- Logger.debugZio("Telling Subscribers...")
           _           <- {
             val subscriberList = subscribers.get(change.model.id)
             ZIO.collectAllDiscard {
@@ -164,9 +164,7 @@ class EventManager(
               }
             }
           }
-          -           <- Logger.debugZio("Offering...")
           x           <- hub.offer(change.model.id)
-          _           <- Logger.debugZio(s"Offered: ${x}...")
         } yield {
           ()
         }
@@ -175,13 +173,18 @@ class EventManager(
 
   private def convertComponentTriggerSink[E](
       node: TreeNode,
-      trigger: EventSink.TriggerComponentEvent[E]
+      trigger: EventSink.CustomEventSink[E]
   ): E => Task[Unit] = { input =>
     {
+      val dstId = trigger.componentId.getOrElse(node.id)
       for {
         subscriberMap <- componentSubscribers.get
-        subscribers    = subscriberMap.get(node.id -> trigger.componentEvent.name)
-        _              = Logger.info(s"Will send ${input} to ${subscribers.size} receivers (owners=${subscribers.map(_.owner)})")
+        subscribers    = subscriberMap.get(dstId -> trigger.event.name)
+        _              =
+          Logger.info(
+            s"Will send ${input} on ${trigger.event.name} from ${node.id} to ${subscribers.size} receivers (owners=${subscribers
+                .map(_.owner)})"
+          )
         _             <- ZIO.collectAllDiscard(subscribers.map(_.asInstanceOf[ComponentSubscriber[E]].onEmit(input)))
       } yield {
         ()
@@ -189,14 +192,14 @@ class EventManager(
     }
   }
 
-  private def repEventSource[E](owner: TreeNode, source: TreeNode, event: Event[E]): Task[XStream[E]] = {
+  private def repEventSource[E](owner: TreeNode, componentId: ComponentId, event: Event[E]): Task[XStream[E]] = {
     event match {
       case js: Event.JsEvent                    =>
-        jsEventSource(source, js)
+        jsEventSource(componentId, js)
       case Event.MappedEvent(underlying, mapFn) =>
-        repEventSource(source, source, underlying).map(_.map(mapFn))
-      case c: Event.ComponentEvent[E]           =>
-        convertComponentEvent(owner.id, source.id, c)
+        repEventSource(owner, componentId, underlying).map(_.map(mapFn))
+      case c: Event.Custom[E]                   =>
+        convertComponentEvent(owner.id, componentId, c)
       case Event.Assembled                      =>
         ZIO.succeed(
           ZStream.succeed(())
@@ -204,20 +207,20 @@ class EventManager(
     }
   }
 
-  private def jsEventSource(node: TreeNode, event: Event.JsEvent): Task[XStream[ScalaJsEvent]] = {
-    locator(node.id).flatMap { js =>
-      registeredJsEvent(node, js, event)
+  private def jsEventSource(componentId: ComponentId, event: Event.JsEvent): Task[XStream[ScalaJsEvent]] = {
+    locator.locate(componentId).flatMap { js =>
+      registeredJsEvent(componentId, js, event)
     }
   }
 
   private def registeredJsEvent(
-      node: TreeNode,
+      componentId: ComponentId,
       scalaJsEventTarget: ScalaJsEventTarget,
       event: Event.JsEvent
   ): Task[XStream[ScalaJsEvent]] = {
     ZIO.succeed(
       eventRegistry
-        .lift(node.id, scalaJsEventTarget, event)
+        .lift(componentId, scalaJsEventTarget, event)
         .tapError { e =>
           Logger.warnZio(e.getMessage)
         }
@@ -225,15 +228,21 @@ class EventManager(
     )
   }
 
-  private def effectEvent[E, F](
+  private def effectEvent[E, F[_], R](
       node: TreeNode,
-      event: EventSource.EffectEvent[E, F]
-  ): Task[XStream[scala.util.Try[F]]] = {
+      event: EventSource.EffectEvent[E, F, R]
+  ): Task[XStream[scala.util.Try[R]]] = {
+    val decoder: F[R] => Task[R] = event.effectOperation.support.name match {
+      case EffectSupport.FutureName => in => ZIO.fromFuture(_ => in.asInstanceOf[Future[R]])
+      case EffectSupport.TaskName   => in => in.asInstanceOf[Task[R]]
+      case other                    =>
+        return ZIO.fail(new UnsupportedOperationException(s"Unexpected Effect Type ${other}"))
+    }
     for {
       underlying <- sourceToStream(node, event.trigger)
     } yield {
       underlying.mapZIO { in =>
-        val zio = ZIO.fromFuture(ec => event.effectOperation.fn(in, ec))
+        val zio = decoder(event.effectOperation.fn(in))
         zio.fold(f => scala.util.Failure(f), x => scala.util.Success(x))
       }
     }
@@ -247,24 +256,24 @@ class EventManager(
     for {
       underlying <- sourceToStream(node, and.binding.source)
       hub        <- zio.Hub.bounded[zio.stream.Take[Nothing, E]](1)
-      _          <- underlying.runIntoHub(hub).fork
+      _          <- underlying.runIntoHub(hub).forkZioLogged(s"and source into hub before ${node.id}")
       hubSource   = ZStream.fromHub(hub).flattenTake
       sink        = convertSink(node, and.binding.sink)
-      _          <- hubSource.runForeach(sink).fork
+      _          <- hubSource.runForeach(sink).forkZioLogged(s"and hub into sink ${node.id}")
     } yield {
       hubSource
     }
   }
 
-  private def convertWithState[E, F](
+  private def convertWithState[E, F, S](
       node: TreeNode,
-      withState: EventSource.WithState[E, F]
-  ): Task[XStream[(E, F)]] = {
+      withState: EventSource.WithState[E, F, S]
+  ): Task[XStream[(E, S)]] = {
     sourceToStream(node, withState.inner).map { underlying =>
       val transformed = underlying
         .mapZIO { value =>
-          locator(withState.from).map { js =>
-            val elementState = withState.getter.get(js)
+          locator.withRuntimeContext(withState.componentId) { ctx =>
+            val elementState = withState.fetcher(withState.provider(ctx))
             value -> elementState
           }
         }
@@ -303,15 +312,16 @@ class EventManager(
   private def convertComponentEvent[E](
       ownerComponentId: ComponentId,
       sourceComponentId: ComponentId,
-      event: Event.ComponentEvent[E]
+      event: Event.Custom[E]
   ): Task[XStream[E]] = {
-    Logger.debug(s"Subscribing ${ownerComponentId} to ${sourceComponentId} in components")
+    Logger.trace(s"Subscribing ${ownerComponentId} to ${sourceComponentId} in components")
     ZIO.succeed {
       ZStream.asyncZIO { callback =>
         object entry extends ComponentSubscriber[E] {
           override def owner: ComponentId = ownerComponentId
 
           override def cancel(): UIO[Unit] = {
+            Logger.debug(s"Canceling ${sourceComponentId} -> ${ownerComponentId} on ${event.name}")
             ZIO.succeed(
               callback.end
             )
@@ -323,8 +333,14 @@ class EventManager(
             )
           }
         }
-        Logger.debug(s"Subscribing ${ownerComponentId} to ${sourceComponentId} in components (update phase)")
-        componentSubscribers.update(_.add(sourceComponentId -> event.name, entry))
+        for {
+          _       <- Logger
+                       .infoZio(s"Subscribing ${sourceComponentId}/${event.name} --> ${ownerComponentId} in components")
+                       .orDie
+          updated <- componentSubscribers.update(_.add(sourceComponentId -> event.name, entry))
+        } yield {
+          ()
+        }
       }
     }
   }
@@ -333,9 +349,10 @@ class EventManager(
   def garbageCollect(referencedComponentIds: Set[ComponentId], referencedModelIds: Set[ModelId]): Task[Unit] = {
     // TODO: Event Target removal?!
     for {
-      _ <- Logger.debugZio(
-             s"Garbage collect, referenced components: ${referencedComponentIds} / models: ${referencedModelIds}"
-           )
+      _ <-
+        Logger.debugZio(
+          s"Garbage collect, referenced components: ${referencedComponentIds.toSeq.map(_.id).sorted} / models: ${referencedModelIds.toSeq.map(_.id).sorted}"
+        )
       _ <- garbageCollectModelSubscribers(referencedModelIds)
       _ <- garbageCollectComponentSubscribers(referencedComponentIds)
       _ <- eventRegistry.cancelUnreferenced(referencedComponentIds)
@@ -386,10 +403,36 @@ object EventManager {
     def owner: ComponentId
     def cancel(): UIO[Unit]
     def onEmit(data: E): UIO[Unit]
+
+    override def toString: String = {
+      s"ComponentSubscriber(${owner})"
+    }
   }
 
-  // TODO: Replace by Environment
-  type Locator = ComponentId => Task[ScalaJsElement]
+  /** Helper for locating elements and providing runtime contexts. */
+  trait Locator {
+
+    protected def unsafeLocate(id: ComponentId): ScalaJsElement
+
+    def locate(id: ComponentId): Task[ScalaJsElement] = {
+      ZIO.attempt(unsafeLocate(id))
+    }
+
+    def withRuntimeContext[T](id: ComponentId)(f: RuntimeContext => T): Task[T] = {
+      for {
+        context <- ZIO.attempt(unsafeCreateRuntimeContext(id))
+        result  <- ZIO.attempt(f(context))
+      } yield result
+    }
+
+    protected def unsafeCreateRuntimeContext(id: ComponentId): RuntimeContext = new RuntimeContext {
+      override val jsElement: ScalaJsElement = unsafeLocate(id)
+
+      override def jump(componentId: ComponentId): RuntimeContext = {
+        unsafeCreateRuntimeContext(componentId)
+      }
+    }
+  }
 
   def create(state: Ref[AssemblyState], locator: Locator): Task[EventManager] = {
     for {
