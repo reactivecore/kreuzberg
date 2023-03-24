@@ -2,6 +2,7 @@ package kreuzberg.imperative
 
 import kreuzberg.*
 import kreuzberg.util.Stateful
+import kreuzberg.dom.ScalaJsElement
 
 import scala.language.implicitConversions
 
@@ -60,6 +61,10 @@ abstract class SimpleComponentBaseWithRuntime[R] extends SimpleContextDsl {
   type HtmlWithRuntime = (Html, RuntimeProvider[R])
 
   def assemble(implicit c: SimpleContext): HtmlWithRuntime
+
+  protected def jsElement[T <: ScalaJsElement](using r: RuntimeContext): T = {
+    r.jsElement.asInstanceOf[T]
+  }
 }
 
 object SimpleComponentBaseWithRuntime {
