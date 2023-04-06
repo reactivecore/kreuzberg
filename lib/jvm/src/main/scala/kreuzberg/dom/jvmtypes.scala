@@ -2,7 +2,9 @@ package kreuzberg.dom
 
 // Dummy Implementations for JVM
 
-trait ScalaJsEvent()
+trait ScalaJsEvent {
+  def preventDefault(): Unit
+}
 
 trait ScalaJsNode {
   def addEventListener[T <: ScalaJsEvent](`type`: String, listener: T => _, useCapture: Boolean = false): Unit
