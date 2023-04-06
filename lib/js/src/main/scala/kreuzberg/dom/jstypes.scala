@@ -13,3 +13,7 @@ type ScalaJsDocument = org.scalajs.dom.Document
 type ScalaJsInput = org.scalajs.dom.html.Input
 
 type ScalaJsTextArea = org.scalajs.dom.html.TextArea
+
+type ScalaJsDragEvent = org.scalajs.dom.DragEvent
+
+type ScalaJsDataTransfer= org.scalajs.dom.DataTransfer

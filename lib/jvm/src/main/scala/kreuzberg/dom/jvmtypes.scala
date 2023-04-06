@@ -23,3 +23,11 @@ trait ScalaJsTextArea extends ScalaJsElement {
   /** Text Input of text area */
   def value: String
 }
+
+trait ScalaJsDataTransfer {
+  var effectAllowed: String
+}
+
+trait ScalaJsDragEvent extends ScalaJsEvent {
+  def dataTransfer: ScalaJsDataTransfer
+}
