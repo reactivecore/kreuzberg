@@ -14,8 +14,8 @@ case class TextInput(fieldName: String, initialValue: String = "") extends Simpl
   ): HtmlWithRuntime = {
     html(
       input(name := fieldName, value := initialValue)
-    ).withRuntime { provider =>
-      val casted = provider.jsElement.asInstanceOf[ScalaJsInput]
+    ).withRuntime {
+      val casted = jsElement[ScalaJsInput]
       new Extractor:
         override def text: String = casted.value
     }

@@ -15,8 +15,8 @@ case class Label(model: Model[String]) extends SimpleComponentBase {
 
 case class InputField(fieldName: String) extends SimpleComponentBaseWithRuntime[InputField.Rep] {
   def assemble(implicit c: SimpleContext): HtmlWithRuntime = {
-    html(input(name := fieldName)).withRuntime { provider =>
-      val casted = provider.jsElement.asInstanceOf[ScalaJsInput]
+    html(input(name := fieldName)).withRuntime {
+      val casted = jsElement[ScalaJsInput]
       new InputField.Rep:
         override def text: String = casted.value
     }

@@ -106,8 +106,10 @@ trait ImperativeDsl {
   def html[T](in: T)(implicit f: T => Html): Html = f(in)
 
   extension (html: Html) {
-    def withRuntime[T](f: RuntimeContext => T): (Html, RuntimeProvider[T]) = {
-      html -> f
+    def withRuntime[T](f: RuntimeContext ?=> T): (Html, RuntimeProvider[T]) = {
+      html -> { rc =>
+        f(using rc)
+      }
     }
   }
 
