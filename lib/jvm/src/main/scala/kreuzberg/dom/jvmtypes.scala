@@ -28,6 +28,8 @@ trait ScalaJsTextArea extends ScalaJsElement {
 
 trait ScalaJsDataTransfer {
   var effectAllowed: String
+  def setData(format: String, data: String): Unit
+  def getData(format: String): String
 }
 
 trait ScalaJsDragEvent extends ScalaJsEvent {
