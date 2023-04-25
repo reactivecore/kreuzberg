@@ -18,12 +18,9 @@ class SimpleContext(state: AssemblyState) extends AssemblyContext(state) {
 }
 
 trait SimpleContextDsl extends ImperativeDsl {
-  protected def add[E](source: EventSource[E], sink: EventSink[E])(implicit c: SimpleContext): Unit = {
-    add(EventBinding(source, sink))
-  }
-
-  protected def add(binding: EventBinding)(implicit c: SimpleContext): Unit = {
-    c.addEventBinding(binding)
+  protected def add(binding0: EventBinding, others: EventBinding*)(implicit c: SimpleContext): Unit = {
+    c.addEventBinding(binding0)
+    others.foreach(c.addEventBinding)
   }
 }
 

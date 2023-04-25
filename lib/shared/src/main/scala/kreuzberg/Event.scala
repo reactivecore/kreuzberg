@@ -9,12 +9,38 @@ sealed trait Event[E] {
 
 object Event {
 
-  /** A JavaScript event */
-  case class JsEvent(
+  /**
+   * A JavaScript event
+   * @param name
+   *   name of the JS Event.
+   * @param fn
+   *   initial transformation (done when event occurs)
+   */
+  case class JsEvent[T](
       name: String,
-      preventDefault: Boolean = false,
-      capture: Boolean = false
-  ) extends Event[ScalaJsEvent]
+      fn: ScalaJsEvent => T,
+      capture: Boolean
+  ) extends Event[T]
+
+  object JsEvent {
+    def apply(name: String, preventDefault: Boolean = false, capture: Boolean = false): JsEvent[ScalaJsEvent] = {
+      JsEvent(
+        name,
+        e => {
+          if (preventDefault) {
+            e.preventDefault()
+          }
+          e
+        },
+        capture
+      )
+    }
+
+    /** A JsEvent with initial function */
+    def custom[T](name: String, capture: Boolean = false)(fn: ScalaJsEvent => T): JsEvent[T] = {
+      JsEvent(name, fn, capture)
+    }
+  }
 
   /** Trivial event that something assembled. */
   case object Assembled extends Event[Unit]

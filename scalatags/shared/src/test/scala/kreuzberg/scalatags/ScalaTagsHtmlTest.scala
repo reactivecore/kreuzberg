@@ -24,6 +24,11 @@ class ScalaTagsHtmlTest extends TestBase {
       .renderToString() shouldBe """<div data-id="123">Hello World<span>How are you?</span></div>"""
   }
 
+  it should "like comments" in {
+    val c = simple.addComment("Boom").addComment("Bu--zz")
+    c.renderToString() shouldBe """<div><!-- Buzz --><!-- Boom -->Hello World<span>How are you?</span></div>"""
+  }
+
   object Foo extends SimpleComponentBase {
     override def assemble(implicit c: SimpleContext): Html = {
       span("Boom!")
@@ -43,7 +48,7 @@ class ScalaTagsHtmlTest extends TestBase {
     Assembler
       .single(Bar)
       .renderWithId(ComponentId(0))
-      .renderToString() shouldBe """<div data-id="0">Hello World<span data-id="1">Boom!</span></div>"""
+      .renderToString() shouldBe """<div data-id="0">Hello World<span data-id="1"><!-- Foo -->Boom!</span></div>"""
   }
 
 }

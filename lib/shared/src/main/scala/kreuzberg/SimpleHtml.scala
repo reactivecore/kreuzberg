@@ -9,11 +9,16 @@ import scala.collection.immutable.Vector
 case class SimpleHtml(
     tag: String,
     attributes: Vector[(String, Option[String])] = Vector.empty,
-    children: Vector[SimpleHtmlNode] = Vector.empty
+    children: Vector[SimpleHtmlNode] = Vector.empty,
+    comment: String = ""
 ) extends Html
     with SimpleHtmlNode {
   override def withId(id: ComponentId): Html = {
     withAttribute("data-id", Some(id.toString))
+  }
+
+  def addComment(c: String): Html = {
+    copy(comment = comment + c)
   }
 
   def withAttribute(name: String, value: Option[String]): Html = {
@@ -48,6 +53,11 @@ case class SimpleHtml(
       }
     }
     sb ++= ">"
+    if (comment.nonEmpty) {
+      sb ++= "<!--"
+      sb ++= comment.replace("-->", "")
+      sb ++= "-->"
+    }
     children.foreach(_.render(sb))
     sb ++= "</"
     sb ++= escaped

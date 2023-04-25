@@ -19,6 +19,12 @@ sealed trait EventSource[E] {
 
   def map[F](f: E => F): EventSource[F] = EventSource.MapSource(this, f)
 
+  def collect[F](f: PartialFunction[E, F]): EventSource[F] = EventSource.CollectEvent(this, f)
+
+  def filter(f: E => Boolean): EventSource[E] = collect {
+    case x if f(x) => x
+  }
+
   /** Throw away any data. */
   def mapUnit: EventSource[Unit] = map(_ => ())
 
@@ -27,6 +33,16 @@ sealed trait EventSource[E] {
 
   def effect[F[_], R](f: E => F[R])(implicit effectSupport: EffectSupport[F]): EventSource.EffectEvent[E, F, R] =
     EventSource.EffectEvent(this, EffectOperation(e => f(e)))
+
+  /** Execute custom Code. */
+  def executeCode(f: E => Unit): EventBinding.SourceSink[E] = {
+    EventBinding.SourceSink(this, EventSink.ExecuteCode(f))
+  }
+
+  /** Do nothing (e.g. some events already have an effect just because they are registered, e.g. Drag and Drop events with preventDefault) */
+  def doNothing: EventBinding.SourceSink[E] = {
+    executeCode(_ => ())
+  }
 
   /** Shortcut for building event bindings */
   def changeModel[M](model: Model[M])(f: (E, M) => M): EventBinding.SourceSink[E] = {
@@ -82,7 +98,7 @@ object EventSource {
   case class ComponentEvent[E](event: Event[E], component: Option[ComponentId] = None) extends EventSource[E]
 
   /** A JS Event from window-Object */
-  case class WindowJsEvent(js: JsEvent) extends EventSource[ScalaJsEvent]
+  case class WindowJsEvent[E](js: JsEvent[E]) extends EventSource[E]
 
   /** Some side effect operatio (e.g. API Call) */
   case class EffectEvent[E, F[_], R](
@@ -104,6 +120,12 @@ object EventSource {
   case class MapSource[E, F](
       from: EventSource[E],
       fn: E => F
+  ) extends EventSource[F]
+
+  /** Some collect function. */
+  case class CollectEvent[E, F](
+      from: EventSource[E],
+      fn: PartialFunction[E, F]
   ) extends EventSource[F]
 
   /** Pseudo Event source, to chain multiple reactions on one source. */
