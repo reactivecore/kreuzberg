@@ -9,9 +9,7 @@ sealed trait TreeNode {
   def children: Vector[TreeNode] = assembly.nodes
 
   /** Renders the tree node. */
-  def render(): Html = {
-    assembly.renderWithId(id)
-  }
+  def render(): Html
 
   /** Returns referenced component ids. */
   def referencedComponentIds(): Set[ComponentId] = {
@@ -54,4 +52,9 @@ case class ComponentNode[T, +R](
     assembler: Assembler[T]
 ) extends TreeNode {
   override def toString: String = s"Component ${id}/${value}"
+
+  override def render(): Html = {
+    val valueTypeName = value.getClass.getSimpleName.stripSuffix("$") // TODO: Configurable?!
+    assembly.renderWithId(id).addComment(valueTypeName)
+  }
 }

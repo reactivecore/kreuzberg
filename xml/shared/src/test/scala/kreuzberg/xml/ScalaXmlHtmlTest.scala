@@ -22,6 +22,13 @@ class ScalaXmlHtmlTest extends TestBase {
       .renderToString() shouldBe "<hello>World<span>!</span><span>!!</span></hello>"
   }
 
+  it should "like comments" in {
+    ScalaXmlHtml(sample)
+      .addComment("Boom")
+      .addComment("Bu--zz")
+      .renderToString() shouldBe "<hello><!-- Buzz --><!-- Boom -->World</hello>"
+  }
+
   import kreuzberg.xml._
   case class Child(name: String) extends SimpleComponentBase {
     override def assemble(implicit c: SimpleContext): Html = {
@@ -44,6 +51,6 @@ class ScalaXmlHtmlTest extends TestBase {
       .renderWithId(ComponentId(0))
 
     html.placeholders.map(_.id.id) shouldBe Seq(1, 2)
-    html.renderToString() shouldBe """<div data-id="0">This is data <div data-id="1">This is a child of Hello</div>,<div data-id="2">This is a child of World</div></div>"""
+    html.renderToString() shouldBe """<div data-id="0">This is data <div data-id="1"><!-- Child -->This is a child of Hello</div>,<div data-id="2"><!-- Child -->This is a child of World</div></div>"""
   }
 }

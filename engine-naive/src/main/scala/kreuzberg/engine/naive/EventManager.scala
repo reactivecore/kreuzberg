@@ -39,8 +39,7 @@ class EventManager(delegate: EventManagerDelegate) {
    */
   private case class WindowEventBinding(
       handler: ScalaJsEvent => Unit,
-      owner: ComponentId,
-      preventDefault: Boolean
+      owner: ComponentId
   )
 
   /** Binding to Component Events. */
@@ -129,7 +128,8 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def buildRuntimeContext(id: ComponentId): RuntimeContext = {
     new RuntimeContext {
-      def jsElement: ScalaJsElement = delegate.locate(id) // TODO: Wir brauchen eine unsafeDelegate was die Dinger sofort heraussucht.
+      def jsElement: ScalaJsElement =
+        delegate.locate(id) // TODO: Wir brauchen eine unsafeDelegate was die Dinger sofort heraussucht.
 
       def jump(componentId: ComponentId): RuntimeContext = buildRuntimeContext(componentId)
     }
@@ -137,18 +137,31 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
     eventSource match
-      case r: EventSource.ComponentEvent[_]                     =>
+      case r: EventSource.ComponentEvent[_]                             =>
         bindRepEvent(ownNode, r, sink)
-      case EventSource.WindowJsEvent(js)                        =>
+      case EventSource.WindowJsEvent(js)                                =>
+        val handler: ScalaJsEvent => Unit = { in =>
+          try {
+            val transformed = js.fn(in)
+            sink(transformed)
+          } catch {
+            case NonFatal(e) =>
+              Logger.warn(s"Exception during window JS Event by component ${ownNode.id}: ${e}")
+          }
+        }
         _windowEventBindings.add(
           js.name,
-          WindowEventBinding(sink, ownNode.id, js.preventDefault)
+          WindowEventBinding(handler, ownNode.id)
         )
-        val existing = _registeredWindowEvents.contains(js.name)
+        val existing                      = _registeredWindowEvents.contains(js.name)
         if (!existing) {
           // The only place to register it, we won't deregister yet
           // TODO: Window event deregistration, KRZ-124
-          bindJsEvent(org.scalajs.dom.window, js.copy(capture = false), event => onWindowEvent(js.name, event))
+          bindJsEvent(
+            org.scalajs.dom.window,
+            js.copy(fn = identity, capture = false),
+            event => onWindowEvent(js.name, event)
+          )
           _registeredWindowEvents.add(js.name)
           Logger.debug(s"Fresh bound ${js.name} on window")
         }
@@ -158,11 +171,11 @@ class EventManager(delegate: EventManagerDelegate) {
           inner,
           x => {
             val context = buildRuntimeContext(componentId)
-            val mapped = decoder(provider(context))
+            val mapped  = decoder(provider(context))
             sink((x, mapped))
           }
         )
-      case EventSource.MapSource(from, fn)                      =>
+      case EventSource.MapSource(from, fn)                              =>
         bindEventSource(
           ownNode,
           from,
@@ -171,9 +184,21 @@ class EventManager(delegate: EventManagerDelegate) {
             sink(mapped)
           }
         )
-      case e: EventSource.EffectEvent[_, _, _]                  =>
+      case EventSource.CollectEvent(from, fn)                           =>
+        bindEventSource(
+          ownNode,
+          from,
+          x => {
+            if (fn.isDefinedAt(x)) {
+              sink(fn(x))
+            } else {
+              // nothing
+            }
+          }
+        )
+      case e: EventSource.EffectEvent[_, _, _]                          =>
         bindEffect(ownNode, e, sink)
-      case m: EventSource.ModelChange[_]                        =>
+      case m: EventSource.ModelChange[_]                                =>
         bindModelChange(
           ownNode,
           m,
@@ -181,7 +206,7 @@ class EventManager(delegate: EventManagerDelegate) {
             sink(from, to)
           }
         )
-      case a: EventSource.AndSource[_]                          =>
+      case a: EventSource.AndSource[_]                                  =>
         bindAnd(ownNode, a, sink)
   }
 
@@ -225,7 +250,7 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def bindEvent[E](componentId: ComponentId, event: Event[E], sink: E => Unit): Unit = {
     event match
-      case jse: Event.JsEvent              =>
+      case jse: Event.JsEvent[E]           =>
         val source = delegate.locate(componentId)
         bindJsEvent(source, jse, sink)
       case ce: Event.Custom[E]             =>
@@ -239,19 +264,22 @@ class EventManager(delegate: EventManagerDelegate) {
         }
   }
 
-  private def bindJsEvent[T, E, M](
+  private def bindJsEvent[E](
       source: org.scalajs.dom.EventTarget,
-      event: Event.JsEvent,
-      sink: ScalaJsEvent => Unit
+      event: Event.JsEvent[E],
+      sink: E => Unit
   ): Unit = {
     source.addEventListener(
       event.name,
       { (e: ScalaJsEvent) =>
-        Logger.debug(s"Reacting to ${event.name} (capture=${event.capture}, preventDefault=${event.preventDefault})")
-        if (event.preventDefault) {
-          e.preventDefault()
+        try {
+
+          Logger.debug(s"Reacting to ${event.name} (capture=${event.capture})")
+          val transformed = event.fn(e)
+          sink(transformed)
+        } catch {
+          case NonFatal(e) => Logger.warn(s"Exception on JS Event ${event.name}: ${e}}")
         }
-        sink(e)
       },
       event.capture
     )
@@ -329,9 +357,6 @@ class EventManager(delegate: EventManagerDelegate) {
   private def onWindowEvent(name: String, event: ScalaJsEvent): Unit = {
     Logger.debug(s"OnWindowEvent ${name}: Handlers: ${_windowEventBindings.sizeForKey(name)}")
     _windowEventBindings.foreachKey(name) { binding =>
-      if (binding.preventDefault) {
-        event.preventDefault()
-      }
       binding.handler(event)
     }
   }

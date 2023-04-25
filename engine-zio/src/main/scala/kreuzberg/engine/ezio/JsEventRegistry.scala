@@ -6,6 +6,7 @@ import kreuzberg.engine.ezio.JsEventRegistry.Canceller
 import kreuzberg.engine.ezio.utils.MultiListMap
 import zio.stream.ZStream
 import zio.{Chunk, Ref, Task, UIO, ZIO}
+import scala.util.control.NonFatal
 
 /** Manages JS DOM Events and brings them on ZIO Level and make it also possible for them to disappear. */
 class JsEventRegistry[K](
@@ -13,18 +14,21 @@ class JsEventRegistry[K](
 ) {
 
   /** Lift a ScalaJS Event into a ZStream, which is cancellable using the given key. */
-  def lift(
+  def lift[E](
       key: K,
       target: ScalaJsEventTarget,
-      event: Event.JsEvent
-  ): ZStream[Any, Throwable, ScalaJsEvent] = {
+      event: Event.JsEvent[E]
+  ): ZStream[Any, Throwable, E] = {
     ZStream.asyncZIO { callback =>
 //      Logger.debug(s"Registering event ${event.name} on ${key}, target: ${target}")
       val eventListener: scalajs.js.Function1[ScalaJsEvent, Unit] = { e =>
-        if (event.preventDefault) {
-          e.preventDefault()
+        try {
+          val transformed = event.fn(e)
+          callback.single(transformed)
+        } catch {
+          case NonFatal(e) =>
+            Logger.warn(s"Exception on JS Event ${key}/${event.name}: $e")
         }
-        callback.single(e)
       }
 
       val canceller = for {

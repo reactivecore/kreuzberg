@@ -19,6 +19,15 @@ case class ScalaXmlHtml(elem: Elem) extends Html {
     )
   }
 
+  def addComment(c: String): Html = {
+    ScalaXmlHtml(
+      elem.copy(
+        // Note this may change the order, but comments should be unrelated
+        child = scala.xml.Comment(" " + c.replace("--", "").trim() + " ") +: elem.child
+      )
+    )
+  }
+
   override def addInner(inner: Seq[Html]): Html = {
     val converted = inner.map {
       case s: ScalaXmlHtml => s.elem
@@ -36,8 +45,8 @@ case class ScalaXmlHtml(elem: Elem) extends Html {
 
     def traverse(node: Node): Unit = {
       node match {
-        case h: ScalaXmlHtmlEmbed   => collector ++= h.html.placeholders
-        case other                  =>
+        case h: ScalaXmlHtmlEmbed => collector ++= h.html.placeholders
+        case other                =>
           other.child.foreach(traverse)
       }
     }

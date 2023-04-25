@@ -111,7 +111,7 @@ class EventManager(
         val componentId = id.getOrElse(owner.id)
         repEventSource(owner, componentId, event)
       case EventSource.WindowJsEvent(js)         =>
-        registeredJsEvent(owner.id, org.scalajs.dom.window, js.copy(preventDefault = false))
+        registeredJsEvent(owner.id, org.scalajs.dom.window, js)
       case e: EventSource.WithState[_, _, _]     => {
         convertWithState(owner, e)
       }
@@ -122,6 +122,8 @@ class EventManager(
         effectEvent(owner, e)
       case EventSource.MapSource(from, fn)       =>
         sourceToStream(owner, from).map(_.map(fn))
+      case EventSource.CollectEvent(from, fn) =>
+        sourceToStream(owner, from).map(_.collect(fn))
       case a: EventSource.AndSource[_]           =>
         andEvent(owner, a)
   }
@@ -194,7 +196,7 @@ class EventManager(
 
   private def repEventSource[E](owner: TreeNode, componentId: ComponentId, event: Event[E]): Task[XStream[E]] = {
     event match {
-      case js: Event.JsEvent                    =>
+      case js: Event.JsEvent[E]                 =>
         jsEventSource(componentId, js)
       case Event.MappedEvent(underlying, mapFn) =>
         repEventSource(owner, componentId, underlying).map(_.map(mapFn))
@@ -207,17 +209,17 @@ class EventManager(
     }
   }
 
-  private def jsEventSource(componentId: ComponentId, event: Event.JsEvent): Task[XStream[ScalaJsEvent]] = {
+  private def jsEventSource[E](componentId: ComponentId, event: Event.JsEvent[E]): Task[XStream[E]] = {
     locator.locate(componentId).flatMap { js =>
       registeredJsEvent(componentId, js, event)
     }
   }
 
-  private def registeredJsEvent(
+  private def registeredJsEvent[E](
       componentId: ComponentId,
       scalaJsEventTarget: ScalaJsEventTarget,
-      event: Event.JsEvent
-  ): Task[XStream[ScalaJsEvent]] = {
+      event: Event.JsEvent[E]
+  ): Task[XStream[E]] = {
     ZIO.succeed(
       eventRegistry
         .lift(componentId, scalaJsEventTarget, event)

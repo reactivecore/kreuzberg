@@ -9,12 +9,21 @@ import scalatags.text.Builder
 import java.io.Writer
 import scala.collection.mutable
 import scala.language.implicitConversions
+import java.io.StringWriter
 
 /** Adapts ScalaTags to HTML. */
 case class ScalaTagsHtml(tag: TypedTag[String]) extends Html {
   override def withId(id: ComponentId): Html = {
     copy(
       tag = tag(data.id := id.id)
+    )
+  }
+
+  def addComment(c: String): Html = {
+    ScalaTagsHtml(
+      tag.copy(
+        modifiers = tag.modifiers :+ List(CommentTag(c))
+      )
     )
   }
 
@@ -74,6 +83,23 @@ case class ScalaTagsHtmlEmbed(
   override def writeTo(strb: Writer): Unit = {
     // TODO: Can we optimize that?
     strb.write(render)
+  }
+}
+
+private[scalatags] case class CommentTag(
+    content: String
+) extends scalatags.text.Frag {
+
+  override def render: String = {
+    val writer = new StringWriter
+    writeTo(writer)
+    return writer.toString()
+  }
+
+  override def writeTo(strb: Writer): Unit = {
+    strb.append("<!-- ")
+    strb.append(content.replace("--", ""))
+    strb.append(" -->")
   }
 }
 

@@ -9,6 +9,9 @@ trait Html {
   /** Appends the data.id attribut to the HTML Code. */
   def withId(id: ComponentId): Html
 
+  /** Add some comment to the HTML Comment. */
+  def addComment(c: String): Html
+
   /** Add more HTML at the end of the tag. */
   def addInner(inner: Seq[Html]): Html
 
@@ -38,6 +41,10 @@ object Html {
 case class TreeNodePlaceholder(treeNode: TreeNode) extends Html {
   def withId(id: ComponentId): Html = {
     treeNode.render().withId(id)
+  }
+
+  def addComment(c: String): Html = {
+    treeNode.render().addComment(c)
   }
 
   def addInner(inner: Seq[Html]): Html = {
