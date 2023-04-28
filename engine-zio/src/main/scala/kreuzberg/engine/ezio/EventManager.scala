@@ -8,6 +8,7 @@ import zio.stream.{ZSink, ZStream}
 import zio.*
 
 import scala.concurrent.Future
+import kreuzberg.EventSink.ContraCollect
 
 type XStream[T] = ZStream[Any, Nothing, T]
 
@@ -122,7 +123,7 @@ class EventManager(
         effectEvent(owner, e)
       case EventSource.MapSource(from, fn)       =>
         sourceToStream(owner, from).map(_.map(fn))
-      case EventSource.CollectEvent(from, fn) =>
+      case EventSource.CollectEvent(from, fn)    =>
         sourceToStream(owner, from).map(_.collect(fn))
       case a: EventSource.AndSource[_]           =>
         andEvent(owner, a)
@@ -139,6 +140,15 @@ class EventManager(
         input => {
           ZIO.collectAllDiscard {
             converted.map(_.apply(input))
+          }
+        }
+      case ContraCollect(underlying, pf)   =>
+        val converted = convertSink(node, underlying)
+        input => {
+          if (pf.isDefinedAt(input)) {
+            converted(pf(input))
+          } else {
+            ZIO.unit
           }
         }
       case t: EventSink.CustomEventSink[_] =>

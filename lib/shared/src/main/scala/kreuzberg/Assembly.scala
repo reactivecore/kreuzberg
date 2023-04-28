@@ -23,6 +23,7 @@ sealed trait Assembly[+R] {
 }
 
 object Assembly {
+  import scala.language.implicitConversions
   implicit def apply(html: Html): Pure[Unit] = Pure(html)
 
   /** Simple puts the nodes as base of the current html */
