@@ -12,6 +12,7 @@ ThisBuild / version := artefactVersion
 ThisBuild / scalaVersion := "3.2.1"
 
 ThisBuild / scalacOptions += "-Xcheck-macros"
+ThisBuild / scalacOptions += "-feature"
 // ThisBuild / scalacOptions += "-explain"
 
 ThisBuild / Compile / run / fork := true

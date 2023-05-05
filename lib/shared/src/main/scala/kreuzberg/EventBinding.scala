@@ -5,6 +5,8 @@ import kreuzberg.Event.{Custom, JsEvent}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import kreuzberg.dom.ScalaJsEvent
+import scala.util.Failure
+import scala.util.Success
 sealed trait EventSource[E] {
 
   /** Extend runtime state to event. */
@@ -39,7 +41,10 @@ sealed trait EventSource[E] {
     EventBinding.SourceSink(this, EventSink.ExecuteCode(f))
   }
 
-  /** Do nothing (e.g. some events already have an effect just because they are registered, e.g. Drag and Drop events with preventDefault) */
+  /**
+   * Do nothing (e.g. some events already have an effect just because they are registered, e.g. Drag and Drop events
+   * with preventDefault)
+   */
   def doNothing: EventBinding.SourceSink[E] = {
     executeCode(_ => ())
   }
@@ -86,6 +91,19 @@ sealed trait EventSource[E] {
         selector(c.value)
       )
     )
+  }
+
+  /** Transform via function. */
+  def transform[F](f: EventSource[E] => EventSource[F]): EventSource[F] = f(this)
+
+  /** If e is a Try[T], handle errors using another sink. */
+  def handleErrors[F](sink: EventSink[Throwable])(implicit ev: E => Try[F]): EventSource[F] = {
+    val errorHandler = sink.contraCollect[Try[F]] { case Failure(exception) =>
+      exception
+    }
+    map(ev).to(errorHandler).and.collect { case Success(value) =>
+      value
+    }
   }
 
   /** Connect this source to a sink */
@@ -145,6 +163,9 @@ sealed trait EventSink[-E] {
         EventSink.Multiple(Vector(this, sink))
     }
   }
+
+  /** Applies a partial function before calling the sink. */
+  def contraCollect[F](pf: PartialFunction[F, E]): EventSink[F] = EventSink.ContraCollect(this, pf)
 }
 
 object EventSink {
@@ -157,6 +178,9 @@ object EventSink {
 
   /** Chain multiple sinks. */
   case class Multiple[E](sinks: Vector[EventSink[E]]) extends EventSink[E]
+
+  /** Applies a partial function before calling the sink. */
+  case class ContraCollect[E, F](sink: EventSink[E], pf: PartialFunction[F, E]) extends EventSink[F]
 
   /**
    * Trigger a component event.

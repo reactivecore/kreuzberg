@@ -107,7 +107,7 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def transformSink[T](node: TreeNode, eventSink: EventSink[T]): T => Unit = {
     eventSink match
-      case EventSink.ModelChange(model, f)    =>
+      case EventSink.ModelChange(model, f)         =>
         eventData =>
           val change = PendingModelChange(
             model.id,
@@ -115,11 +115,19 @@ class EventManager(delegate: EventManagerDelegate) {
           )
           _pending.append(change)
           ensureNextIteration()
-      case EventSink.ExecuteCode(f)           => f
-      case EventSink.Multiple(sinks)          =>
+      case EventSink.ExecuteCode(f)                => f
+      case EventSink.Multiple(sinks)               =>
         val converted = sinks.map(transformSink(node, _))
         eventData => converted.foreach(x => x(eventData))
-      case EventSink.CustomEventSink(dst, ce) =>
+      case EventSink.ContraCollect(underlying, pf) =>
+        val converted = transformSink(node, underlying)
+        eventData =>
+          if (pf.isDefinedAt(eventData)) {
+            converted(pf(eventData))
+          } else {
+            ()
+          }
+      case EventSink.CustomEventSink(dst, ce)      =>
         eventData =>
           _componentEventBindings.foreachKey(dst.getOrElse(node.id) -> ce.name) { binding =>
             binding.asInstanceOf[ComponentEventBinding[T]].handler(eventData)

@@ -99,6 +99,7 @@ trait ImperativeDsl {
   /** Helper for selecting own events. */
   def own[E](event: Event[E]): EventSource[E] = EventSource.ComponentEvent(event)
 
+  import scala.language.implicitConversions
   implicit def htmlToAssembly(in: Html): Assembly[Unit] = {
     Assembly(in)
   }
