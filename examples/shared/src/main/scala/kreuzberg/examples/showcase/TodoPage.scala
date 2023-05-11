@@ -4,7 +4,6 @@ import kreuzberg._
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-
 case class TodoPage(model: Model[TodoList]) extends ComponentBase {
   override def assemble: AssemblyResult[Unit] = {
     for {
@@ -12,9 +11,9 @@ case class TodoPage(model: Model[TodoList]) extends ComponentBase {
       shower <- namedChild("shower", TodoShower(value))
       adder  <- namedChild("adder", TodoAdder(model))
     } yield {
-      Assembly(
-        div(),
-        Vector(shower, adder)
+      div(
+        shower.wrap,
+        adder.wrap
       )
     }
   }

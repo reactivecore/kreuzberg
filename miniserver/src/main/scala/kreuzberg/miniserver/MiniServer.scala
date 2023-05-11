@@ -2,11 +2,10 @@ package kreuzberg.miniserver
 
 import zio.http.*
 import zio.*
-
+import zio.http.HttpAppMiddleware
 import java.io.File
 import java.nio.file.{Files, Paths}
 import kreuzberg.rpc.{Dispatcher, Dispatchers}
-import zio.http.model.{HttpError, Method, Status}
 import zio.logging.backend.SLF4J
 
 class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
@@ -21,7 +20,7 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
 
   val indexHtml = Index(config).index.toString
 
-  val assetProvider: HttpApp[Any, Throwable] = Http.collectRoute[Request] {
+  val assetProvider: HttpApp[Any, Throwable] = Http.collectHttp[Request] {
     case Method.GET -> "" /: "assets" /: path =>
       config.locateAsset(path.encode) match {
         case None                              =>
@@ -43,12 +42,9 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
           Index(config).index.toString
         )
       )
-  } @@ Middleware.requestLogging()
+  } @@ HttpAppMiddleware.requestLogging()
 
-  val serverConfig: ServerConfig = ServerConfig.default
-    .port(config.port)
-
-  val configLayer: ZLayer[Any, Nothing, ServerConfig] = ServerConfig.live(serverConfig)
+  val configLayer = Server.defaultWithPort(config.port)
 
   val myApp = for {
     _            <- preflightCheck
@@ -66,5 +62,5 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
 
   val switchToSlf4j = Runtime.removeDefaultLoggers >>> SLF4J.slf4j
 
-  val run = myApp.provide(switchToSlf4j, configLayer, Server.live)
+  val run = myApp.provide(switchToSlf4j, configLayer)
 }

@@ -19,12 +19,11 @@ trait Route {
 object Route {
 
   /** Simple Route without parameters. */
-  case class SimpleRoute[T](
+  case class SimpleRoute(
       path: String,
       title: String,
-      component: T
-  )(implicit assembler: Assembler[T])
-      extends Route {
+      component: Component
+  ) extends Route {
     override def canHandle(path: String): Boolean = {
       this.path == path
     }
@@ -32,20 +31,20 @@ object Route {
     override def title(path: String): String = title
 
     override def node(id: ComponentId, path: String): Stateful[AssemblyState, TreeNode] = {
-      assembler.assembleWithId(id, component)
+      Assembler.assembleWithId(id, component)
     }
   }
 
-  case class DependentRoute[T](
-      fn: PartialFunction[String, T],
+  case class DependentRoute(
+      fn: PartialFunction[String, Component],
       titleFn: String => String
-  )(implicit assembler: Assembler[T])
-      extends Route {
+  ) extends Route {
     override def canHandle(path: String): Boolean = fn.isDefinedAt(path)
 
     override def title(path: String): String = titleFn(path)
 
     override def node(id: ComponentId, path: String): Stateful[AssemblyState, TreeNode] =
-      assembler.assembleWithId(id, fn(path))
+      val c: Component = fn(path)
+      Assembler.assembleWithId(id, c)
   }
 }

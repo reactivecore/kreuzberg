@@ -72,10 +72,10 @@ class EventManager(delegate: EventManagerDelegate) {
     _windowEventBindings.filterValuesInPlace(_.owner != node.id)
     _componentEventBindings.filterValuesInPlace(_.owner != node.id)
 
-    node.assembly.nodes.foreach { case child: ComponentNode[_, _] =>
+    node.children.foreach { case child: ComponentNode[_, _] =>
       activateEvents(child)
     }
-    node.assembly.bindings.foreach(activateEvent(node, _))
+    node.handlers.foreach(activateEvent(node, _))
   }
 
   def clear(): Unit = {

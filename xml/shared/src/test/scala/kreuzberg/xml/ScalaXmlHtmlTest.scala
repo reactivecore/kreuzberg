@@ -11,15 +11,7 @@ class ScalaXmlHtmlTest extends TestBase {
     val packed = ScalaXmlHtml(sample)
     packed.renderToString() shouldBe "<hello>World</hello>"
     packed.withId(ComponentId(123)).renderToString() shouldBe """<hello data-id="123">World</hello>"""
-    packed.placeholders shouldBe empty
-    packed
-      .addInner(
-        Seq(
-          ScalaXmlHtml(<span>!</span>),
-          ScalaXmlHtml(<span>!!</span>)
-        )
-      )
-      .renderToString() shouldBe "<hello>World<span>!</span><span>!!</span></hello>"
+    packed.embeddedNodes shouldBe empty
   }
 
   it should "like comments" in {
@@ -47,10 +39,9 @@ class ScalaXmlHtmlTest extends TestBase {
 
   it should "work in the packed case" in {
     val node = Assembler.single(Text)
-    val html = node
-      .renderWithId(ComponentId(0))
+    val html = node.html
 
-    html.placeholders.map(_.id.id) shouldBe Seq(1, 2)
-    html.renderToString() shouldBe """<div data-id="0">This is data <div data-id="1"><!-- Child -->This is a child of Hello</div>,<div data-id="2"><!-- Child -->This is a child of World</div></div>"""
+    html.embeddedNodes.map(_.id.id) shouldBe Seq(1, 2)
+    html.renderToString() shouldBe """<div>This is data <div data-id="1"><!-- Child -->This is a child of Hello</div>,<div data-id="2"><!-- Child -->This is a child of World</div></div>"""
   }
 }

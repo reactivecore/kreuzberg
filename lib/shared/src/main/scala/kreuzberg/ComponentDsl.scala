@@ -1,7 +1,7 @@
 package kreuzberg
 
 import kreuzberg.util.Stateful
-
+import kreuzberg.Component
 import scala.language.implicitConversions
 
 import kreuzberg.dom.ScalaJsElement
@@ -14,16 +14,17 @@ trait ComponentDsl {
     Stateful.pure(assembly)
   }
 
-  def namedChild[T](name: String, value: T)(
-      implicit a: Assembler[T]
-  ): Stateful[AssemblyState, ComponentNode[T, a.RuntimeNode]] = {
-    a.assembleNamedChild(name, value)
+  def namedChild[R, T <: Component.Aux[R]](
+      name: String,
+      value: T
+  ): Stateful[AssemblyState, ComponentNode[R, T]] = {
+    Assembler.assembleNamedChild(name, value)
   }
 
-  def anonymousChild[T](
-      value: T
-  )(implicit a: Assembler[T]): Stateful[AssemblyState, ComponentNode[T, a.RuntimeNode]] = {
-    a.assembleWithNewId(value)
+  def anonymousChild[R, T <: Component.Aux[R]](
+      component: T
+  ): Stateful[AssemblyState, ComponentNode[R, T]] = {
+    Assembler.assembleWithNewId(component)
   }
 
   def subscribe[T](model: Model[T]): Stateful[AssemblyState, T] = {
@@ -40,9 +41,9 @@ trait ComponentDsl {
     Stateful.get(_.readValue(model))
   }
 
-  case class RepBuilder[T](rep: ComponentNode[T, _]) {
-    def apply[E](f: T => Event[E]): EventSource[E] = EventSource.ComponentEvent(f(rep.value), Some(rep.id))
+  case class RepBuilder[R, T <: Component.Aux[R]](rep: ComponentNode[R, T]) {
+    def apply[E](f: T => Event[E]): EventSource[E] = EventSource.ComponentEvent(f(rep.component), Some(rep.id))
   }
 
-  def from[T](rep: ComponentNode[T, _]): RepBuilder[T] = RepBuilder(rep)
+  def from[R, T <: Component.Aux[R]](rep: ComponentNode[R, T]): RepBuilder[R, T] = RepBuilder(rep)
 }

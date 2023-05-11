@@ -27,61 +27,65 @@ case class SimpleHtml(
     )
   }
 
-  override def addInner(inner: Seq[Html]): Html = {
-    copy(
-      children = children ++ inner.map(Wrapper.apply)
-    )
+  override def embeddedNodes: Iterable[TreeNode] = {
+    children.flatMap(_.embeddedNodes)
   }
 
-  override def placeholders: Iterable[TreeNode] = {
-    children.flatMap(_.placeholders)
-  }
-
-  override def render(sb: StringBuilder): Unit = {
+  override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
     val escaped = SimpleHtmlNode.escape(tag)
-    sb ++= "<"
-    sb ++= escaped
+    flatHtmlBuilder ++= "<"
+    flatHtmlBuilder ++= escaped
     attributes.foreach { case (key, value) =>
-      sb ++= " "
-      sb ++= SimpleHtmlNode.escape(key)
+      flatHtmlBuilder ++= " "
+      flatHtmlBuilder ++= SimpleHtmlNode.escape(key)
       value match {
         case Some(g) =>
-          sb ++= "=\""
-          sb ++= SimpleHtmlNode.escape(g)
-          sb ++= "\""
+          flatHtmlBuilder ++= "=\""
+          flatHtmlBuilder ++= SimpleHtmlNode.escape(g)
+          flatHtmlBuilder ++= "\""
         case None    => // nothing
       }
     }
-    sb ++= ">"
+    flatHtmlBuilder ++= ">"
     if (comment.nonEmpty) {
-      sb ++= "<!--"
-      sb ++= comment.replace("-->", "")
-      sb ++= "-->"
+      flatHtmlBuilder ++= "<!--"
+      flatHtmlBuilder ++= comment.replace("-->", "")
+      flatHtmlBuilder ++= "-->"
     }
-    children.foreach(_.render(sb))
-    sb ++= "</"
-    sb ++= escaped
-    sb ++= ">"
+    children.foreach(_.flatToBuilder(flatHtmlBuilder))
+    flatHtmlBuilder ++= "</"
+    flatHtmlBuilder ++= escaped
+    flatHtmlBuilder ++= ">"
   }
 }
 
 sealed trait SimpleHtmlNode {
-  def placeholders: Iterable[TreeNode]
+  def embeddedNodes: Iterable[TreeNode]
 
-  def render(sb: StringBuilder): Unit
+  def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit
 }
 
 object SimpleHtmlNode {
   case class Text(text: String) extends SimpleHtmlNode {
-    override def placeholders: Iterable[TreeNode] = Iterable.empty
+    override def embeddedNodes: Iterable[TreeNode] = Iterable.empty
 
-    override def render(sb: StringBuilder): Unit = sb ++= escape(text)
+    override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
+      flatHtmlBuilder ++= escape(text)
+    }
   }
 
   case class Wrapper(html: Html) extends SimpleHtmlNode {
-    override def placeholders: Iterable[TreeNode] = html.placeholders
+    override def embeddedNodes: Iterable[TreeNode] = html.embeddedNodes
 
-    override def render(sb: StringBuilder): Unit = html.render(sb)
+    override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
+      html.flatToBuilder(flatHtmlBuilder)
+    }
+  }
+
+  case class EmbeddedTree(treeNode: TreeNode) extends SimpleHtmlNode {
+    def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = flatHtmlBuilder.addPlaceholder(treeNode.id)
+
+    def embeddedNodes: Iterable[TreeNode] = List(treeNode)
   }
 
   def escape(s: String): String = {

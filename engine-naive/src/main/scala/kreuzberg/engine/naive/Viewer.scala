@@ -1,6 +1,5 @@
 package kreuzberg.engine.naive
 
-import kreuzberg.imperative.PlaceholderState
 import kreuzberg.{Logger, TreeNode}
 import kreuzberg.*
 import kreuzberg.dom.*
@@ -12,16 +11,15 @@ class Viewer(rootElement: ScalaJsElement) {
   /** Redraw root node */
   def drawRoot(node: TreeNode): Unit = {
     val html = node.render()
-    rootElement.innerHTML = html.toString
-    PlaceholderState.clear()
+    println(s"Generated HTML: ${html}")
+    rootElement.innerHTML = html
   }
 
   /** Redraw one node. */
   def updateNode(node: TreeNode): Unit = {
     val html    = node.render()
     val current = findElement(node.id)
-    current.outerHTML = html.toString
-    PlaceholderState.clear()
+    current.outerHTML = html
   }
 
   /** Find an element for a given Component ID. */

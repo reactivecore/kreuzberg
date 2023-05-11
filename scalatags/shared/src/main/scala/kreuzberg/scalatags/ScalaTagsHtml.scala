@@ -1,6 +1,5 @@
 package kreuzberg.scalatags
-import kreuzberg.{ComponentId, Html, TreeNode}
-import kreuzberg.imperative.PlaceholderState
+import kreuzberg.{ComponentId, FlatHtmlBuilder, Html, TreeNode}
 import kreuzberg.util.SimpleThreadLocal
 import scalatags.Text.TypedTag
 import scalatags.Text.all.*
@@ -27,119 +26,27 @@ case class ScalaTagsHtml(tag: TypedTag[String]) extends Html {
     )
   }
 
-  override def addInner(inner: Seq[Html]): Html = {
-    val mapped = inner.map {
-      case ScalaTagsHtml(wrapped) => wrapped: Frag
-      case other                  => ScalaTagsHtmlEmbed(other): Frag
+  override def embeddedNodes: Iterable[TreeNode] = {
+    ScalaTagsEmbedding.collectFrom(tag).flatMap {
+      case ScalaTagsHtmlEmbedding(html)         => html.embeddedNodes
+      case ScalaTagsTreeNodeEmbedding(treeNode) => Seq(treeNode)
     }
-    ScalaTagsHtml(tag(mapped))
   }
 
-  override def placeholders: Iterable[TreeNode] = {
-    ScalaTagsHtmlEmbed.collectFrom(tag).flatMap(_.html.placeholders)
-  }
+  override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
+    val writer: Writer = new Writer() {
+      override def write(cbuf: Array[Char], off: Int, len: Int): Unit = flatHtmlBuilder.add(cbuf, off, len)
 
-  override def render(sb: StringBuilder): Unit = {
-    tag.writeTo(new Writer() {
-      override def write(cbuf: Array[Char], off: Int, len: Int): Unit = {
-        sb.appendAll(cbuf, off, len)
-      }
+      override def flush(): Unit = {}
 
-      override def flush(): Unit = {
-        // empty
-      }
-
-      override def close(): Unit = {
-        // empty
-      }
-    })
-  }
-
-  override def renderToString(): String = {
-    val result = super.renderToString()
-    PlaceholderState.clear()
-    result
+      override def close(): Unit = {}
+    }
+    FlatHtmlBuilder.withFlatHtmlBuilder(flatHtmlBuilder) {
+      tag.writeTo(writer)
+    }
   }
 }
 
 object ScalaTagsHtml {
   implicit def fromScalaTags(inner: TypedTag[String]): ScalaTagsHtml = ScalaTagsHtml(inner)
-}
-
-/** Wraps HTML inside ScalaTags. */
-case class ScalaTagsHtmlEmbed(
-    html: Html
-) extends scalatags.text.Frag {
-  override def render: String = {
-    html.renderToString()
-  }
-
-  override def applyTo(t: Builder): Unit = {
-    if (!ScalaTagsHtmlEmbedCollector.collectingPhase(this)) {
-      t.addChild(this)
-    }
-  }
-
-  override def writeTo(strb: Writer): Unit = {
-    // TODO: Can we optimize that?
-    strb.write(render)
-  }
-}
-
-private[scalatags] case class CommentTag(
-    content: String
-) extends scalatags.text.Frag {
-
-  override def render: String = {
-    val writer = new StringWriter
-    writeTo(writer)
-    return writer.toString()
-  }
-
-  override def writeTo(strb: Writer): Unit = {
-    strb.append("<!-- ")
-    strb.append(content.replace("--", ""))
-    strb.append(" -->")
-  }
-}
-
-object ScalaTagsHtmlEmbed {
-
-  /** Collect extended tags inside html */
-  private[scalatags] def collectFrom(html: TypedTag[String]): Vector[ScalaTagsHtmlEmbed] = {
-    /*
-    There is no simple way to deconstruct the HTML and it is also not designed for that use case.
-    Hower we can just render it, and collect all placeholders using ThreadLocal variable.s
-     */
-    ScalaTagsHtmlEmbedCollector.begin()
-    html.toString
-    ScalaTagsHtmlEmbedCollector.end()
-  }
-}
-
-/** Helper for collecting embedded [ScalaTagsHtmlEmbed] elements. */
-private object ScalaTagsHtmlEmbedCollector {
-  private val isActive  = new SimpleThreadLocal(false)
-  private val collector = new SimpleThreadLocal(mutable.ArrayBuffer[ScalaTagsHtmlEmbed]())
-
-  /** Check if we are in the collecting phase, then do nothing. */
-  def collectingPhase(embed: ScalaTagsHtmlEmbed): Boolean = {
-    if (isActive.get()) {
-      collector.get() += embed
-      true
-    } else {
-      false
-    }
-  }
-
-  def begin(): Unit = {
-    isActive.set(true)
-  }
-
-  def end(): Vector[ScalaTagsHtmlEmbed] = {
-    isActive.set(false)
-    val result = collector.get().toVector
-    collector.get().clear()
-    result
-  }
 }

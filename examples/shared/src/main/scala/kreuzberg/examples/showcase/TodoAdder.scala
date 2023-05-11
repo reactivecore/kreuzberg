@@ -6,17 +6,16 @@ import kreuzberg.scalatags.all.*
 
 case class TodoAdder(
     model: Model[TodoList]
-)
+) extends ComponentBase {
 
-object TodoAdder extends ComponentDsl {
-  implicit val assembler: Assembler.Aux[TodoAdder, Unit] = (value: TodoAdder) => {
+  def assemble: AssemblyResult[Runtime] = {
     for {
       textInput <- namedChild("input", TextInput("name"))
       button    <- namedChild("addButton", Button("Add"))
       binding    =
         from(button)(_.clicked)
           .withState(textInput)(_.text)
-          .changeModel(value.model) { (t, current) =>
+          .changeModel(model) { (t, current) =>
             Logger.debug(s"Appending ${t}")
             val result = current.append(t)
             Logger.debug(s"Result ${result}")
@@ -24,10 +23,9 @@ object TodoAdder extends ComponentDsl {
           }
     } yield {
       Assembly(
-        form(),
-        Vector(
-          textInput,
-          button
+        form(
+          textInput.wrap,
+          button.wrap
         ),
         Vector(
           binding

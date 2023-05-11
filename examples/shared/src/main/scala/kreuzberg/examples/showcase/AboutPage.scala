@@ -17,8 +17,7 @@ object AboutPage extends ComponentBase {
                  ) // This is used for testing if we garbage collect anonymous children correctly
     } yield {
       Assembly(
-        div("Hello World"),
-        Vector(version)
+        div("Hello World", version.wrap),
       )
     }
   }

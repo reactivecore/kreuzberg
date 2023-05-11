@@ -10,12 +10,12 @@ import scala.util.Success
 sealed trait EventSource[E] {
 
   /** Extend runtime state to event. */
-  def addState[T, R, S](from: ComponentNode[T, R])(fn: R => S): EventSource[(E, S)] = {
-    EventSource.WithState(this, from.id, from.assembly.provider, fn)
+  def addState[R, S](from: TreeNodeR[R])(fn: R => S): EventSource[(E, S)] = {
+    EventSource.WithState(this, from.id, from.runtimeProvider, fn)
   }
 
   /** Replace event state with runtime state */
-  def withState[T, R, S](from: ComponentNode[T, R])(fn: R => S): EventSource[S] = {
+  def withState[R, S](from: TreeNodeR[R])(fn: R => S): EventSource[S] = {
     addState(from)(fn).map(_._2)
   }
 
@@ -83,12 +83,12 @@ sealed trait EventSource[E] {
   }
 
   /** Trigger some other (usually child) components event. */
-  def trigger[T](c: ComponentNode[T, _])(selector: T => Custom[E]) = {
+  def trigger[T <: Component](c: TreeNodeC[T])(selector: T => Custom[E]) = {
     EventBinding(
       this,
       EventSink.CustomEventSink(
         Some(c.id),
-        selector(c.value)
+        selector(c.component)
       )
     )
   }
