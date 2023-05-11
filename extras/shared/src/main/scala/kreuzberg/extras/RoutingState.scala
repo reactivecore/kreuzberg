@@ -14,7 +14,7 @@ object RoutingState {
   def goto[E](route: String)(implicit c: AssemblyContext): EventSink.ModelChange[E, RoutingState] = {
     val state = c.transformFn(_.provide[Model[RoutingState]])
     EventSink.ModelChange(
-      state,
+      state.id,
       (_, m) => m.copy(currentRoute = route)
     )
   }
