@@ -51,19 +51,19 @@ sealed trait EventSource[E] {
 
   /** Shortcut for building event bindings */
   def changeModel[M](model: Model[M])(f: (E, M) => M): EventBinding.SourceSink[E] = {
-    val sink = EventSink.ModelChange(model, f)
+    val sink = EventSink.ModelChange(model.id, f)
     EventBinding(this, sink)
   }
 
   /** Change model without caring about the value of the event. */
   def changeModelDirect[M](model: Model[M])(f: M => M): EventBinding.SourceSink[E] = {
-    val sink = EventSink.ModelChange(model, (_, m) => f(m))
+    val sink = EventSink.ModelChange[E, M](model.id, (_, m) => f(m))
     EventBinding(this, sink)
   }
 
   /** Set the model to a value without caring about the value of the event or model before */
   def setModel[M](model: Model[M], value: M): EventBinding.SourceSink[E] = {
-    val sink = EventSink.ModelChange(model, (_, _) => value)
+    val sink = EventSink.ModelChange(model.id, (_, _) => value)
     EventBinding(this, sink)
   }
 
@@ -132,8 +132,14 @@ object EventSource {
   ) extends EventSource[(E, S)]
 
   case class ModelChange[M](
-      model: Model[M]
+      modelId: ModelId
   ) extends EventSource[(M, M)]
+
+  object ModelChange {
+    def apply[M](model: Model[M]): ModelChange[M] = {
+      ModelChange(model.id)
+    }
+  }
 
   case class MapSource[E, F](
       from: EventSource[E],
@@ -171,7 +177,7 @@ sealed trait EventSink[-E] {
 object EventSink {
 
   /** Issue a model change */
-  case class ModelChange[E, M](model: Model[M], f: (E, M) => M) extends EventSink[E]
+  case class ModelChange[E, M](modelId: ModelId, f: (E, M) => M) extends EventSink[E]
 
   /** Execute some custom Code */
   case class ExecuteCode[E](f: E => Unit) extends EventSink[E]

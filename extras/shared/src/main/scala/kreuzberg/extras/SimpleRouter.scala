@@ -31,47 +31,38 @@ case class SimpleRouter(
       id                <- Stateful[AssemblyState, ComponentId](_.ensureChildren(routeValue))
       route              = decideRoute(routeValue)
       assembled         <- route.node(id, routeValue)
-      onLoadBinding      = EventBinding(
-                             EventSource.WindowJsEvent(Event.JsEvent("load")),
-                             EventSink
-                               .ModelChange(
-                                 routingStateModel,
-                                 (_, m) => {
-                                   val path = BrowserRouting.getCurrentPath()
-                                   Logger.debug(s"Load Event: ${path}")
-                                   RoutingState(path)
-                                 }
-                               )
-                               .and(EventSink.ExecuteCode { _ =>
-                                 val path  = BrowserRouting.getCurrentPath()
-                                 val title = decideRoute(path).title(path)
-                                 BrowserRouting.setDocumentTitle(titlePrefix + title)
-                               })
-                           )
-      routeChangeBinding = EventBinding(
-                             EventSource.ModelChange(routingStateModel),
-                             EventSink.ExecuteCode[(RoutingState, RoutingState)] { case (from, target) =>
-                               val title = decideRoute(target.currentRoute).title(target.currentRoute)
-                               Logger.debug(s"Model change ${from} -> ${target}")
+      onLoadBinding      = EventSource
+                             .WindowJsEvent(Event.JsEvent("load"))
+                             .changeModel(routingStateModel) { (_, m) =>
+                               val path = BrowserRouting.getCurrentPath()
+                               Logger.debug(s"Load Event: ${path}")
+                               RoutingState(path)
+                             }
+                             .and
+                             .executeCode { _ =>
                                val path  = BrowserRouting.getCurrentPath()
-                               if (target.currentRoute != path) { // Otherwise we would also push a state change on a pop change
-                                 Logger.debug(s"Push state ${title}/${target}")
-                                 BrowserRouting.pushState(title, target.currentRoute)
-                               }
+                               val title = decideRoute(path).title(path)
                                BrowserRouting.setDocumentTitle(titlePrefix + title)
                              }
-                           )
-      popStateBinding    = EventBinding(
-                             EventSource.WindowJsEvent(Event.JsEvent("popstate")),
-                             EventSink.ModelChange(
-                               routingStateModel,
-                               { (_, current) =>
-                                 val path = BrowserRouting.getCurrentPath()
-                                 Logger.debug(s"Popstate event ${path}")
-                                 RoutingState(path)
-                               }
-                             )
-                           )
+      routeChangeBinding = EventSource.ModelChange(routingStateModel).executeCode { case (from, target) =>
+                             val title = decideRoute(target.currentRoute).title(target.currentRoute)
+                             Logger.debug(s"Model change ${from} -> ${target}")
+                             val path  = BrowserRouting.getCurrentPath()
+                             if (target.currentRoute != path) { // Otherwise we would also push a state change on a pop change
+                               Logger.debug(s"Push state ${title}/${target}")
+                               BrowserRouting.pushState(title, target.currentRoute)
+                             }
+                             BrowserRouting.setDocumentTitle(titlePrefix + title)
+                           }
+
+      popStateBinding = EventSource
+                          .WindowJsEvent(Event.JsEvent("popstate"))
+                          .changeModel(routingStateModel) { (_, current) =>
+                            val path = BrowserRouting.getCurrentPath()
+                            Logger.debug(s"Popstate event ${path}")
+                            RoutingState(path)
+                          }
+
     } yield {
       Assembly(
         div(assembled.wrap),

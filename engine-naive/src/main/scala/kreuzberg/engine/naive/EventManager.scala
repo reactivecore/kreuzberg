@@ -107,10 +107,10 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def transformSink[T](node: TreeNode, eventSink: EventSink[T]): T => Unit = {
     eventSink match
-      case EventSink.ModelChange(model, f)         =>
+      case EventSink.ModelChange(modelId, f)         =>
         eventData =>
           val change = PendingModelChange(
-            model.id,
+            modelId,
             fn = f(eventData, _)
           )
           _pending.append(change)
@@ -219,7 +219,7 @@ class EventManager(delegate: EventManagerDelegate) {
   }
 
   private def bindModelChange[T](ownNode: TreeNode, source: EventSource.ModelChange[T], sink: (T, T) => Unit): Unit = {
-    _modelBindings.add(source.model.id, ModelBindings(sink, ownNode.id))
+    _modelBindings.add(source.modelId, ModelBindings(sink, ownNode.id))
   }
 
   private def bindRepEvent[E](ownNode: TreeNode, repEvent: EventSource.ComponentEvent[E], sink: E => Unit): Unit = {

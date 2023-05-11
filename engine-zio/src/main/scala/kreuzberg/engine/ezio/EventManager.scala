@@ -162,21 +162,21 @@ class EventManager(
         for {
           subscribers <- modelSubscribers.get
           update      <- state.modify { state =>
-                           val oldValue     = state.modelValues(change.model.id).asInstanceOf[M]
+                           val oldValue     = state.modelValues(change.modelId).asInstanceOf[M]
                            val updated      = change.f(input, oldValue)
-                           Logger.trace(s"Model Change ${change.model.id} ${oldValue} -> ${updated}")
-                           val updatedState = state.withModelValue(change.model.id, updated)
+                           Logger.trace(s"Model Change ${change.modelId} ${oldValue} -> ${updated}")
+                           val updatedState = state.withModelValue(change.modelId, updated)
                            (oldValue, updated) -> updatedState
                          }
           _           <- {
-            val subscriberList = subscribers.get(change.model.id)
+            val subscriberList = subscribers.get(change.modelId)
             ZIO.collectAllDiscard {
               subscriberList.map { subscriber =>
                 subscriber.asInstanceOf[ModelSubscriber[M]].onChange(update._1, update._2)
               }
             }
           }
-          x           <- hub.offer(change.model.id)
+          x           <- hub.offer(change.modelId)
         } yield {
           ()
         }
@@ -316,7 +316,7 @@ class EventManager(
 
           override def owner: ComponentId = node.id
         }
-        modelSubscribers.update(_.add(eventSource.model.id, handler))
+        modelSubscribers.update(_.add(eventSource.modelId, handler))
       }
     }
   }

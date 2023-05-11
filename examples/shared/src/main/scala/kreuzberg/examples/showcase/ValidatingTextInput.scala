@@ -33,32 +33,26 @@ case class ValidatingTextInput(
       textInput    <- namedChild("input", TextInput(name, initialValue))
       errorModel   <- Model.make("error", None: Option[String])
       errorShower  <- namedChild("error", ErrorShower(errorModel))
-      bindError     = EventBinding(
-                        from(textInput)(_.inputEvent)
-                          .withState(textInput)(_.text),
-                        EventSink
-                          .ModelChange[String, String](
-                            valueModel,
-                            { (v, _) =>
-                              Logger.debug(s"Setting value to ${v}")
-                              v
-                            }
-                          )
-                          .and(
-                            EventSink.ModelChange(
-                              errorModel,
-                              (v, _) => {
-                                val error = validator(v)
-                                Logger.debug(s"Setting error to ${error}")
-                                error
-                              }
-                            )
-                          )
-                      )
+      bindError     =
+        from(textInput)(_.inputEvent)
+          .withState(textInput)(_.text)
+          .changeModel(valueModel) { (v, _) =>
+            Logger.debug(s"Setting value to ${v}")
+            v
+          }
+          .and
+          .changeModel(errorModel) { (v, _) =>
+            {
+              val error = validator(v)
+              Logger.debug(s"Setting error to ${error}")
+              error
+            }
+          }
     } yield {
       Assembly(
         div(
-          textInput.wrap, errorShower.wrap
+          textInput.wrap,
+          errorShower.wrap
         ),
         Vector(bindError)
       )
