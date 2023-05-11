@@ -8,16 +8,15 @@ import kreuzberg.dom.ScalaJsElement
 /**
  * Base class for components, which assemble imperative. Also see [[SimpleComponentBase]] for an even reduced version.
  */
-abstract class ImperativeComponentBase extends ImperativeDsl {
+abstract class ImperativeComponentBase extends ImperativeDsl with Component {
+
+  type Runtime = Unit
 
   def assemble(implicit c: AssemblyContext): Assembly[Unit]
 
-}
-
-object ImperativeComponentBase {
-  implicit def assembler[T <: ImperativeComponentBase]: Assembler.Aux[T, Unit] = { value =>
+  final def assemble: AssemblyResult[Runtime] = {
     AssemblyContext.transform { context =>
-      value.assemble(context)
+      assemble(context)
     }
   }
 }
@@ -59,17 +58,17 @@ trait ImperativeDsl {
   protected def model[M](name: String, defaultValue: M)(implicit c: AssemblyContext): Model[M] =
     c.transformFn(_.withModel(name, defaultValue))
 
-  protected def child[C](
+  protected def child[R, T <: Component.Aux[R]](
       name: String,
-      value: C
-  )(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C, assembler.RuntimeNode] = {
-    c.transform(assembler.assembleNamedChild(name, value))
+      component: T
+  )(implicit c: AssemblyContext): ComponentNode[R, T] = {
+    c.transform(Assembler.assembleNamedChild(name, component))
   }
 
-  protected def anonymousChild[C](
-      value: C
-  )(implicit c: AssemblyContext, assembler: Assembler[C]): ComponentNode[C, assembler.RuntimeNode] = {
-    c.transform(assembler.assembleWithNewId(value))
+  protected def anonymousChild[R, T <: Component.Aux[R]](
+      component: T
+  )(implicit c: AssemblyContext): ComponentNode[R, T] = {
+    c.transform(Assembler.assembleWithNewId(component))
   }
 
   protected def subscribe[M](model: Model[M])(implicit c: AssemblyContext): M = {
@@ -89,12 +88,12 @@ trait ImperativeDsl {
     c.transformFn(_.provide[T])
   }
 
-  case class RepBuilder[T](rep: ComponentNode[T, _]) {
-    def apply[E](f: T => Event[E]): EventSource[E] = EventSource.ComponentEvent(f(rep.value), Some(rep.id))
+  case class RepBuilder[T <: Component](rep: TreeNodeC[T]) {
+    def apply[E](f: T => Event[E]): EventSource[E] = EventSource.ComponentEvent(f(rep.component), Some(rep.id))
   }
 
   /** Helper for selecting events from children. */
-  def from[T](rep: ComponentNode[T, _]): RepBuilder[T] = RepBuilder(rep)
+  def from[T <: Component](rep: TreeNodeC[T]): RepBuilder[T] = RepBuilder(rep)
 
   /** Helper for selecting own events. */
   def own[E](event: Event[E]): EventSource[E] = EventSource.ComponentEvent(event)
@@ -114,12 +113,12 @@ trait ImperativeDsl {
     }
   }
 
-  extension [T, R](node: ComponentNode[T, R]) {
+  extension [R](node: TreeNodeR[R]) {
 
     /** Accessor for runtime node. */
     def state(implicit runtimeContext: RuntimeContext): R = {
       val subContext = runtimeContext.jump(node.id)
-      node.assembly.provider(subContext)
+      node.runtimeProvider(subContext)
     }
   }
 }

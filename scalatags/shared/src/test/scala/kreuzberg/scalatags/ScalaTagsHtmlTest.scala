@@ -1,6 +1,6 @@
 package kreuzberg.scalatags
 import kreuzberg.{Assembler, ComponentId, Html}
-import kreuzberg.imperative.{SimpleComponentBase, SimpleContext}
+import kreuzberg.imperative.{AssemblyContext, SimpleComponentBase, SimpleContext}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -9,15 +9,10 @@ class ScalaTagsHtmlTest extends TestBase {
     div("Hello World", span("How are you?"))
   )
   it should "work in a simple example" in {
-    simple.renderToString() shouldBe """<div>Hello World<span>How are you?</span></div>"""
-    simple
-      .addInner(
-        Seq(
-          ScalaTagsHtml(div("Foo")),
-          ScalaTagsHtml(div("Bar"))
-        )
-      )
-      .renderToString() shouldBe """<div>Hello World<span>How are you?</span><div>Foo</div><div>Bar</div></div>"""
+    val flat     = simple.flat()
+    val expected = """<div>Hello World<span>How are you?</span></div>"""
+    flat.renderWithoutPlaceholders() shouldBe expected
+    simple.renderToString() shouldBe expected
 
     simple
       .withId(ComponentId(123))
@@ -47,8 +42,33 @@ class ScalaTagsHtmlTest extends TestBase {
   it should "support placeholders" in {
     Assembler
       .single(Bar)
-      .renderWithId(ComponentId(0))
-      .renderToString() shouldBe """<div data-id="0">Hello World<span data-id="1"><!-- Foo -->Boom!</span></div>"""
+      .html
+      .renderToString() shouldBe """<div>Hello World<span data-id="1"><!-- Foo -->Boom!</span></div>"""
+  }
+
+  object Nested extends SimpleComponentBase {
+    override def assemble(implicit c: SimpleContext): Html = {
+      val a = Foo.wrap
+      val b = Foo.wrap
+      div(
+        a,
+        p(
+          ScalaTagsHtmlEmbedding(
+            div(
+              b
+            )
+          )
+        )
+      )
+    }
+  }
+
+  it should "work nested" in {
+    val rendered = Assembler
+      .single(Nested)
+      .html
+      .renderToString()
+    rendered shouldBe """<div><span data-id="1"><!-- Foo -->Boom!</span><p><div><span data-id="2"><!-- Foo -->Boom!</span></div></p></div>"""
   }
 
 }

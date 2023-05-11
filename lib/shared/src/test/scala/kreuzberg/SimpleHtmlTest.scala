@@ -8,12 +8,6 @@ class SimpleHtmlTest extends TestBase {
 
     node.withId(ComponentId(3)).toString shouldBe "<div data-id=\"3\"></div>"
     node.withId(ComponentId(4)).toString shouldBe "<div data-id=\"4\"></div>"
-
-    node
-      .addInner(
-        Seq(SimpleHtml("foo"))
-      )
-      .toString shouldBe "<div><foo></foo></div>"
   }
 
   it should "work for a complex case" in {

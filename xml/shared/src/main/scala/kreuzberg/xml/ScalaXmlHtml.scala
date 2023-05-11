@@ -1,6 +1,5 @@
 package kreuzberg.xml
-import kreuzberg.imperative.PlaceholderState
-import kreuzberg.{ComponentId, Html, TreeNode}
+import kreuzberg.{ComponentId, FlatHtmlBuilder, Html, TreeNode}
 
 import scala.xml.{Elem, Node, Null, SpecialNode, UnprefixedAttribute, Utility}
 
@@ -28,25 +27,14 @@ case class ScalaXmlHtml(elem: Elem) extends Html {
     )
   }
 
-  override def addInner(inner: Seq[Html]): Html = {
-    val converted = inner.map {
-      case s: ScalaXmlHtml => s.elem
-      case other           => ScalaXmlHtmlEmbed(other)
-    }
-    ScalaXmlHtml(
-      elem.copy(
-        child = elem.child ++ converted
-      )
-    )
-  }
-
-  override def placeholders: Iterable[TreeNode] = {
+  override def embeddedNodes: Iterable[TreeNode] = {
     val collector = Vector.newBuilder[TreeNode]
 
     def traverse(node: Node): Unit = {
       node match {
-        case h: ScalaXmlHtmlEmbed => collector ++= h.html.placeholders
-        case other                =>
+        case h: ScalaXmlHtmlEmbedding     => collector ++= h.html.embeddedNodes
+        case t: ScalaXmlTreeNodeEmbedding => collector += t.treeNode
+        case other                        =>
           other.child.foreach(traverse)
       }
     }
@@ -55,16 +43,35 @@ case class ScalaXmlHtml(elem: Elem) extends Html {
     collector.result()
   }
 
-  override def render(sb: StringBuilder): Unit = {
-    Utility.serialize(elem, sb = sb)
+  override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
+    FlatHtmlBuilder.withFlatHtmlBuilder(flatHtmlBuilder) {
+      Utility.serialize(elem, sb = flatHtmlBuilder.getStringBuilder)
+    }
   }
 }
 
-case class ScalaXmlHtmlEmbed(html: Html) extends SpecialNode {
+sealed abstract class ScalaXmlEmbedding extends SpecialNode
+
+case class ScalaXmlHtmlEmbedding(html: Html) extends ScalaXmlEmbedding {
   override def buildString(sb: StringBuilder): StringBuilder = {
-    html.render(sb)
+    FlatHtmlBuilder.current match {
+      case Some(fb) => html.flatToBuilder(fb)
+      case None     => html.render(sb)
+    }
     sb
   }
 
   override def label: String = "#Html"
+}
+
+case class ScalaXmlTreeNodeEmbedding(treeNode: TreeNode) extends ScalaXmlEmbedding {
+  override def buildString(sb: StringBuilder): StringBuilder = {
+    FlatHtmlBuilder.current match {
+      case Some(fb) => fb.addPlaceholder(treeNode.id)
+      case None     => treeNode.renderTo(sb)
+    }
+    sb
+  }
+
+  override def label: String = "#TreeNode"
 }

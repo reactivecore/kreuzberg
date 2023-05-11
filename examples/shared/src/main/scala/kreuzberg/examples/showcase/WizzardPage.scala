@@ -5,10 +5,10 @@ import kreuzberg.imperative.{AssemblyContext, ImperativeComponentBase}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-case class WizzardablePage[T](
-    component: T
-)(implicit val assembler: Assembler[T]) {
-  def assemble(name: String): NodeResult[T, assembler.RuntimeNode] = assembler.assembleNamedChild(name, component)
+case class WizzardablePage(
+    component: Component
+) {
+  def assemble(name: String): TreeNodeResult = Assembler.assembleNamedChild(name, component)
 }
 
 case class SimpleText(text: String) extends ImperativeComponentBase {
@@ -18,7 +18,7 @@ case class SimpleText(text: String) extends ImperativeComponentBase {
 }
 
 case class Wizzard(
-    pages: Seq[WizzardablePage[_]]
+    pages: Seq[WizzardablePage]
 ) extends ImperativeComponentBase {
   override def assemble(implicit c: AssemblyContext): Assembly[Unit] = {
     val pageModel   = model("page", 0)
@@ -34,8 +34,7 @@ case class Wizzard(
     )
 
     Assembly(
-      div,
-      Vector(rendered, prevButton, nextButton),
+      div(rendered.wrap, prevButton.wrap, nextButton.wrap),
       bindings
     )
   }
@@ -43,19 +42,17 @@ case class Wizzard(
 
 object WizzardPage extends ImperativeComponentBase {
   override def assemble(implicit c: AssemblyContext): Assembly[Unit] = {
-    val page1   = WizzardablePage(SimpleText("This is page 1"))
-    val page2   = WizzardablePage(SimpleText("This is page 2"))
-    val page3   = WizzardablePage(SimpleText("This is page 3"))
-    val wizzard = Wizzard(
+    val page1        = WizzardablePage(SimpleText("This is page 1"))
+    val page2        = WizzardablePage(SimpleText("This is page 2"))
+    val page3        = WizzardablePage(SimpleText("This is page 3"))
+    val wizzard      = Wizzard(
       Seq(
         page1,
         page2,
         page3
       )
     )
-    Assembly(
-      div,
-      Vector(child("wizzard", wizzard))
-    )
+    val wizzardChild = child("wizzard", wizzard)
+    div(wizzardChild.wrap)
   }
 }

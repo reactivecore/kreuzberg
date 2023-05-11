@@ -30,10 +30,9 @@ case class App()
                 )
     } yield {
       Assembly(
-        div(),
-        Vector(
-          menu,
-          router
+        div(
+          menu.wrap,
+          router.wrap
         )
       )
     }

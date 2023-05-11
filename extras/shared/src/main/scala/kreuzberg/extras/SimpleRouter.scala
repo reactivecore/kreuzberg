@@ -74,13 +74,13 @@ case class SimpleRouter(
                            )
     } yield {
       Assembly(
-        div(),
-        Vector(assembled),
+        div(assembled.wrap),
         Vector(
           onLoadBinding,
           routeChangeBinding,
           popStateBinding
-        )
+        ),
+        provider = _ => ()
       )
     }
   }

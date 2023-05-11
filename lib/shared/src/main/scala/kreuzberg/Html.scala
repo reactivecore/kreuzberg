@@ -12,14 +12,21 @@ trait Html {
   /** Add some comment to the HTML Comment. */
   def addComment(c: String): Html
 
-  /** Add more HTML at the end of the tag. */
-  def addInner(inner: Seq[Html]): Html
-
   /** Returns all embedded components within the HTML Code. */
-  def placeholders: Iterable[TreeNode]
+  def embeddedNodes: Iterable[TreeNode]
 
   /** Render the HTML. */
-  def render(sb: StringBuilder): Unit
+  def render(sb: StringBuilder): Unit = {
+    val placeholderMap = embeddedNodes.map { treeNode =>
+      treeNode.id -> treeNode
+    }.toMap
+
+    val nodeRender: (ComponentId, StringBuilder) => Unit = { (id, builder) =>
+      placeholderMap(id).renderTo(builder)
+    }
+
+    flat().render(sb, nodeRender)
+  }
 
   /** Render the HTML to a String. */
   def renderToString(): String = {
@@ -31,31 +38,14 @@ trait Html {
   override def toString: String = {
     renderToString()
   }
-}
 
-object Html {
-  implicit def treeNodeToHtml(treeNode: TreeNode): Html = TreeNodePlaceholder(treeNode)
-}
-
-/** Wraps a TreeNode inside Html. */
-case class TreeNodePlaceholder(treeNode: TreeNode) extends Html {
-  def withId(id: ComponentId): Html = {
-    treeNode.render().withId(id)
+  /** Convert to a flat HTML representation. */
+  def flat(): FlatHtml = {
+    val builder = FlatHtmlBuilder()
+    flatToBuilder(builder)
+    builder.result()
   }
 
-  def addComment(c: String): Html = {
-    treeNode.render().addComment(c)
-  }
-
-  def addInner(inner: Seq[Html]): Html = {
-    treeNode.render().addInner(inner)
-  }
-
-  def placeholders: Iterable[TreeNode] = {
-    List(treeNode)
-  }
-
-  def render(sb: StringBuilder): Unit = {
-    treeNode.render().render(sb)
-  }
+  /** Serializes into a FlatHtmlBuilder. */
+  def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit
 }

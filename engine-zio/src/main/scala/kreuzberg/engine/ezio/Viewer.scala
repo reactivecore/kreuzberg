@@ -2,7 +2,6 @@ package kreuzberg.engine.ezio
 
 import kreuzberg.*
 import kreuzberg.dom.*
-import kreuzberg.imperative.PlaceholderState
 import zio.{Task, ZIO}
 
 import scala.util.control.NonFatal
@@ -15,7 +14,6 @@ class Viewer(rootElement: ScalaJsElement) {
     ZIO.attempt {
       val html = node.render()
       rootElement.innerHTML = html.toString
-      PlaceholderState.clear()
     }
   }
 
@@ -23,7 +21,6 @@ class Viewer(rootElement: ScalaJsElement) {
   def updateNode(node: TreeNode): Task[Unit] = {
     val htmlEffect = ZIO.attempt {
       val result = node.render()
-      PlaceholderState.clear() // TODO: Remove Me after merging ticket branch
       result
     }
     for {

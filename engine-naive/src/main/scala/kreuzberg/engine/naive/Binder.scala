@@ -11,7 +11,7 @@ import scala.util.control.NonFatal
 object Binder {
 
   /** Activate a Node on a root element, starting the whole magic. */
-  def runOnLoaded[T: Assembler](component: T, rootId: String): Unit = {
+  def runOnLoaded(component: Component, rootId: String): Unit = {
     org.scalajs.dom.document.addEventListener(
       "DOMContentLoaded",
       { (e: ScalaJsEvent) =>
@@ -25,7 +25,7 @@ object Binder {
 }
 
 /** Binds a root element to a Node. */
-class Binder[T](rootElement: ScalaJsElement, main: T)(implicit assembler: Assembler[T]) extends EventManagerDelegate {
+class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerDelegate {
   private var _currentState: AssemblyState = AssemblyState()
   private var _tree: TreeNode              = TreeNode.empty
 
@@ -49,7 +49,7 @@ class Binder[T](rootElement: ScalaJsElement, main: T)(implicit assembler: Assemb
 
   private def redraw(): Unit = {
     Logger.debug("Starting Redraw")
-    val (nextState, tree) = assembler.assembleNamedChild("root", main)(_currentState)
+    val (nextState, tree) = Assembler.assembleNamedChild("root", main)(_currentState)
     viewer.drawRoot(tree)
     _currentState = nextState
     _tree = tree
@@ -88,7 +88,7 @@ class Binder[T](rootElement: ScalaJsElement, main: T)(implicit assembler: Assemb
   private def reassembleNode(node: TreeNode): Stateful[AssemblyState, TreeNode] = {
     node match {
       case r: ComponentNode[_, _] =>
-        r.assembler.assembleWithId(node.id, r.value)
+        Assembler.assembleWithId(node.id, r.component)
     }
   }
 
@@ -97,18 +97,15 @@ class Binder[T](rootElement: ScalaJsElement, main: T)(implicit assembler: Assemb
       f: TreeNode => Stateful[AssemblyState, TreeNode]
   ): Stateful[AssemblyState, TreeNode] = {
     node match {
-      case r: ComponentNode[_, _] =>
-        r.assembly match {
-          case p: Assembly.Pure[_]      => Stateful.pure(node)
-          case c: Assembly.Container[_] =>
-            for {
-              updated <- Stateful.accumulate(c.nodes)(f)
-            } yield {
-              val updatedAssembly = c.copy(
-                nodes = updated
-              )
-              r.copy(assembly = updatedAssembly)
-            }
+      case c: ComponentNode[_, _] =>
+        if (c.children.isEmpty) {
+          Stateful.pure(node)
+        } else {
+          for {
+            updated <- Stateful.accumulate(c.children)(f)
+          } yield {
+            c.copy(children = updated)
+          }
         }
     }
   }

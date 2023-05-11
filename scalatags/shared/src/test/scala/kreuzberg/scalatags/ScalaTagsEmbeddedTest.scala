@@ -4,18 +4,17 @@ import kreuzberg.{Assembler, AssemblyState, ComponentBase, ComponentId, Componen
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-class PlaceholderTagTest extends TestBase {
+class ScalaTagsEmbeddedTest extends TestBase {
   case class DummyComponent(i: Int) extends ComponentBase {
     def assemble: AssemblyResult[Unit] = {
       div(s"Hello World ${i}")
     }
   }
 
-  def node(i: Int) = ComponentNode(
+  def node(i: Int) = ComponentNode.build(
     ComponentId(i),
     DummyComponent(i),
-    DummyComponent(i).assemble(AssemblyState())._2,
-    implicitly[Assembler[DummyComponent]]
+    DummyComponent(i).assemble(AssemblyState())._2
   )
 
   "collectFrom" should "work" in {
@@ -23,7 +22,6 @@ class PlaceholderTagTest extends TestBase {
     val p1          = node(1).wrap
     val p2          = node(2).wrap
     val p3          = node(2).wrap
-    val placeholder = node(3).wrap
     val html        = div(
       div(
         "foo"
@@ -37,6 +35,6 @@ class PlaceholderTagTest extends TestBase {
         )
       )
     )
-    ScalaTagsHtmlEmbed.collectFrom(html) shouldBe Vector(p0, p1, p2, p3)
+    ScalaTagsEmbedding.collectFrom(html) shouldBe Vector(p0, p1, p2, p3)
   }
 }

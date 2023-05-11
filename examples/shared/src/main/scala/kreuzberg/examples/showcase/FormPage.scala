@@ -37,8 +37,7 @@ object FormPage extends ComponentBase {
                    )
     } yield {
       Assembly(
-        form(),
-        Vector(nameForm, ageForm)
+        form(nameForm.wrap, ageForm.wrap),
       )
     }
   }

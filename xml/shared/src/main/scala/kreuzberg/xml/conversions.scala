@@ -1,10 +1,11 @@
 package kreuzberg.xml
 
 import kreuzberg.imperative.AssemblyContext
-import kreuzberg.{Assembler, Html, TreeNode}
+import kreuzberg.{Assembler, Html, TreeNode, HtmlEmbedding}
 
 import scala.language.implicitConversions
 import scala.xml.Elem
+import kreuzberg.Component
 
 /**
  * Implicitly converts XML to Elem. Note: Scala 3 Conversions would make us to import by hand.
@@ -12,12 +13,16 @@ import scala.xml.Elem
 implicit def elemToHtml(e: Elem): Html = ScalaXmlHtml(e)
 
 extension (tn: TreeNode) {
-  def wrap: ScalaXmlHtmlEmbed = ScalaXmlHtmlEmbed(Html.treeNodeToHtml(tn))
+  def wrap: ScalaXmlTreeNodeEmbedding = ScalaXmlTreeNodeEmbedding(tn)
 }
 
-extension [T](component: T)(using a: Assembler[T]) {
-  def wrap(implicit c: AssemblyContext): ScalaXmlHtmlEmbed = {
-    c.transform(a.assembleWithNewId(component)).wrap
+extension (component: Component) {
+  def wrap(implicit c: AssemblyContext): ScalaXmlTreeNodeEmbedding = {
+    c.transform(Assembler.assembleWithNewId(component)).wrap
   }
 }
 
+implicit def htmlEmbed(in: HtmlEmbedding): ScalaXmlEmbedding = in match {
+  case tn: TreeNode => ScalaXmlTreeNodeEmbedding(tn)
+  case h: Html      => ScalaXmlHtmlEmbedding(h)
+}

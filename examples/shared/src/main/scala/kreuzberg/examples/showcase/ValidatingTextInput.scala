@@ -57,8 +57,9 @@ case class ValidatingTextInput(
                       )
     } yield {
       Assembly(
-        div(),
-        Vector(textInput, errorShower),
+        div(
+          textInput.wrap, errorShower.wrap
+        ),
         Vector(bindError)
       )
     }

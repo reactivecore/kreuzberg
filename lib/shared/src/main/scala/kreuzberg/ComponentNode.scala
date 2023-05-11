@@ -1,15 +1,25 @@
 package kreuzberg
 
+import kreuzberg.util.Stateful
+
 /** Represents an assembled node in a tree. */
 sealed trait TreeNode {
   def id: ComponentId
-  def assembly: Assembly[Any]
 
   /** Returns children nodes. */
-  def children: Vector[TreeNode] = assembly.nodes
+  def children: Vector[TreeNode]
+
+  /** Event Handlers. */
+  def handlers: Vector[EventBinding]
 
   /** Renders the tree node. */
-  def render(): Html
+  def render(): String = {
+    val sb = StringBuilder()
+    renderTo(sb)
+    sb.result()
+  }
+
+  def renderTo(sb: StringBuilder): Unit
 
   /** Returns referenced component ids. */
   def referencedComponentIds(): Set[ComponentId] = {
@@ -25,13 +35,29 @@ sealed trait TreeNode {
   }
 }
 
+/** TreeNode with Component Type. */
+sealed trait TreeNodeC[T <: Component] extends TreeNode {
+  def component: T
+}
+
+/** TreeNode with representation type. */
+sealed trait TreeNodeR[+R] extends TreeNode {
+  def runtimeProvider: RuntimeProvider[R]
+}
+
 object TreeNode {
 
-  val empty = ComponentNode[Unit, Unit](
+  object emptyComponent extends Component {
+    type Runtime = Unit
+    def assemble: AssemblyResult[Unit] = {
+      Stateful.pure(Assembly(emptyRootHtml))
+    }
+  }
+
+  val empty = ComponentNode.build[Unit, emptyComponent.type](
     AssemblyState.RootComponent,
-    (),
-    emptyRootHtml,
-    Assembler.plain(_ => emptyRootHtml)
+    emptyComponent,
+    Assembly(emptyRootHtml)
   )
 
   private def emptyRootHtml: Html =
@@ -45,16 +71,48 @@ object TreeNode {
  * @tparam R
  *   runtime type
  */
-case class ComponentNode[T, +R](
+case class ComponentNode[+R, T <: Component.Aux[R]](
     id: ComponentId,
-    value: T,
-    assembly: Assembly[R],
-    assembler: Assembler[T]
-) extends TreeNode {
-  override def toString: String = s"Component ${id}/${value}"
+    component: T,
+    html: FlatHtml,
+    children: Vector[TreeNode],
+    runtimeProvider: RuntimeProvider[R],
+    handlers: Vector[EventBinding]
+) extends TreeNodeC[T]
+    with TreeNodeR[R] {
+  override def toString: String = s"Component ${id}/${component}"
 
-  override def render(): Html = {
-    val valueTypeName = value.getClass.getSimpleName.stripSuffix("$") // TODO: Configurable?!
-    assembly.renderWithId(id).addComment(valueTypeName)
+  private lazy val childrenMap: Map[ComponentId, TreeNode] = children.map { t => t.id -> t }.toMap
+
+  private def renderChild(id: ComponentId, sb: StringBuilder): Unit = {
+    childrenMap(id).renderTo(sb)
+  }
+
+  override def renderTo(sb: StringBuilder): Unit = {
+    html.render(sb, renderChild)
+  }
+}
+
+object ComponentNode {
+  def build[R, T <: Component.Aux[R]](
+      id: ComponentId,
+      component: T,
+      assembly: Assembly[R]
+  ): ComponentNode[R, T] = {
+    val withId    = assembly.html.withId(id)
+    val comment   = component.comment
+    val htmlToUse = if (comment.isEmpty()) {
+      withId
+    } else {
+      withId.addComment(comment)
+    }
+    ComponentNode(
+      id,
+      component,
+      htmlToUse.flat(),
+      assembly.nodes,
+      assembly.provider,
+      assembly.handlers
+    )
   }
 }

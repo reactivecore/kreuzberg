@@ -4,12 +4,12 @@ val versionTag = sys.env
   .filter(_.startsWith("v"))
   .map(_.stripPrefix("v"))
 
-val snapshotVersion = "0.4-SNAPSHOT"
+val snapshotVersion = "0.5-SNAPSHOT"
 val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
 
-ThisBuild / scalaVersion := "3.2.1"
+ThisBuild / scalaVersion := "3.2.2"
 
 ThisBuild / scalacOptions += "-Xcheck-macros"
 ThisBuild / scalacOptions += "-feature"
@@ -19,6 +19,10 @@ ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
+
+val zioVersion = "2.0.13"
+val scalatagsVersion = "0.12.0"
+val zioServerVersion = "3.0.0-RC1"
 
 val publishSettings = Seq(
   publishTo           := {
@@ -47,8 +51,6 @@ val testSettings = libraryDependencies ++= Seq(
   "org.scalatest" %%% "scalatest"          % "3.2.14" % Test,
   "org.scalatest" %%% "scalatest-flatspec" % "3.2.14" % Test
 )
-
-val zioVersion = "2.0.9"
 
 val logsettings = libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.4.5"
@@ -144,7 +146,7 @@ lazy val miniserver = (project in file("miniserver"))
   .settings(
     name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-http"           % "0.0.4",
+      "dev.zio" %% "zio-http"           % zioServerVersion,
       "dev.zio" %% "zio-logging-slf4j2" % "2.1.10"
     ),
     publishSettings,

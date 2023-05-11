@@ -5,12 +5,18 @@ import kreuzberg.{Assembler, Assembly, AssemblyResult, Html, TreeNode}
 import scalatags.Text.TypedTag
 
 import scala.language.implicitConversions
+import kreuzberg.Component
+import kreuzberg.HtmlEmbedding
+import kreuzberg.ComponentNode
 
 implicit def scalaTagsToHtml(st: TypedTag[String]): Html = {
   ScalaTagsHtml(st)
 }
 
-implicit def htmlToScalaTags(in: Html): ScalaTagsHtmlEmbed = ScalaTagsHtmlEmbed(in)
+implicit def htmlEmbed(in: HtmlEmbedding): ScalaTagsEmbedding = in match {
+  case tn: TreeNode => ScalaTagsTreeNodeEmbedding(tn)
+  case h: Html      => ScalaTagsHtmlEmbedding(h)
+}
 
 implicit def scalaTagsToAssemblyResult(st: TypedTag[String]): AssemblyResult[Unit] = {
   AssemblyResult.fromHtml(scalaTagsToHtml(st))
@@ -21,12 +27,12 @@ implicit def scalaTagsToAssembly(st: TypedTag[String]): Assembly[Unit] = {
 }
 
 extension (tn: TreeNode) {
-  def wrap: ScalaTagsHtmlEmbed = ScalaTagsHtmlEmbed(Html.treeNodeToHtml(tn))
+  def wrap: ScalaTagsTreeNodeEmbedding = ScalaTagsTreeNodeEmbedding(tn)
 }
 
-extension [T](component: T)(using a: Assembler[T]) {
-  def wrap(implicit c: AssemblyContext): ScalaTagsHtmlEmbed = {
-    c.transform(a.assembleWithNewId(component)).wrap
+extension (component: Component) {
+  def wrap(implicit c: AssemblyContext): ScalaTagsTreeNodeEmbedding = {
+    c.transform(Assembler.assembleWithNewId(component)).wrap
   }
 }
 

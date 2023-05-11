@@ -36,7 +36,7 @@ class EventManager(
              node.children.map(activateEvents)
            }
       _ <- ZIO.collectAllDiscard(
-             node.assembly.bindings.map(activateBinding(node, _))
+             node.handlers.map(activateBinding(node, _))
            )
     } yield {
       ()

@@ -12,8 +12,9 @@ case class Index(config: MiniServerConfig) {
       },
       config.extraCss.map { name =>
         link(rel := "stylesheet", href := config.hashedUrl(name))
-      }
-    ).addInner(config.extraHtmlHeader),
+      },
+      config.extraHtmlHeader
+    ),
     body(
       div(id := "root"),
       noscript(

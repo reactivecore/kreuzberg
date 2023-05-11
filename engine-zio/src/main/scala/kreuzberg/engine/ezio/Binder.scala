@@ -12,7 +12,7 @@ import scala.util.control.NonFatal
 object Binder {
 
   /** Activate a Node on a root element, starting the whole magic. */
-  def runOnLoaded[T: Assembler](component: T, rootId: String): Unit = {
+  def runOnLoaded(component: Component, rootId: String): Unit = {
     org.scalajs.dom.document.addEventListener(
       "DOMContentLoaded",
       { (e: ScalaJsEvent) =>
@@ -24,7 +24,7 @@ object Binder {
             .runToFuture(
               for {
                 _      <- Logger.infoZio("Initializing ZIO based kreuzberg engine")
-                binder <- create[T](rootElement, component)
+                binder <- create(rootElement, component)
                 result <- binder
                             .run()
                             .tapError { error =>
@@ -43,7 +43,7 @@ object Binder {
   }
 
   /** Create a Binder. */
-  def create[T: Assembler](rootElement: ScalaJsElement, main: T): Task[Binder[T]] = {
+  def create(rootElement: ScalaJsElement, main: Component): Task[Binder] = {
     val viewer                        = new Viewer(rootElement)
     val locator: EventManager.Locator = id => viewer.findElementUnsafe(id)
     for {
@@ -58,14 +58,14 @@ object Binder {
 }
 
 /** Binds a root element to a Node. */
-class Binder[T](
+class Binder(
     state: Ref[AssemblyState],
     tree: Ref[TreeNode],
     rootElement: ScalaJsElement,
-    main: T,
+    main: Component,
     eventManager2: EventManager,
     mainLock: Semaphore
-)(implicit assembler: Assembler[T]) {
+) {
 
   private val viewer = new Viewer(rootElement)
 
@@ -83,7 +83,7 @@ class Binder[T](
     mainLock.withPermit {
       for {
         _       <- Logger.debugZio("Starting redraw")
-        newTree <- assembler.assembleNamedChild("root", main).onRef(state)
+        newTree <- Assembler.assembleNamedChild("root", main).onRef(state)
         _       <- viewer.drawRoot(newTree)
         _       <- tree.set(newTree)
         _       <- Logger.debugZio("Activating Events")
@@ -156,25 +156,21 @@ class Binder[T](
   private def reassembleNode(node: TreeNode): Task[TreeNode] = {
     node match {
       case r: ComponentNode[_, _] =>
-        r.assembler.assembleWithId(node.id, r.value).onRef(state)
+        Assembler.assembleWithId(node.id, r.component).onRef(state)
     }
   }
 
   /** Transform node children using f */
   private def transformNodeChildren(node: TreeNode, f: TreeNode => Task[TreeNode]): Task[TreeNode] = {
     node match {
-      case r: ComponentNode[_, _] =>
-        r.assembly match {
-          case p: Assembly.Pure[_]      => ZIO.succeed(node)
-          case c: Assembly.Container[_] => {
-            ZIO.foreach(c.nodes)(f).map { x =>
-              val updatedAssembly = c.copy(
-                nodes = x
-              )
-              r.copy(
-                assembly = updatedAssembly
-              )
-            }
+      case c: ComponentNode[_, _] =>
+        if (c.children.isEmpty) {
+          ZIO.succeed(node)
+        } else {
+          ZIO.foreach(c.children)(f).map { x =>
+            c.copy(
+              children = x
+            )
           }
         }
     }

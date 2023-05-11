@@ -27,33 +27,22 @@ trait SimpleContextDsl extends ImperativeDsl {
 /**
  * A component base which lets the user build HTML and Elements are inserted using PlaceholderTags
  */
-abstract class SimpleComponentBase extends SimpleContextDsl {
+abstract class SimpleComponentBase extends SimpleContextDsl with Component {
   def assemble(implicit c: SimpleContext): Html
-}
 
-object SimpleComponentBase {
-  implicit def assembler[T <: SimpleComponentBase]: Assembler.Aux[T, Unit] = { value =>
+  type Runtime = Unit
+
+  final def assemble: AssemblyResult[Runtime] = {
     Stateful { state =>
-      implicit val sc  = new SimpleContext(state)
-      val html         = value.assemble
-      val placeholders = html.placeholders.toVector
-      if (placeholders.isEmpty) {
-        // Naked HTML
-        sc.state -> Assembly.Pure(html, sc.eventBindings())
-      } else {
-        val renderFn: Vector[Html] => Html = { renderedComponents =>
-          placeholders.zip(renderedComponents).foreach { case (placeholder, renderedComponent) =>
-            PlaceholderState.set(placeholder.id, renderedComponent)
-          }
-          html
-        }
-        sc.state -> Assembly.Container(placeholders, renderFn, sc.eventBindings())
-      }
+      val sc   = new SimpleContext(state)
+      val html = assemble(sc)
+      sc.state -> Assembly(html, sc.eventBindings())
     }
   }
 }
 
-abstract class SimpleComponentBaseWithRuntime[R] extends SimpleContextDsl {
+abstract class SimpleComponentBaseWithRuntime[R] extends SimpleContextDsl with Component {
+  type Runtime = R
 
   type HtmlWithRuntime = (Html, RuntimeProvider[R])
 
@@ -62,26 +51,12 @@ abstract class SimpleComponentBaseWithRuntime[R] extends SimpleContextDsl {
   protected def jsElement[T <: ScalaJsElement](using r: RuntimeContext): T = {
     r.jsElement.asInstanceOf[T]
   }
-}
 
-object SimpleComponentBaseWithRuntime {
-  implicit def assembler[R, T <: SimpleComponentBaseWithRuntime[R]]: Assembler.Aux[T, R] = { value =>
+  final def assemble: AssemblyResult[R] = {
     Stateful { state =>
-      implicit val sc      = new SimpleContext(state)
-      val (html, provider) = value.assemble
-      val placeholders     = html.placeholders.toVector
-      if (placeholders.isEmpty) {
-        // Naked HTML
-        sc.state -> Assembly.Pure(html, sc.eventBindings(), provider)
-      } else {
-        val renderFn: Vector[Html] => Html = { renderedComponents =>
-          placeholders.zip(renderedComponents).foreach { case (placeholder, renderedComponent) =>
-            PlaceholderState.set(placeholder.id, renderedComponent)
-          }
-          html
-        }
-        sc.state -> Assembly.Container(placeholders, renderFn, sc.eventBindings(), provider)
-      }
+      val sc               = new SimpleContext(state)
+      val (html, provider) = assemble(sc)
+      sc.state -> Assembly(html, sc.eventBindings(), provider)
     }
   }
 }
