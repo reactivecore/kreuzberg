@@ -68,8 +68,7 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   .jsSettings(
     libraryDependencies ++= Seq(
       "org.scala-js"  %%% "scalajs-dom"               % "2.3.0",
-      ("org.scala-js" %%% "scalajs-weakreferences"    % "1.0.0").cross(CrossVersion.for3Use2_13),
-      ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
+      ("org.scala-js" %%% "scalajs-weakreferences"    % "1.0.0").cross(CrossVersion.for3Use2_13)
     )
   )
 

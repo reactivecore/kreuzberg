@@ -53,19 +53,19 @@ sealed trait EventSource[E] {
 
   /** Shortcut for building event bindings */
   def changeModel[M](model: Model[M])(f: (E, M) => M): EventBinding.SourceSink[E] = {
-    val sink = EventSink.ModelChange(model.id, f)
+    val sink = EventSink.ModelChange(model, f)
     EventBinding(this, sink)
   }
 
   /** Change model without caring about the value of the event. */
   def changeModelDirect[M](model: Model[M])(f: M => M): EventBinding.SourceSink[E] = {
-    val sink = EventSink.ModelChange[E, M](model.id, (_, m) => f(m))
+    val sink = EventSink.ModelChange[E, M](model, (_, m) => f(m))
     EventBinding(this, sink)
   }
 
   /** Set the model to a value without caring about the value of the event or model before */
   def setModel[M](model: Model[M], value: M): EventBinding.SourceSink[E] = {
-    val sink = EventSink.ModelChange(model.id, (_, _) => value)
+    val sink = EventSink.ModelChange(model, (_, _) => value)
     EventBinding(this, sink)
   }
 
@@ -170,12 +170,15 @@ sealed trait EventSink[-E] {
 
   /** Applies a partial function before calling the sink. */
   def contraCollect[F](pf: PartialFunction[F, E]): EventSink[F] = EventSink.ContraCollect(this, pf)
+
+  /** Applies a map function before calling a sink. */
+  def contraMap[F](f: F => E): EventSink[F] = EventSink.ContraMap(this, f)
 }
 
 object EventSink {
 
   /** Issue a model change */
-  case class ModelChange[E, M](modelId: ModelId, f: (E, M) => M) extends EventSink[E]
+  case class ModelChange[E, M](model: Model[M], f: (E, M) => M) extends EventSink[E]
 
   /** Execute some custom Code */
   case class ExecuteCode[E](f: E => Unit) extends EventSink[E]
@@ -185,6 +188,9 @@ object EventSink {
 
   /** Applies a partial function before calling the sink. */
   case class ContraCollect[E, F](sink: EventSink[E], pf: PartialFunction[F, E]) extends EventSink[F]
+
+  /** Applies a map function before calling a sink. */
+  case class ContraMap[E, F](sink: EventSink[E], f: F => E) extends EventSink[F]
 
   /**
    * Trigger a component event.

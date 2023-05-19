@@ -42,9 +42,10 @@ object TodoPageWithApi extends SimpleComponentBase {
     t.fold(t => LoadingModel.Error(Failure.fromThrowable(t)), x => LoadingModel.Loaded(TodoList(x)))
   }
 
+  val model = Model.create[LoadingModel[TodoList]](LoadingModel.Loading)
+
   def assemble(implicit c: SimpleContext): Html = {
-    val m                                    = model[LoadingModel[TodoList]]("api_todolist", LoadingModel.Loading)
-    val todolist                             = subscribe(m)
+    val todolist                             = subscribe(model)
     given provider: Provider[Lister[Future]] = stubProvider[Lister[Future]]
     val lister                               = provide[Lister[Future]]
 
@@ -53,7 +54,7 @@ object TodoPageWithApi extends SimpleComponentBase {
         EventSource
           .ComponentEvent(Event.Assembled)
           .effect(_ => lister.listItems())
-          .intoModel(m)(decodeResult)
+          .intoModel(model)(decodeResult)
       }
     }
 
@@ -67,10 +68,10 @@ object TodoPageWithApi extends SimpleComponentBase {
         add(
           from(form)(_.addEvent)
             .effect(text => lister.addItem(text))
-            .intoModel(m)(_ => LoadingModel.Loading)
+            .intoModel(model)(_ => LoadingModel.Loading)
             .and
             .effect(_ => lister.listItems())
-            .intoModel(m)(decodeResult)
+            .intoModel(model)(decodeResult)
         )
 
         div(

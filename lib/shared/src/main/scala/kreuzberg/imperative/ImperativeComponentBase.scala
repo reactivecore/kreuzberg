@@ -55,9 +55,6 @@ object AssemblyContext {
 }
 
 trait ImperativeDsl {
-  protected def model[M](name: String, defaultValue: M)(implicit c: AssemblyContext): Model[M] =
-    c.transformFn(_.withModel(name, defaultValue))
-
   protected def child[R, T <: Component.Aux[R]](
       name: String,
       component: T
@@ -73,11 +70,6 @@ trait ImperativeDsl {
 
   protected def subscribe[M](model: Model[M])(implicit c: AssemblyContext): M = {
     c.transformFn(_.subscribe(model))
-  }
-
-  /** Shortcut for subscribing provided Models. */
-  protected def subscribe[M](implicit provider: Provider[Model[M]], c: AssemblyContext): M = {
-    subscribe(provide[Model[M]])
   }
 
   protected def read[M](model: Model[M])(implicit c: AssemblyContext): M = {

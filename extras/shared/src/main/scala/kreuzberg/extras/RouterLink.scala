@@ -25,7 +25,7 @@ case class RouterLink(
   override def assemble(implicit c: SimpleContext): Html = {
     val link = anonymousChild(PlainLink(name, target))
     add(
-      from(link)(_.click).map(_ => target).to(SimpleRouter.goto)
+      from(link)(_.click).to(SimpleRouter.gotoTarget(target))
     )
     if (deco) {
       span("[", link.wrap, "]")

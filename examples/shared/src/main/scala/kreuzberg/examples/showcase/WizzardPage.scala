@@ -20,8 +20,10 @@ case class SimpleText(text: String) extends ImperativeComponentBase {
 case class Wizzard(
     pages: Seq[WizzardablePage]
 ) extends ImperativeComponentBase {
+
+  val pageModel = Model.create(0)
+
   override def assemble(implicit c: AssemblyContext): Assembly[Unit] = {
-    val pageModel   = model("page", 0)
     val currentPage = subscribe(pageModel)
     val selected    = pages(currentPage)
     val rendered    = c.transform(selected.assemble(currentPage.toString))

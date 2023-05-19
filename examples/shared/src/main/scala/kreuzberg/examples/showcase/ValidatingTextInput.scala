@@ -27,11 +27,11 @@ case class ValidatingTextInput(
     validator: String => Option[String]
 ) extends ComponentBase {
   override def assemble: AssemblyResult[Unit] = {
+    val valueModel = Model.create("")
+    val errorModel = Model.create(None: Option[String])
     for {
-      valueModel   <- Model.make("value", "")
       initialValue <- read(valueModel)
       textInput    <- namedChild("input", TextInput(name, initialValue))
-      errorModel   <- Model.make("error", None: Option[String])
       errorShower  <- namedChild("error", ErrorShower(errorModel))
       bindError     =
         from(textInput)(_.inputEvent)

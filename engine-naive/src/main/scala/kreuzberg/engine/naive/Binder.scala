@@ -31,7 +31,7 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
 
   override def state: AssemblyState = _currentState
 
-  override def onIterationEnd(state: AssemblyState, changedModels: Set[ModelId]): Unit = {
+  override def onIterationEnd(state: AssemblyState, changedModels: Set[Identifier]): Unit = {
     _currentState = state
     redrawChanged(changedModels)
   }
@@ -59,7 +59,7 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
     Logger.debug("End Redraw")
   }
 
-  private def redrawChanged(changedModels: Set[ModelId]): Unit = {
+  private def redrawChanged(changedModels: Set[Identifier]): Unit = {
     val changedContainers = (_currentState.subscribers.collect {
       case (modelId, containerId) if changedModels.contains(modelId) => containerId
     }).toSet
@@ -131,12 +131,12 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
 
     val componentFiltered = state.copy(
       children = state.children.filterKeys(referencedComponents.contains),
-      models = state.models.filterKeys(referencedComponents.contains),
       services = state.services.filterKeys(referencedComponents.contains)
     )
 
-    val referencedModels = componentFiltered.models.values.map(_.id).toSet
-    val modelFiltered    = componentFiltered.copy(
+    val referencedModels = componentFiltered.subscribers.map(_._1).toSet
+
+    val modelFiltered = componentFiltered.copy(
       modelValues = componentFiltered.modelValues.view.filterKeys(referencedModels.contains).toMap,
       subscribers = componentFiltered.subscribers.filter { case (modelId, componentId) =>
         referencedModels.contains(modelId) && referencedComponents.contains(componentId)
@@ -149,11 +149,8 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
       s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models"
     )
     Logger.debug(s"  Children: ${state.children.size} -> ${modelFiltered.children.size}")
-    Logger.debug(s"  Models:   ${state.models.size}   -> ${modelFiltered.models.size}")
     Logger.debug(s"  Values:   ${state.modelValues.size} -> ${modelFiltered.modelValues.size}")
     Logger.debug(s"  Subscribers: ${state.subscribers.size} -> ${modelFiltered.subscribers.size}")
-    // println(s"  Referenced Models: ${referencedModels.toSeq.sortBy(_.id)}")
-    // println(s"  Referenced Components: ${referencedComponents.toSeq.sortBy(_.id)}")
 
     modelFiltered
   }

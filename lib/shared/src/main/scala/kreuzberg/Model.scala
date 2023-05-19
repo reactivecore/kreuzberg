@@ -2,30 +2,30 @@ package kreuzberg
 
 import kreuzberg.util.Stateful
 
-/** IDs for Models. */
-opaque type ModelId = Int
+/**
+ * A Model is something which holds a value and can be subscribed to. In contrast to channels, models carry a current
+ * value and are subscribed by components. They are allowed to be singletons. They are identified using their ID. There
+ * is only one model of the same id allowed within an Engine.
+ */
+class Model[+T] private (val initialValue: () => T) {
+  val id = Identifier.next()
 
-object ModelId {
+  override def hashCode(): Int = id.value
 
-  def apply(id: Int = 1): ModelId = id
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case c: Channel[_] => id == c.id
+      case _             => false
+    }
+  }
 
-  extension (m: ModelId) {
-    def inc: ModelId = m + 1
-
-    def id: Int = m
+  override def toString: String = {
+    s"M${id.value}"
   }
 }
 
-/** Represents a model */
-case class Model[M](ownerId: ComponentId, name: String, id: ModelId)
-
 object Model {
-  def make[M](name: String, initialValue: => M): Stateful[AssemblyState, Model[M]] = {
-    Stateful(_.withModel(name, initialValue))
-  }
 
-  /** Creates a root model */
-  def makeRoot[M](name: String, initialValue: => M): Stateful[AssemblyState, Model[M]] = {
-    Stateful(_.withRootModel(name, initialValue))
-  }
+  /** Create a model. */
+  def create[T](initialValue: => T): Model[T] = Model(() => initialValue)
 }

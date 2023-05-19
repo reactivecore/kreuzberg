@@ -17,7 +17,7 @@ class EventManager(delegate: EventManagerDelegate) {
   /** A Pending change. */
   private sealed trait PendingChange
 
-  private case class PendingModelChange[M](id: ModelId, fn: M => M) extends PendingChange
+  private case class PendingModelChange[M](model: Model[M], fn: M => M) extends PendingChange
 
   /** There is a next iteration triggered yet */
   private var _hasNextIteration: Boolean = false
@@ -26,7 +26,7 @@ class EventManager(delegate: EventManagerDelegate) {
   private var _inIteration: Boolean = false
 
   /** During Iteration: Set of changed models. */
-  private val _changedModel = mutable.Set[ModelId]()
+  private val _changedModel = mutable.Set[Identifier]()
 
   /** Bindings to Model instances. */
   private case class ModelBindings[T](
@@ -65,7 +65,7 @@ class EventManager(delegate: EventManagerDelegate) {
   private val _componentEventBindings = new MutableMultimap[(ComponentId, String), ComponentEventBinding[_]]()
 
   /** Bindings to channels. */
-  private val _channelBindings = new MutableMultimap[String, ChannelBinding[_]]()
+  private val _channelBindings = new MutableMultimap[Identifier, ChannelBinding[_]]()
 
   // Keeping track of registered window events (we do not yet remove them)
   private val _registeredWindowEvents = mutable.Set[String]()
@@ -90,7 +90,7 @@ class EventManager(delegate: EventManagerDelegate) {
     _changedModel.clear()
   }
 
-  def garbageCollect(referencedComponents: Set[ComponentId], referencedModels: Set[ModelId]): Unit = {
+  def garbageCollect(referencedComponents: Set[ComponentId], referencedModels: Set[Identifier]): Unit = {
     _windowEventBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _componentEventBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _channelBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
@@ -134,6 +134,9 @@ class EventManager(delegate: EventManagerDelegate) {
           } else {
             ()
           }
+      case EventSink.ContraMap(underlying, f)      =>
+        val converted = transformSink(node, underlying)
+        eventData => converted(f(eventData))
       case EventSink.CustomEventSink(dst, ce)      =>
         eventData =>
           _componentEventBindings.foreachKey(dst.getOrElse(node.id) -> ce.name) { binding =>
@@ -145,7 +148,7 @@ class EventManager(delegate: EventManagerDelegate) {
     ref.get match {
       case Some(c) =>
         _channelBindings.foreachKey(c.id) { _.asInstanceOf[ChannelBinding[T]].handler(data) }
-      case None     => // nothing
+      case None    => // nothing
     }
   }
 
@@ -359,14 +362,14 @@ class EventManager(delegate: EventManagerDelegate) {
   }
 
   private def handlePendingModelChange[T](change: PendingModelChange[T]): Unit = {
-    val value   = _currentState.modelValues(change.id).asInstanceOf[T]
+    val value   = _currentState.readValue(change.model)
     val updated = change.fn(value)
     if (value != updated) {
       Logger.debug(
-        s"Updating ${change.id} from ${value} to ${updated}"
+        s"Updating ${change.model.id} from ${value} to ${updated}"
       )
-      _currentState = _currentState.withModelValue(change.id, updated)
-      _changedModel.add(change.id)
+      _currentState = _currentState.withModelValue(change.model.id, updated)
+      _changedModel.add(change.model.id)
     }
   }
 
