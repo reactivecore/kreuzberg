@@ -20,7 +20,7 @@ ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
 
-val zioVersion = "2.0.13"
+val zioVersion       = "2.0.13"
 val scalatagsVersion = "0.12.0"
 val zioServerVersion = "3.0.0-RC1"
 
@@ -67,7 +67,9 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   )
   .jsSettings(
     libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom" % "2.3.0"
+      "org.scala-js"  %%% "scalajs-dom"               % "2.3.0",
+      ("org.scala-js" %%% "scalajs-weakreferences"    % "1.0.0").cross(CrossVersion.for3Use2_13),
+      ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
     )
   )
 
@@ -76,7 +78,7 @@ lazy val engineNaive = (project in file("engine-naive"))
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(lib.js)
   .settings(
-    name         := "kreuzberg-engine-naive",
+    name := "kreuzberg-engine-naive",
     publishSettings,
     testSettings
   )

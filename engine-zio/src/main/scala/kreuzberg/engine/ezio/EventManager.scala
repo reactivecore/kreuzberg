@@ -2,13 +2,15 @@ package kreuzberg.engine.ezio
 
 import kreuzberg.*
 import kreuzberg.dom.*
-import kreuzberg.engine.ezio.EventManager.{ComponentSubscriber, Iteration, Locator, ModelSubscriber, create}
+import kreuzberg.engine.ezio.EventManager.{ChannelSubscriber, ComponentSubscriber, Iteration, Locator, create}
 import kreuzberg.engine.ezio.utils.MultiListMap
 import zio.stream.{ZSink, ZStream}
 import zio.*
 
 import scala.concurrent.Future
 import kreuzberg.EventSink.ContraCollect
+
+import scala.ref.WeakReference
 
 type XStream[T] = ZStream[Any, Nothing, T]
 
@@ -18,8 +20,8 @@ class EventManager(
     hub: Hub[ModelId],
     state: Ref[AssemblyState],
     eventRegistry: JsEventRegistry[ComponentId],
-    modelSubscribers: Ref[MultiListMap[ModelId, ModelSubscriber[_]]],
-    componentSubscribers: Ref[MultiListMap[(ComponentId, String), ComponentSubscriber[_]]]
+    componentSubscribers: Ref[MultiListMap[(ComponentId, String), ComponentSubscriber[_]]],
+    channelSubscribers: Ref[MultiListMap[String, ChannelSubscriber[_]]]
 ) {
 
   /** Tracked changes for models. */
@@ -46,26 +48,11 @@ class EventManager(
   private def disableOldEventsOnComponent(id: ComponentId): Task[Unit] = {
     for {
       _ <- eventRegistry.cancel(id)
-      _ <- disableModelEventsOnComponent(id)
       _ <- disableComponentEventsOnComponentId(id)
+      _ <- disableChannelEventsOnComponentId(id)
     } yield {
       ()
     }
-  }
-
-  private def disableModelEventsOnComponent(id: ComponentId): Task[Unit] = {
-    modelSubscribers
-      .modify { modelSubscribers =>
-        val (alive, toGo) = modelSubscribers.partition { (_, v) =>
-          v.owner != id
-        }
-        toGo -> alive
-      }
-      .flatMap { (removal: MultiListMap[ModelId, ModelSubscriber[_]]) =>
-        ZIO.foreachDiscard(removal.values) {
-          _.cancel()
-        }
-      }
   }
 
   private def disableComponentEventsOnComponentId(id: ComponentId): Task[Unit] = {
@@ -80,6 +67,21 @@ class EventManager(
         toGo -> alive
       }
       .flatMap { (removal: MultiListMap[(ComponentId, String), ComponentSubscriber[_]]) =>
+        ZIO.foreachDiscard(removal.values) {
+          _.cancel()
+        }
+      }
+  }
+
+  private def disableChannelEventsOnComponentId(id: ComponentId): Task[Unit] = {
+    channelSubscribers
+      .modify { subscribers =>
+        val (alive, toGo) = subscribers.partition { (_, v) =>
+          v.owner != id
+        }
+        toGo -> alive
+      }
+      .flatMap { (removal: MultiListMap[String, ChannelSubscriber[_]]) =>
         ZIO.foreachDiscard(removal.values) {
           _.cancel()
         }
@@ -116,9 +118,6 @@ class EventManager(
       case e: EventSource.WithState[_, _, _]     => {
         convertWithState(owner, e)
       }
-      case m: EventSource.ModelChange[_]         => {
-        convertModelChange(owner, m)
-      }
       case e: EventSource.EffectEvent[_, _, _]   =>
         effectEvent(owner, e)
       case EventSource.MapSource(from, fn)       =>
@@ -127,6 +126,8 @@ class EventManager(
         sourceToStream(owner, from).map(_.collect(fn))
       case a: EventSource.AndSource[_]           =>
         andEvent(owner, a)
+      case c: EventSource.ChannelSource[_]       =>
+        convertChannelSource(owner, c)
   }
 
   private def convertSink[E](node: TreeNode, sink: EventSink[E]): E => Task[Unit] = {
@@ -153,6 +154,8 @@ class EventManager(
         }
       case t: EventSink.CustomEventSink[_] =>
         convertComponentTriggerSink(node, t)
+      case c: EventSink.ChannelSink[_]     =>
+        convertChannelSink(node, c)
     }
   }
 
@@ -160,23 +163,14 @@ class EventManager(
     input =>
       {
         for {
-          subscribers <- modelSubscribers.get
-          update      <- state.modify { state =>
-                           val oldValue     = state.modelValues(change.modelId).asInstanceOf[M]
-                           val updated      = change.f(input, oldValue)
-                           Logger.trace(s"Model Change ${change.modelId} ${oldValue} -> ${updated}")
-                           val updatedState = state.withModelValue(change.modelId, updated)
-                           (oldValue, updated) -> updatedState
-                         }
-          _           <- {
-            val subscriberList = subscribers.get(change.modelId)
-            ZIO.collectAllDiscard {
-              subscriberList.map { subscriber =>
-                subscriber.asInstanceOf[ModelSubscriber[M]].onChange(update._1, update._2)
-              }
-            }
-          }
-          x           <- hub.offer(change.modelId)
+          _ <- state.modify { state =>
+                 val oldValue     = state.modelValues(change.modelId).asInstanceOf[M]
+                 val updated      = change.f(input, oldValue)
+                 Logger.trace(s"Model Change ${change.modelId} ${oldValue} -> ${updated}")
+                 val updatedState = state.withModelValue(change.modelId, updated)
+                 (oldValue, updated) -> updatedState
+               }
+          _ <- hub.offer(change.modelId)
         } yield {
           ()
         }
@@ -192,8 +186,8 @@ class EventManager(
       for {
         subscriberMap <- componentSubscribers.get
         subscribers    = subscriberMap.get(dstId -> trigger.event.name)
-        _              =
-          Logger.info(
+        _             <-
+          Logger.debugZio(
             s"Will send ${input} on ${trigger.event.name} from ${node.id} to ${subscribers.size} receivers (owners=${subscribers
                 .map(_.owner)})"
           )
@@ -201,6 +195,32 @@ class EventManager(
       } yield {
         ()
       }
+    }
+  }
+
+  private def convertChannelSink[E](
+      node: TreeNode,
+      sink: EventSink.ChannelSink[E]
+  ): E => Task[Unit] = { input =>
+    callChannelSink(sink.channel, input)
+  }
+
+  private def callChannelSink[E](channel: WeakReference[Channel[E]], input: E): Task[Unit] = {
+    channel.get match {
+      case None        => ZIO.unit
+      case Some(found) =>
+        for {
+          subscribersMap <- channelSubscribers.get
+          subscribers     = subscribersMap.get(found.id)
+          _              <-
+            Logger.debugZio(
+              s"Will send ${input} on ${found} to ${subscribers.size} receivers (owners=${subscribers
+                  .map(_.owner)})"
+            )
+          _              <- ZIO.collectAllDiscard(subscribers.map(_.asInstanceOf[ChannelSubscriber[E]].onEmit(input)))
+        } yield {
+          ()
+        }
     }
   }
 
@@ -295,28 +315,24 @@ class EventManager(
     }
   }
 
-  private def convertModelChange[M](
+  private def convertChannelSource[E](
       node: TreeNode,
-      eventSource: EventSource.ModelChange[M]
-  ): Task[XStream[(M, M)]] = {
+      channelSource: EventSource.ChannelSource[E]
+  ): Task[XStream[E]] = {
     ZIO.succeed {
-      ZStream.asyncZIO { callback =>
-        object handler extends ModelSubscriber[M] {
-          override def onChange(from: M, to: M): UIO[Unit] = {
-            ZIO.succeed(
-              callback.single(from -> to)
-            )
-          }
+      channelSource.channel.get match {
+        case None    => ZStream.empty
+        case Some(c) =>
+          ZStream.asyncZIO { callback =>
+            object handler extends ChannelSubscriber[E] {
+              override def owner: ComponentId = node.id
 
-          override def cancel(): UIO[Unit] = {
-            ZIO.succeed(
-              callback.end
-            )
-          }
+              override def cancel(): UIO[Unit] = ZIO.succeed(callback.end)
 
-          override def owner: ComponentId = node.id
-        }
-        modelSubscribers.update(_.add(eventSource.modelId, handler))
+              override def onEmit(data: E): UIO[Unit] = ZIO.succeed(callback.single(data))
+            }
+            channelSubscribers.update(_.add(c.id, handler))
+          }
       }
     }
   }
@@ -365,25 +381,11 @@ class EventManager(
         Logger.debugZio(
           s"Garbage collect, referenced components: ${referencedComponentIds.toSeq.map(_.id).sorted} / models: ${referencedModelIds.toSeq.map(_.id).sorted}"
         )
-      _ <- garbageCollectModelSubscribers(referencedModelIds)
       _ <- garbageCollectComponentSubscribers(referencedComponentIds)
       _ <- eventRegistry.cancelUnreferenced(referencedComponentIds)
     } yield {
       ()
     }
-  }
-
-  private def garbageCollectModelSubscribers(referencedModelIds: Set[ModelId]): Task[Unit] = {
-    modelSubscribers
-      .modify { modelSubscribers =>
-        val (alive, toGo) = modelSubscribers.partitionKeys(id => referencedModelIds.contains(id))
-        toGo -> alive
-      }
-      .flatMap { (removal: MultiListMap[ModelId, ModelSubscriber[_]]) =>
-        ZIO.foreachDiscard(removal.values) {
-          _.cancel()
-        }
-      }
   }
 
   private def garbageCollectComponentSubscribers(referencedComponents: Set[ComponentId]): Task[Unit] = {
@@ -421,6 +423,12 @@ object EventManager {
     }
   }
 
+  trait ChannelSubscriber[E] {
+    def owner: ComponentId
+    def cancel(): UIO[Unit]
+    def onEmit(data: E): UIO[Unit]
+  }
+
   /** Helper for locating elements and providing runtime contexts. */
   trait Locator {
 
@@ -450,10 +458,10 @@ object EventManager {
     for {
       hub                  <- Hub.bounded[ModelId](256)
       eventRegistry        <- JsEventRegistry.create[ComponentId]
-      eventSubscribers     <- Ref.make(MultiListMap.empty[ModelId, ModelSubscriber[_]])
       componentSubscribers <- Ref.make(MultiListMap.empty[(ComponentId, String), ComponentSubscriber[_]])
+      channelSubscribers   <- Ref.make(MultiListMap.empty[String, ChannelSubscriber[_]])
     } yield {
-      new EventManager(locator, hub, state, eventRegistry, eventSubscribers, componentSubscribers)
+      new EventManager(locator, hub, state, eventRegistry, componentSubscribers, channelSubscribers)
     }
   }
 
