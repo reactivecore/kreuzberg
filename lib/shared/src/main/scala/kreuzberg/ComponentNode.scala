@@ -4,10 +4,13 @@ import kreuzberg.util.Stateful
 
 /** Represents an assembled node in a tree. */
 sealed trait TreeNode {
-  def id: ComponentId
+  def id: Identifier
 
   /** Returns children nodes. */
   def children: Vector[TreeNode]
+
+  /** The component. */
+  def component: Component
 
   /** Event Handlers. */
   def handlers: Vector[EventBinding]
@@ -22,11 +25,31 @@ sealed trait TreeNode {
   def renderTo(sb: StringBuilder): Unit
 
   /** Returns referenced component ids. */
-  def referencedComponentIds(): Set[ComponentId] = {
-    val builder = Set.newBuilder[ComponentId]
-    builder += AssemblyState.RootComponent // Root Component is always referenced.
-    foreach { node => builder += node.id }
+  lazy val referencedComponentIds: Set[Identifier] = {
+    val builder = Set.newBuilder[Identifier]
+    builder += id
+    children.foreach { node =>
+      builder ++= node.referencedComponentIds
+    }
     builder.result()
+  }
+
+  /** Find a node by identifier. */
+  def find(identifier: Identifier): Option[TreeNode] = {
+    if (id == identifier) {
+      Some(this)
+    } else if (referencedComponentIds.contains(identifier)) {
+      val it = children.iterator
+      while (it.hasNext) {
+        it.next().find(identifier) match {
+          case Some(found) => return Some(found)
+          case None        => // continue
+        }
+      }
+      None
+    } else {
+      None
+    }
   }
 
   def foreach(f: TreeNode => Unit): Unit = {
@@ -54,25 +77,26 @@ object TreeNode {
     }
   }
 
-  val empty = ComponentNode.build[Unit, emptyComponent.type](
-    AssemblyState.RootComponent,
-    emptyComponent,
-    Assembly(emptyRootHtml)
+  val empty = ComponentNode[Unit, emptyComponent.type](
+    component = emptyComponent,
+    html = emptyRootHtml.flat(),
+    children = Vector.empty,
+    runtimeProvider = _ => (),
+    handlers = Vector.empty
   )
 
   private def emptyRootHtml: Html =
-    SimpleHtml("div", children = Vector(SimpleHtmlNode.Text("Empty Root"))).withId(AssemblyState.RootComponent)
+    SimpleHtml("div", children = Vector(SimpleHtmlNode.Text("Empty Root"))).withId(Identifier.RootComponent)
 }
 
 /**
- * A Representation of the component.
+ * A Tree Representation of a component.
  * @tparam T
  *   value of the component
  * @tparam R
  *   runtime type
  */
 case class ComponentNode[+R, T <: Component.Aux[R]](
-    id: ComponentId,
     component: T,
     html: FlatHtml,
     children: Vector[TreeNode],
@@ -82,37 +106,15 @@ case class ComponentNode[+R, T <: Component.Aux[R]](
     with TreeNodeR[R] {
   override def toString: String = s"Component ${id}/${component}"
 
-  private lazy val childrenMap: Map[ComponentId, TreeNode] = children.map { t => t.id -> t }.toMap
+  private lazy val childrenMap: Map[Identifier, TreeNode] = children.map { t => t.id -> t }.toMap
 
-  private def renderChild(id: ComponentId, sb: StringBuilder): Unit = {
+  private def renderChild(id: Identifier, sb: StringBuilder): Unit = {
     childrenMap(id).renderTo(sb)
   }
 
   override def renderTo(sb: StringBuilder): Unit = {
     html.render(sb, renderChild)
   }
-}
 
-object ComponentNode {
-  def build[R, T <: Component.Aux[R]](
-      id: ComponentId,
-      component: T,
-      assembly: Assembly[R]
-  ): ComponentNode[R, T] = {
-    val withId    = assembly.html.withId(id)
-    val comment   = component.comment
-    val htmlToUse = if (comment.isEmpty()) {
-      withId
-    } else {
-      withId.addComment(comment)
-    }
-    ComponentNode(
-      id,
-      component,
-      htmlToUse.flat(),
-      assembly.nodes,
-      assembly.provider,
-      assembly.handlers
-    )
-  }
+  override def id: Identifier = component.id
 }

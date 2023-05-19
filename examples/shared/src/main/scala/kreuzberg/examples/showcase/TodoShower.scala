@@ -14,7 +14,7 @@ case class TodoShower(todoList: TodoList) extends SimpleComponentBase {
   def assemble(implicit c: SimpleContext): Html = {
     val parts = todoList.elements.map { element =>
       div(
-        anonymousChild(TodoItemShower(element)).wrap
+        TodoItemShower(element).wrap
       )
     }
     div(parts)

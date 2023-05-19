@@ -12,8 +12,8 @@ trait Route {
   /** Returns a title for that path. */
   def title(path: String): String
 
-  /** Assembles a node for a given path. */
-  def node(id: ComponentId, path: String): Stateful[AssemblyState, TreeNode]
+  /** Assembles a component for a given path. */
+  def component(path: String): Component
 }
 
 object Route {
@@ -30,8 +30,8 @@ object Route {
 
     override def title(path: String): String = title
 
-    override def node(id: ComponentId, path: String): Stateful[AssemblyState, TreeNode] = {
-      Assembler.assembleWithId(id, component)
+    override def component(path: String): Component = {
+      component
     }
   }
 
@@ -43,8 +43,8 @@ object Route {
 
     override def title(path: String): String = titleFn(path)
 
-    override def node(id: ComponentId, path: String): Stateful[AssemblyState, TreeNode] =
-      val c: Component = fn(path)
-      Assembler.assembleWithId(id, c)
+    override def component(path: String): Component = {
+      fn(path)
+    }
   }
 }

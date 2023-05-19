@@ -7,38 +7,58 @@ import scala.language.implicitConversions
 
 object Assembler {
 
-  def assembleWithId[R, T <: Component.Aux[R]](id: ComponentId, component: T): NodeResult[R, T] = {
+  def tree[R, T <: Component.Aux[R]](component: T): NodeResult[R, T] = {
     for {
-      _         <- Stateful.modify[AssemblyState](_.pushId(id))
-      assembled <- component.assemble
-      _         <- Stateful.modify[AssemblyState](_.popId)
-    } yield ComponentNode.build(id, component, assembled)
+      assembly <- component.assemble
+      tree     <- treeFromAssembly(component, assembly)
+    } yield tree
   }
 
-  /** Assemble the object as anonymous child. */
-  def assembleWithNewId[R, T <: Component.Aux[R]](component: T): NodeResult[R, T] = {
-    for {
-      id        <- Stateful[AssemblyState, ComponentId](_.generateId)
-      assembled <- assembleWithId(id, component)
-    } yield {
-      assembled
+  private def treeFromAssembly[R, T <: Component.Aux[R]](
+      component: T,
+      assembly: Assembly[R]
+  ): NodeResult[R, T] = {
+    val withId    = assembly.html.withId(component.id)
+    val comment   = component.comment
+    val htmlToUse = if (comment.isEmpty()) {
+      withId
+    } else {
+      withId.addComment(comment)
     }
-  }
+    val flat      = htmlToUse.flat()
 
-  /** Assembly a named child. */
-  def assembleNamedChild[R, T <: Component.Aux[R]](name: String, component: T): NodeResult[R, T] = {
     for {
-      id        <- Stateful[AssemblyState, ComponentId](_.ensureChildren(name))
-      assembled <- assembleWithId(id, component)
+      children <- Stateful.accumulate(htmlToUse.embeddedNodes) { component =>
+                    tree(component)
+                  }
     } yield {
-      assembled
+      ComponentNode(
+        component,
+        flat,
+        children,
+        assembly.provider,
+        assembly.handlers
+      )
     }
   }
 
   /**
    * Assemble a value as a single component discarding the state. For testcases.
    */
-  def single[R, T <: Component.Aux[R]](component: T): Assembly[R] = {
-    component.assemble(AssemblyState())._2
+  def single[R, T <: Component.Aux[R]](component: () => T): Assembly[R] = {
+    IdentifierFactory.withFresh {
+      val c = component()
+      c.assemble(AssemblyState())._2
+    }
+  }
+
+  /**
+   * Assemble a value as a single component to a tree, discarding the state. For testcases.
+   */
+  def singleTree[R, T <: Component.Aux[R]](component: () => T): ComponentNode[R, T] = {
+    IdentifierFactory.withFresh {
+      val c = component()
+      tree(c)(AssemblyState())._2
+    }
   }
 }

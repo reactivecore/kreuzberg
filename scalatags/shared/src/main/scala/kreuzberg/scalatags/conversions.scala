@@ -1,6 +1,6 @@
 package kreuzberg.scalatags
 
-import kreuzberg.imperative.{AssemblyContext, SimpleContext}
+import kreuzberg.imperative.SimpleContext
 import kreuzberg.{Assembler, Assembly, AssemblyResult, Html, TreeNode}
 import scalatags.Text.TypedTag
 
@@ -14,8 +14,8 @@ implicit def scalaTagsToHtml(st: TypedTag[String]): Html = {
 }
 
 implicit def htmlEmbed(in: HtmlEmbedding): ScalaTagsEmbedding = in match {
-  case tn: TreeNode => ScalaTagsTreeNodeEmbedding(tn)
-  case h: Html      => ScalaTagsHtmlEmbedding(h)
+  case tn: Component => ScalaTagsComponentEmbedding(tn)
+  case h: Html       => ScalaTagsHtmlEmbedding(h)
 }
 
 implicit def scalaTagsToAssemblyResult(st: TypedTag[String]): AssemblyResult[Unit] = {
@@ -26,14 +26,8 @@ implicit def scalaTagsToAssembly(st: TypedTag[String]): Assembly[Unit] = {
   Assembly(scalaTagsToHtml(st))
 }
 
-extension (tn: TreeNode) {
-  def wrap: ScalaTagsTreeNodeEmbedding = ScalaTagsTreeNodeEmbedding(tn)
-}
-
-extension (component: Component) {
-  def wrap(implicit c: AssemblyContext): ScalaTagsTreeNodeEmbedding = {
-    c.transform(Assembler.assembleWithNewId(component)).wrap
-  }
+extension (tn: Component) {
+  def wrap: ScalaTagsComponentEmbedding = ScalaTagsComponentEmbedding(tn)
 }
 
 // Hack to import scalatags via kreuzberg.scalatags.all._

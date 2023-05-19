@@ -36,8 +36,12 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
     redrawChanged(changedModels)
   }
 
-  override def locate(componentId: ComponentId): ScalaJsElement = {
+  override def locate(componentId: Identifier): ScalaJsElement = {
     viewer.findElement(componentId)
+  }
+
+  override def locateNode(componentId: Identifier): Option[TreeNode] = {
+    _tree.find(componentId)
   }
 
   private val viewer       = new Viewer(rootElement)
@@ -49,7 +53,7 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
 
   private def redraw(): Unit = {
     Logger.debug("Starting Redraw")
-    val (nextState, tree) = Assembler.assembleNamedChild("root", main)(_currentState)
+    val (nextState, tree) = Assembler.tree(main)(_currentState)
     viewer.drawRoot(tree)
     _currentState = nextState
     _tree = tree
@@ -77,18 +81,18 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
     _currentState = garbageCollect(updatedTree, updatedState)
   }
 
-  private def updateTree(node: TreeNode, changed: Set[ComponentId]): Stateful[AssemblyState, TreeNode] = {
-    if (changed.contains(node.id)) {
+  private def updateTree(node: TreeNode, changedComponents: Set[Identifier]): Stateful[AssemblyState, TreeNode] = {
+    if (changedComponents.contains(node.id)) {
       reassembleNode(node)
     } else {
-      transformNodeChildren(node, updateTree(_, changed))
+      transformNodeChildren(node, updateTree(_, changedComponents))
     }
   }
 
   private def reassembleNode(node: TreeNode): Stateful[AssemblyState, TreeNode] = {
     node match {
       case r: ComponentNode[_, _] =>
-        Assembler.assembleWithId(node.id, r.component)
+        Assembler.tree(r.component)
     }
   }
 
@@ -110,27 +114,26 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
     }
   }
 
-  private def drawChangedEvents(node: TreeNode, changed: Set[ComponentId]): Unit = {
-    if (changed.contains(node.id)) {
+  private def drawChangedEvents(node: TreeNode, changedComponents: Set[Identifier]): Unit = {
+    if (changedComponents.contains(node.id)) {
       viewer.updateNode(node)
     } else {
-      node.children.foreach(drawChangedEvents(_, changed))
+      node.children.foreach(drawChangedEvents(_, changedComponents))
     }
   }
 
-  private def activateChangedEvents(node: TreeNode, changed: Set[ComponentId]): Unit = {
-    if (changed.contains(node.id)) {
+  private def activateChangedEvents(node: TreeNode, changedComponents: Set[Identifier]): Unit = {
+    if (changedComponents.contains(node.id)) {
       eventManager.activateEvents(node)
     } else {
-      node.children.foreach(activateChangedEvents(_, changed))
+      node.children.foreach(activateChangedEvents(_, changedComponents))
     }
   }
 
   private def garbageCollect(tree: TreeNode, state: AssemblyState): AssemblyState = {
-    val referencedComponents = tree.referencedComponentIds()
+    val referencedComponents = tree.referencedComponentIds + Identifier.RootComponent
 
     val componentFiltered = state.copy(
-      children = state.children.filterKeys(referencedComponents.contains),
       services = state.services.filterKeys(referencedComponents.contains)
     )
 
@@ -148,7 +151,6 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
     Logger.debug(
       s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models"
     )
-    Logger.debug(s"  Children: ${state.children.size} -> ${modelFiltered.children.size}")
     Logger.debug(s"  Values:   ${state.modelValues.size} -> ${modelFiltered.modelValues.size}")
     Logger.debug(s"  Subscribers: ${state.subscribers.size} -> ${modelFiltered.subscribers.size}")
 

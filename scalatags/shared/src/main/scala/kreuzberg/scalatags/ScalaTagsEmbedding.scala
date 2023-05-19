@@ -1,7 +1,7 @@
 package kreuzberg.scalatags
 
 import kreuzberg.util.SimpleThreadLocal
-import kreuzberg.{FlatHtmlBuilder, Html, TreeNode}
+import kreuzberg.{Component, FlatHtmlBuilder, Html, TreeNode}
 import scalatags.Text.TypedTag
 import scalatags.text.Builder
 
@@ -78,10 +78,10 @@ case class ScalaTagsHtmlEmbedding(
   }
 }
 
-/** Wraps a TreeNode into the ScalaTags */
-case class ScalaTagsTreeNodeEmbedding(treeNode: TreeNode) extends ScalaTagsEmbedding {
+/** Wraps a Component into the ScalaTags */
+case class ScalaTagsComponentEmbedding(component: Component) extends ScalaTagsEmbedding {
   override def render: String = {
-    treeNode.render()
+    s"<component id=\"${component.id}\"/>"
   }
 
   override def applyTo(t: Builder): Unit = {
@@ -93,7 +93,7 @@ case class ScalaTagsTreeNodeEmbedding(treeNode: TreeNode) extends ScalaTagsEmbed
   override def writeTo(strb: Writer): Unit = {
     FlatHtmlBuilder.current match {
       case Some(flatBuilder) =>
-        flatBuilder.addPlaceholder(treeNode.id)
+        flatBuilder.addPlaceholder(component.id)
       case None              =>
         strb.write(render)
     }

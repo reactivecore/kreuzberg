@@ -23,10 +23,10 @@ class Viewer(rootElement: ScalaJsElement) {
   }
 
   /** Find an element for a given Component ID. */
-  def findElement(id: ComponentId): ScalaJsElement = {
+  def findElement(id: Identifier): ScalaJsElement = {
     try {
       rootElement
-        .querySelector(s"[data-id=\"${id.id}\"]")
+        .querySelector(s"[data-id=\"${id.value}\"]")
     } catch {
       case NonFatal(e) =>
         Logger.warn(s"Could not find ${id}: ${e.getMessage}")

@@ -6,8 +6,8 @@ class SimpleHtmlTest extends TestBase {
     val node = SimpleHtml("div")
     node.toString shouldBe "<div></div>"
 
-    node.withId(ComponentId(3)).toString shouldBe "<div data-id=\"3\"></div>"
-    node.withId(ComponentId(4)).toString shouldBe "<div data-id=\"4\"></div>"
+    node.withId(Identifier(3)).toString shouldBe "<div data-id=\"3\"></div>"
+    node.withId(Identifier(4)).toString shouldBe "<div data-id=\"4\"></div>"
   }
 
   it should "work for a complex case" in {

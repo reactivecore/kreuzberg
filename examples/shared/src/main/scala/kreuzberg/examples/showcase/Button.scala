@@ -8,5 +8,5 @@ import kreuzberg.scalatags.all.*
 case class Button(caption: String) extends ComponentBase {
   override def assemble: AssemblyResult[Unit] = button(`type` := "button", caption)
 
-  def clicked = Event.JsEvent("click")
+  def clicked = jsEvent("click")
 }

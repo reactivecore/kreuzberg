@@ -20,7 +20,7 @@ case object Menu extends SimpleComponentBase {
   )
 
   override def assemble(implicit c: SimpleContext): Html = {
-    val items = links.map { case (link, name) => anonymousChild(RouterLink(link, name, deco = true)).wrap }
+    val items = links.map { case (link, name) => RouterLink(link, name, deco = true).wrap }
     div(items: _*)
   }
 }

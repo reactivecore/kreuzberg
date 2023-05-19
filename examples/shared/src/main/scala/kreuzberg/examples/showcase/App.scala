@@ -19,24 +19,15 @@ case class App()
   )
 
   override def assemble: AssemblyResult[Unit] = {
-    for {
-      menu   <- namedChild("menu", Menu)
-      // _            <- subscribe(currentRoute)
-      router <- namedChild(
-                  "router",
-                  SimpleRouter(
-                    routes(model),
-                    Route.DependentRoute({ case s => NotFoundPage(s) }, _ => "Not Found")
-                  )
-                )
-    } yield {
-      Assembly(
-        div(
-          menu.wrap,
-          router.wrap
+    Assembly(
+      div(
+        Menu.wrap,
+        SimpleRouter(
+          routes(model),
+          Route.DependentRoute({ case s => NotFoundPage(s) }, _ => "Not Found")
         )
       )
-    }
+    )
   }
 
   private def routes(model: Model[TodoList]) = Vector(

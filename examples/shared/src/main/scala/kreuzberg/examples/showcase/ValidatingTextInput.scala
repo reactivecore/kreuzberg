@@ -31,10 +31,10 @@ case class ValidatingTextInput(
     val errorModel = Model.create(None: Option[String])
     for {
       initialValue <- read(valueModel)
-      textInput    <- namedChild("input", TextInput(name, initialValue))
-      errorShower  <- namedChild("error", ErrorShower(errorModel))
+      textInput     = TextInput(name, initialValue)
+      errorShower   = ErrorShower(errorModel)
       bindError     =
-        from(textInput)(_.inputEvent)
+        from(textInput.inputEvent)
           .withState(textInput)(_.text)
           .changeModel(valueModel) { (v, _) =>
             Logger.debug(s"Setting value to ${v}")

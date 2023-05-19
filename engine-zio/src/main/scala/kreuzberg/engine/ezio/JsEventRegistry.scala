@@ -17,7 +17,7 @@ class JsEventRegistry[K](
   def lift[E](
       key: K,
       target: ScalaJsEventTarget,
-      event: Event.JsEvent[E]
+      event: JsEvent[E]
   ): ZStream[Any, Throwable, E] = {
     ZStream.asyncZIO { callback =>
 //      Logger.debug(s"Registering event ${event.name} on ${key}, target: ${target}")

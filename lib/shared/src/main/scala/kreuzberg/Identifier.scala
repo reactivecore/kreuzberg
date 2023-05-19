@@ -16,6 +16,9 @@ object Identifier {
   extension (i: Identifier) {
     def value: Int = i
   }
+
+  /** Anonymous root components, owner of root models. */
+  val RootComponent = Identifier(0)
 }
 
 /** Builds identifiers. */
@@ -25,9 +28,10 @@ trait IdentifierFactory {
 
 object IdentifierFactory {
   class Default extends IdentifierFactory {
-    private val current = AtomicInteger(0)
+    // 0 is reserved for Root Identifier!
+    private val _nextValue = AtomicInteger(1)
 
-    override def next(): Identifier = Identifier(current.incrementAndGet())
+    override def next(): Identifier = Identifier(_nextValue.getAndIncrement())
   }
 
   private val default = new Default()
@@ -36,4 +40,20 @@ object IdentifierFactory {
   private val threadLocal = new SimpleThreadLocal[IdentifierFactory](default)
 
   def instance: IdentifierFactory = threadLocal.get()
+
+  /** Execute some f with a fresh factory (e.g. testcases with semi-reliable ids) */
+  def withFresh[T](f: => T): T = {
+    using(new Default())(f)
+  }
+
+  /** Execute some block f with a specific factory. */
+  def using[T](factory: IdentifierFactory)(f: => T): T = {
+    val current = threadLocal.get()
+    threadLocal.set(factory)
+    try {
+      f
+    } finally {
+      threadLocal.set(current)
+    }
+  }
 }

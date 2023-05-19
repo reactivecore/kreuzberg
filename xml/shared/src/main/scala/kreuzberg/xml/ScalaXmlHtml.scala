@@ -1,13 +1,13 @@
 package kreuzberg.xml
-import kreuzberg.{ComponentId, FlatHtmlBuilder, Html, TreeNode}
+import kreuzberg.{Component, FlatHtmlBuilder, Html, Identifier, TreeNode}
 
 import scala.xml.{Elem, Node, Null, SpecialNode, UnprefixedAttribute, Utility}
 
 case class ScalaXmlHtml(elem: Elem) extends Html {
-  override def withId(id: ComponentId): Html = {
+  override def withId(id: Identifier): Html = {
     val attribute = new UnprefixedAttribute(
       "data-id",
-      id.toString,
+      id.value.toString,
       Null
     )
 
@@ -27,14 +27,14 @@ case class ScalaXmlHtml(elem: Elem) extends Html {
     )
   }
 
-  override def embeddedNodes: Iterable[TreeNode] = {
-    val collector = Vector.newBuilder[TreeNode]
+  override def embeddedNodes: Iterable[Component] = {
+    val collector = Vector.newBuilder[Component]
 
     def traverse(node: Node): Unit = {
       node match {
-        case h: ScalaXmlHtmlEmbedding     => collector ++= h.html.embeddedNodes
-        case t: ScalaXmlTreeNodeEmbedding => collector += t.treeNode
-        case other                        =>
+        case h: ScalaXmlHtmlEmbedding      => collector ++= h.html.embeddedNodes
+        case t: ScalaXmlComponentEmbedding => collector += t.component
+        case other                         =>
           other.child.foreach(traverse)
       }
     }
@@ -64,14 +64,14 @@ case class ScalaXmlHtmlEmbedding(html: Html) extends ScalaXmlEmbedding {
   override def label: String = "#Html"
 }
 
-case class ScalaXmlTreeNodeEmbedding(treeNode: TreeNode) extends ScalaXmlEmbedding {
+case class ScalaXmlComponentEmbedding(component: Component) extends ScalaXmlEmbedding {
   override def buildString(sb: StringBuilder): StringBuilder = {
     FlatHtmlBuilder.current match {
-      case Some(fb) => fb.addPlaceholder(treeNode.id)
-      case None     => treeNode.renderTo(sb)
+      case Some(fb) => fb.addPlaceholder(component.id)
+      case None     => sb ++= s"<component id=\"${component.id}\">"
     }
     sb
   }
 
-  override def label: String = "#TreeNode"
+  override def label: String = "#Component"
 }

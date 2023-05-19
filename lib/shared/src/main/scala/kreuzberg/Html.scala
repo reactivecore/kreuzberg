@@ -7,22 +7,18 @@ import scala.language.implicitConversions
 trait Html {
 
   /** Appends the data.id attribut to the HTML Code. */
-  def withId(id: ComponentId): Html
+  def withId(id: Identifier): Html
 
   /** Add some comment to the HTML Comment. */
   def addComment(c: String): Html
 
   /** Returns all embedded components within the HTML Code. */
-  def embeddedNodes: Iterable[TreeNode]
+  def embeddedNodes: Iterable[Component]
 
   /** Render the HTML. */
   def render(sb: StringBuilder): Unit = {
-    val placeholderMap = embeddedNodes.map { treeNode =>
-      treeNode.id -> treeNode
-    }.toMap
-
-    val nodeRender: (ComponentId, StringBuilder) => Unit = { (id, builder) =>
-      placeholderMap(id).renderTo(builder)
+    val nodeRender: (Identifier, StringBuilder) => Unit = { (id, builder) =>
+      builder ++= s"<component id=\"${id}\"/>"
     }
 
     flat().render(sb, nodeRender)

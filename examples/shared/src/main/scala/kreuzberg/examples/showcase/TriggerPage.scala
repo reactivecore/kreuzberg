@@ -15,12 +15,12 @@ case class Label(model: Model[String]) extends SimpleComponentBase {
 object TriggerPage extends SimpleComponentBase {
   override def assemble(implicit c: SimpleContext): Html = {
     val value    = Model.create("")
-    val editor   = child("editor", TextInput("field"))
-    val shower   = child("shower", Label(value))
-    val xmlLabel = child("xmlLabel", XmlLabel(value))
+    val editor   = TextInput("field")
+    val shower   = Label(value)
+    val xmlLabel = XmlLabel(value)
 
     add(
-      from(editor)(_.inputEvent)
+      from(editor.inputEvent)
         .withState(editor)(_.text)
         .changeModel(value)((n, _) => n)
     )

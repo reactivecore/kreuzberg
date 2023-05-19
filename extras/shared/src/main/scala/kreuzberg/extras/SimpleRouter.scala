@@ -27,9 +27,8 @@ case class SimpleRouter(
       _               =
         Logger.debug(s"Rendering SimpleRouter with value ${routingState} on model ${SimpleRouter.routingStateModel.id}")
       routeValue      = routingState.currentRoute.getOrElse(BrowserRouting.getCurrentPath())
-      id             <- Stateful[AssemblyState, ComponentId](_.ensureChildren(routeValue))
       route           = decideRoute(routeValue)
-      assembled      <- route.node(id, routeValue)
+      component       = route.component(routeValue)
       gotoBinding     =
         EventSource
           .ChannelSource(SimpleRouter.gotoChannel)
@@ -47,8 +46,8 @@ case class SimpleRouter(
           .changeModel(SimpleRouter.routingStateModel) { (path, model) =>
             model.copy(currentRoute = Some(path))
           }
-      onLoadBinding   = EventSource
-                          .WindowJsEvent(Event.JsEvent("load"))
+      onLoadBinding   = EventSource.Js
+                          .window("load")
                           .changeModel(SimpleRouter.routingStateModel) { (_, m) =>
                             val path = BrowserRouting.getCurrentPath()
                             Logger.debug(s"Load Event: ${path}")
@@ -60,8 +59,8 @@ case class SimpleRouter(
                             val title = decideRoute(path).title(path)
                             BrowserRouting.setDocumentTitle(titlePrefix + title)
                           }
-      popStateBinding = EventSource
-                          .WindowJsEvent(Event.JsEvent("popstate"))
+      popStateBinding = EventSource.Js
+                          .window("popstate")
                           .changeModel(SimpleRouter.routingStateModel) { (_, current) =>
                             val path = BrowserRouting.getCurrentPath()
                             Logger.debug(s"Popstate event ${path}")
@@ -70,7 +69,7 @@ case class SimpleRouter(
 
     } yield {
       Assembly(
-        div(assembled.wrap),
+        div(component.wrap),
         Vector(
           gotoBinding,
           onLoadBinding,

@@ -13,7 +13,4 @@ case class Assembly[+R](
     html: Html,
     handlers: Vector[EventBinding] = Vector.empty,
     provider: RuntimeProvider[R] = _ => ()
-) {
-
-  def nodes: Vector[TreeNode] = html.embeddedNodes.toVector
-}
+)

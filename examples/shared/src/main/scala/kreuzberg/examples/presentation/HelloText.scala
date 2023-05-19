@@ -22,7 +22,7 @@ case class InputField(fieldName: String) extends SimpleComponentBaseWithRuntime[
     }
   }
 
-  def inputEvent = Event.JsEvent("input")
+  def inputEvent = jsEvent("input")
 }
 
 object InputField {
@@ -34,9 +34,9 @@ object InputField {
 object Shower extends SimpleComponentBase {
   def assemble(implicit c: SimpleContext): Html = {
     val text       = Model.create("")
-    val inputField = anonymousChild(InputField("text"))
+    val inputField = InputField("text")
     add(
-      from(inputField)(_.inputEvent)
+      from(inputField.inputEvent)
         .withState(inputField)(_.text)
         .intoModel(text)
     )

@@ -13,7 +13,7 @@ case class SimpleHtml(
     comment: String = ""
 ) extends Html
     with SimpleHtmlNode {
-  override def withId(id: ComponentId): Html = {
+  override def withId(id: Identifier): Html = {
     withAttribute("data-id", Some(id.toString))
   }
 
@@ -27,7 +27,7 @@ case class SimpleHtml(
     )
   }
 
-  override def embeddedNodes: Iterable[TreeNode] = {
+  override def embeddedNodes: Iterable[Component] = {
     children.flatMap(_.embeddedNodes)
   }
 
@@ -60,14 +60,14 @@ case class SimpleHtml(
 }
 
 sealed trait SimpleHtmlNode {
-  def embeddedNodes: Iterable[TreeNode]
+  def embeddedNodes: Iterable[Component]
 
   def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit
 }
 
 object SimpleHtmlNode {
   case class Text(text: String) extends SimpleHtmlNode {
-    override def embeddedNodes: Iterable[TreeNode] = Iterable.empty
+    override def embeddedNodes: Iterable[Component] = Iterable.empty
 
     override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
       flatHtmlBuilder ++= escape(text)
@@ -75,17 +75,17 @@ object SimpleHtmlNode {
   }
 
   case class Wrapper(html: Html) extends SimpleHtmlNode {
-    override def embeddedNodes: Iterable[TreeNode] = html.embeddedNodes
+    override def embeddedNodes: Iterable[Component] = html.embeddedNodes
 
     override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
       html.flatToBuilder(flatHtmlBuilder)
     }
   }
 
-  case class EmbeddedTree(treeNode: TreeNode) extends SimpleHtmlNode {
-    def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = flatHtmlBuilder.addPlaceholder(treeNode.id)
+  case class EmbeddedComponent(component: Component) extends SimpleHtmlNode {
+    def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = flatHtmlBuilder.addPlaceholder(component.id)
 
-    def embeddedNodes: Iterable[TreeNode] = List(treeNode)
+    def embeddedNodes: Iterable[Component] = List(component)
   }
 
   def escape(s: String): String = {
