@@ -1,6 +1,7 @@
 package kreuzberg.engine.ezio
 
 import kreuzberg.*
+import kreuzberg.Component.Aux
 import kreuzberg.dom.*
 import kreuzberg.engine.ezio.EventManager.{ChannelSubscriber, ComponentSubscriber, Iteration, Locator, create}
 import kreuzberg.engine.ezio.utils.MultiListMap
@@ -8,7 +9,6 @@ import zio.stream.{ZSink, ZStream}
 import zio.*
 
 import scala.concurrent.Future
-
 import scala.ref.WeakReference
 
 type XStream[T] = ZStream[Any, Nothing, T]
@@ -18,8 +18,7 @@ class EventManager(
     locator: Locator,
     hub: Hub[Identifier],
     state: Ref[AssemblyState],
-    eventRegistry: JsEventRegistry[ComponentId],
-    componentSubscribers: Ref[MultiListMap[(ComponentId, String), ComponentSubscriber[_]]],
+    eventRegistry: JsEventRegistry[Identifier],
     channelSubscribers: Ref[MultiListMap[Identifier, ChannelSubscriber[_]]]
 ) {
 
@@ -30,7 +29,7 @@ class EventManager(
 
   /** Activate events for a component. */
   def activateEvents(node: TreeNode): Task[Unit] = {
-    Logger.debug(s"Activating events on ${node.id}")
+    Logger.trace(s"Activating events on ${node.id}/${node.component.comment}")
     for {
       _ <- disableOldEventsOnComponent(node.id)
       _ <- ZIO.collectAllDiscard {
@@ -44,35 +43,16 @@ class EventManager(
     }
   }
 
-  private def disableOldEventsOnComponent(id: ComponentId): Task[Unit] = {
+  private def disableOldEventsOnComponent(id: Identifier): Task[Unit] = {
     for {
       _ <- eventRegistry.cancel(id)
-      _ <- disableComponentEventsOnComponentId(id)
       _ <- disableChannelEventsOnComponentId(id)
     } yield {
       ()
     }
   }
 
-  private def disableComponentEventsOnComponentId(id: ComponentId): Task[Unit] = {
-    componentSubscribers
-      .modify { subscribers =>
-        val (alive, toGo) = subscribers.partition { (k, v) =>
-          // Only kick by subscriber (owner), but not by source, otherwise
-          // Parents can't subscribe to children properly.
-          /*k != id &&*/
-          v.owner != id
-        }
-        toGo -> alive
-      }
-      .flatMap { (removal: MultiListMap[(ComponentId, String), ComponentSubscriber[_]]) =>
-        ZIO.foreachDiscard(removal.values) {
-          _.cancel()
-        }
-      }
-  }
-
-  private def disableChannelEventsOnComponentId(id: ComponentId): Task[Unit] = {
+  private def disableChannelEventsOnComponentId(id: Identifier): Task[Unit] = {
     channelSubscribers
       .modify { subscribers =>
         val (alive, toGo) = subscribers.partition { (_, v) =>
@@ -109,23 +89,30 @@ class EventManager(
 
   private def sourceToStream[E](owner: TreeNode, source: EventSource[E]): Task[XStream[E]] = {
     source match
-      case EventSource.ComponentEvent(event, id) =>
-        val componentId = id.getOrElse(owner.id)
-        repEventSource(owner, componentId, event)
-      case EventSource.WindowJsEvent(js)         =>
-        registeredJsEvent(owner.id, org.scalajs.dom.window, js)
-      case e: EventSource.WithState[_, _, _]     => {
+      case j: EventSource.Js[_]                =>
+        j.jsEvent.component match {
+          case None              => registeredJsEvent(owner.id, org.scalajs.dom.window, j.jsEvent)
+          case Some(componentId) =>
+            locator.locate(componentId).flatMap { js =>
+              registeredJsEvent(componentId, js, j.jsEvent)
+            }
+        }
+      case EventSource.Assembled               =>
+        ZIO.succeed(
+          ZStream.succeed(())
+        )
+      case e: EventSource.WithState[_, _, _]   => {
         convertWithState(owner, e)
       }
-      case e: EventSource.EffectEvent[_, _, _]   =>
+      case e: EventSource.EffectEvent[_, _, _] =>
         effectEvent(owner, e)
-      case EventSource.MapSource(from, fn)       =>
+      case EventSource.MapSource(from, fn)     =>
         sourceToStream(owner, from).map(_.map(fn))
-      case EventSource.CollectEvent(from, fn)    =>
+      case EventSource.CollectEvent(from, fn)  =>
         sourceToStream(owner, from).map(_.collect(fn))
-      case a: EventSource.AndSource[_]           =>
+      case a: EventSource.AndSource[_]         =>
         andEvent(owner, a)
-      case c: EventSource.ChannelSource[_]       =>
+      case c: EventSource.ChannelSource[_]     =>
         convertChannelSource(owner, c)
   }
 
@@ -156,8 +143,6 @@ class EventManager(
         input => {
           converted(f(input))
         }
-      case t: EventSink.CustomEventSink[_]         =>
-        convertComponentTriggerSink(node, t)
       case c: EventSink.ChannelSink[_]             =>
         convertChannelSink(node, c)
     }
@@ -179,27 +164,6 @@ class EventManager(
           ()
         }
       }
-  }
-
-  private def convertComponentTriggerSink[E](
-      node: TreeNode,
-      trigger: EventSink.CustomEventSink[E]
-  ): E => Task[Unit] = { input =>
-    {
-      val dstId = trigger.componentId.getOrElse(node.id)
-      for {
-        subscriberMap <- componentSubscribers.get
-        subscribers    = subscriberMap.get(dstId -> trigger.event.name)
-        _             <-
-          Logger.debugZio(
-            s"Will send ${input} on ${trigger.event.name} from ${node.id} to ${subscribers.size} receivers (owners=${subscribers
-                .map(_.owner)})"
-          )
-        _             <- ZIO.collectAllDiscard(subscribers.map(_.asInstanceOf[ComponentSubscriber[E]].onEmit(input)))
-      } yield {
-        ()
-      }
-    }
   }
 
   private def convertChannelSink[E](
@@ -228,31 +192,10 @@ class EventManager(
     }
   }
 
-  private def repEventSource[E](owner: TreeNode, componentId: ComponentId, event: Event[E]): Task[XStream[E]] = {
-    event match {
-      case js: Event.JsEvent[E]                 =>
-        jsEventSource(componentId, js)
-      case Event.MappedEvent(underlying, mapFn) =>
-        repEventSource(owner, componentId, underlying).map(_.map(mapFn))
-      case c: Event.Custom[E]                   =>
-        convertComponentEvent(owner.id, componentId, c)
-      case Event.Assembled                      =>
-        ZIO.succeed(
-          ZStream.succeed(())
-        )
-    }
-  }
-
-  private def jsEventSource[E](componentId: ComponentId, event: Event.JsEvent[E]): Task[XStream[E]] = {
-    locator.locate(componentId).flatMap { js =>
-      registeredJsEvent(componentId, js, event)
-    }
-  }
-
   private def registeredJsEvent[E](
-      componentId: ComponentId,
+      componentId: Identifier,
       scalaJsEventTarget: ScalaJsEventTarget,
-      event: Event.JsEvent[E]
+      event: JsEvent[E]
   ): Task[XStream[E]] = {
     ZIO.succeed(
       eventRegistry
@@ -308,9 +251,12 @@ class EventManager(
     sourceToStream(node, withState.inner).map { underlying =>
       val transformed = underlying
         .mapZIO { value =>
-          locator.withRuntimeContext(withState.componentId) { ctx =>
-            val elementState = withState.fetcher(withState.provider(ctx))
-            value -> elementState
+          for {
+            ctx     <- locator.buildRuntimeContext()
+            state   <- ZIO.attempt(ctx.unsafeFindState[F](withState.componentId))
+            fetched <- ZIO.attempt(withState.fetcher(state))
+          } yield {
+            value -> fetched
           }
         }
         .tapError(e => Logger.warnZio(e.getMessage))
@@ -329,7 +275,7 @@ class EventManager(
         case Some(c) =>
           ZStream.asyncZIO { callback =>
             object handler extends ChannelSubscriber[E] {
-              override def owner: ComponentId = node.id
+              override def owner: Identifier = node.id
 
               override def cancel(): UIO[Unit] = ZIO.succeed(callback.end)
 
@@ -341,70 +287,18 @@ class EventManager(
     }
   }
 
-  private def convertComponentEvent[E](
-      ownerComponentId: ComponentId,
-      sourceComponentId: ComponentId,
-      event: Event.Custom[E]
-  ): Task[XStream[E]] = {
-    Logger.trace(s"Subscribing ${ownerComponentId} to ${sourceComponentId} in components")
-    ZIO.succeed {
-      ZStream.asyncZIO { callback =>
-        object entry extends ComponentSubscriber[E] {
-          override def owner: ComponentId = ownerComponentId
-
-          override def cancel(): UIO[Unit] = {
-            Logger.debug(s"Canceling ${sourceComponentId} -> ${ownerComponentId} on ${event.name}")
-            ZIO.succeed(
-              callback.end
-            )
-          }
-
-          override def onEmit(data: E): UIO[Unit] = {
-            ZIO.succeed(
-              callback.single(data)
-            )
-          }
-        }
-        for {
-          _       <- Logger
-                       .infoZio(s"Subscribing ${sourceComponentId}/${event.name} --> ${ownerComponentId} in components")
-                       .orDie
-          updated <- componentSubscribers.update(_.add(sourceComponentId -> event.name, entry))
-        } yield {
-          ()
-        }
-      }
-    }
-  }
-
   /** Remove all not referenced bindings. */
-  def garbageCollect(referencedComponentIds: Set[ComponentId], referencedModelIds: Set[Identifier]): Task[Unit] = {
+  def garbageCollect(referencedComponentIds: Set[Identifier], referencedModelIds: Set[Identifier]): Task[Unit] = {
     // TODO: Event Target removal?!
     for {
       _ <-
-        Logger.debugZio(
-          s"Garbage collect, referenced components: ${referencedComponentIds.toSeq.map(_.id).sorted} / models: ${referencedModelIds.toSeq.map(_.value).sorted}"
+        Logger.traceZio(
+          s"Garbage collect, referenced components: ${referencedComponentIds.toSeq.map(_.value).sorted} / models: ${referencedModelIds.toSeq.map(_.value).sorted}"
         )
-      _ <- garbageCollectComponentSubscribers(referencedComponentIds)
       _ <- eventRegistry.cancelUnreferenced(referencedComponentIds)
     } yield {
       ()
     }
-  }
-
-  private def garbageCollectComponentSubscribers(referencedComponents: Set[ComponentId]): Task[Unit] = {
-    componentSubscribers
-      .modify { subscribers =>
-        val (alive, toGo) = subscribers.partition { (k, v) =>
-          referencedComponents.contains(k._1) && referencedComponents.contains(v.owner)
-        }
-        toGo -> alive
-      }
-      .flatMap { (removal: MultiListMap[(ComponentId, String), ComponentSubscriber[_]]) =>
-        ZIO.foreachDiscard(removal.values) {
-          _.cancel()
-        }
-      }
   }
 }
 
@@ -414,11 +308,11 @@ object EventManager {
     def onChange(from: M, to: M): UIO[Unit]
     def cancel(): UIO[Unit]
 
-    def owner: ComponentId
+    def owner: Identifier
   }
 
   trait ComponentSubscriber[E] {
-    def owner: ComponentId
+    def owner: Identifier
     def cancel(): UIO[Unit]
     def onEmit(data: E): UIO[Unit]
 
@@ -428,44 +322,60 @@ object EventManager {
   }
 
   trait ChannelSubscriber[E] {
-    def owner: ComponentId
+    def owner: Identifier
     def cancel(): UIO[Unit]
     def onEmit(data: E): UIO[Unit]
+  }
+
+  trait RuntimeContextEx extends RuntimeContext {
+    def unsafeFindState[R](componentId: Identifier): R
   }
 
   /** Helper for locating elements and providing runtime contexts. */
   trait Locator {
 
-    protected def unsafeLocate(id: ComponentId): ScalaJsElement
+    protected def unsafeLocate(id: Identifier): ScalaJsElement
 
-    def locate(id: ComponentId): Task[ScalaJsElement] = {
+    def locate(id: Identifier): Task[ScalaJsElement] = {
       ZIO.attempt(unsafeLocate(id))
     }
 
-    def withRuntimeContext[T](id: ComponentId)(f: RuntimeContext => T): Task[T] = {
-      for {
-        context <- ZIO.attempt(unsafeCreateRuntimeContext(id))
-        result  <- ZIO.attempt(f(context))
-      } yield result
-    }
+    def rootTree(): Task[TreeNode]
 
-    protected def unsafeCreateRuntimeContext(id: ComponentId): RuntimeContext = new RuntimeContext {
-      override val jsElement: ScalaJsElement = unsafeLocate(id)
+    def locateNode(id: Identifier): Task[TreeNode]
 
-      override def jump(componentId: ComponentId): RuntimeContext = {
-        unsafeCreateRuntimeContext(componentId)
+    def buildRuntimeContext(): Task[RuntimeContextEx] = for {
+      treeSnapShot <- rootTree()
+    } yield {
+      new RuntimeContextEx {
+        override def jsElement(componentId: Identifier): ScalaJsElement = {
+          unsafeLocate(componentId)
+        }
+
+        override def runtimeState[R, T <: Aux[R]](component: T): R = {
+          unsafeFindState(component.id)
+        }
+
+        override def unsafeFindState[R](componentId: Identifier): R = {
+          treeSnapShot.find(componentId) match {
+            case Some(value) =>
+              value.asInstanceOf[TreeNodeR[R]].runtimeProvider(this)
+            case None        =>
+              Logger.warn(s"Could not find component ${componentId} in Tree")
+              throw new IllegalStateException(s"Could not find ${componentId}")
+          }
+        }
       }
     }
   }
 
   def create(state: Ref[AssemblyState], locator: Locator): Task[EventManager] = {
     for {
-      hub                  <- Hub.bounded[Identifier](256)
-      eventRegistry        <- JsEventRegistry.create[ComponentId]
-      componentSubscribers <- Ref.make(MultiListMap.empty[(ComponentId, String), ComponentSubscriber[_]])
-      channelSubscribers   <- Ref.make(MultiListMap.empty[Identifier, ChannelSubscriber[_]])
+      hub                <- Hub.bounded[Identifier](256)
+      eventRegistry      <- JsEventRegistry.create[Identifier]
+      channelSubscribers <- Ref.make(MultiListMap.empty[Identifier, ChannelSubscriber[_]])
     } yield {
-      new EventManager(locator, hub, state, eventRegistry, componentSubscribers, channelSubscribers)
+      new EventManager(locator, hub, state, eventRegistry, channelSubscribers)
     }
   }
 

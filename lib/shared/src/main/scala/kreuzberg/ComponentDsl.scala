@@ -2,10 +2,13 @@ package kreuzberg
 
 import kreuzberg.util.Stateful
 import kreuzberg.Component
+import kreuzberg.dom.ScalaJsEvent
 import scala.language.implicitConversions
 
 import kreuzberg.dom.ScalaJsElement
 trait ComponentDsl {
+  self: Component =>
+
   implicit def htmlToAssemblyResult(in: Html): AssemblyResult[Unit] = {
     Stateful.pure(Assembly(in))
   }
@@ -14,22 +17,9 @@ trait ComponentDsl {
     Stateful.pure(assembly)
   }
 
-  def namedChild[R, T <: Component.Aux[R]](
-      name: String,
-      value: T
-  ): Stateful[AssemblyState, ComponentNode[R, T]] = {
-    Assembler.assembleNamedChild(name, value)
-  }
-
-  def anonymousChild[R, T <: Component.Aux[R]](
-      component: T
-  ): Stateful[AssemblyState, ComponentNode[R, T]] = {
-    Assembler.assembleWithNewId(component)
-  }
-
   def subscribe[T](model: Model[T]): Stateful[AssemblyState, T] = {
     Stateful { state =>
-      state.subscribe(model)
+      state.subscribe(self.id, model)
     }
   }
 
@@ -41,9 +31,11 @@ trait ComponentDsl {
     Stateful.get(_.readValue(model))
   }
 
-  case class RepBuilder[R, T <: Component.Aux[R]](rep: ComponentNode[R, T]) {
-    def apply[E](f: T => Event[E]): EventSource[E] = EventSource.ComponentEvent(f(rep.component), Some(rep.id))
-  }
+  def jsEvent(name: String, preventDefault: Boolean = false, capture: Boolean = false): JsEvent[ScalaJsEvent] =
+    JsEvent(Some(id), name, preventDefault, capture)
 
-  def from[R, T <: Component.Aux[R]](rep: ComponentNode[R, T]): RepBuilder[R, T] = RepBuilder(rep)
+  def windowEvent(name: String, preventDefault: Boolean = false, capture: Boolean = false): JsEvent[ScalaJsEvent] =
+    JsEvent(None, name, preventDefault, capture)
+
+  def from[E](jsEvent: JsEvent[E]): EventSource.Js[E] = EventSource.Js(jsEvent)
 }

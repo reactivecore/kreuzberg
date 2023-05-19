@@ -2,27 +2,9 @@ package kreuzberg.imperative
 
 import kreuzberg.*
 import kreuzberg.util.Stateful
-import kreuzberg.dom.ScalaJsElement
+import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
 
 import scala.language.implicitConversions
-
-/** A Simplified AssemblyContext, which also tracks Event Bindings. */
-class SimpleContext(state: AssemblyState) extends AssemblyContext(state) {
-  private val _eventBindings = Vector.newBuilder[EventBinding]
-
-  def addEventBinding(binding: EventBinding): Unit = {
-    _eventBindings += binding
-  }
-
-  def eventBindings(): Vector[EventBinding] = _eventBindings.result()
-}
-
-trait SimpleContextDsl extends ImperativeDsl {
-  protected def add(binding0: EventBinding, others: EventBinding*)(implicit c: SimpleContext): Unit = {
-    c.addEventBinding(binding0)
-    others.foreach(c.addEventBinding)
-  }
-}
 
 /**
  * A component base which lets the user build HTML and Elements are inserted using PlaceholderTags
@@ -49,7 +31,7 @@ abstract class SimpleComponentBaseWithRuntime[R] extends SimpleContextDsl with C
   def assemble(implicit c: SimpleContext): HtmlWithRuntime
 
   protected def jsElement[T <: ScalaJsElement](using r: RuntimeContext): T = {
-    r.jsElement.asInstanceOf[T]
+    r.jsElement(id).asInstanceOf[T]
   }
 
   final def assemble: AssemblyResult[R] = {

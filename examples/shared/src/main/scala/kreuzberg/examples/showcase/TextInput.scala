@@ -21,8 +21,8 @@ case class TextInput(fieldName: String, initialValue: String = "") extends Simpl
     }
   }
 
-  def change     = Event.JsEvent("change")
-  def inputEvent = Event.JsEvent("input")
+  def change     = jsEvent("change")
+  def inputEvent = jsEvent("input")
 }
 
 object TextInput {

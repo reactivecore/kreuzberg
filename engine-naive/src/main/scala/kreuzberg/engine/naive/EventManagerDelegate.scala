@@ -16,5 +16,7 @@ trait EventManagerDelegate {
       changedModels: Set[Identifier]
   ): Unit
 
-  def locate(componentId: ComponentId): ScalaJsElement
+  def locate(componentId: Identifier): ScalaJsElement
+
+  def locateNode(componentId: Identifier): Option[TreeNode]
 }

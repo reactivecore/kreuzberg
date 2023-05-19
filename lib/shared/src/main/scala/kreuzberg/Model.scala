@@ -7,7 +7,7 @@ import kreuzberg.util.Stateful
  * value and are subscribed by components. They are allowed to be singletons. They are identified using their ID. There
  * is only one model of the same id allowed within an Engine.
  */
-class Model[+T] private (val initialValue: () => T) {
+final class Model[+T] private (val initialValue: () => T) {
   val id = Identifier.next()
 
   override def hashCode(): Int = id.value

@@ -9,7 +9,7 @@ case class PlainLink(
     name: String,
     target: String
 ) extends SimpleComponentBase {
-  val click = Event.JsEvent("click", true, true)
+  val click = jsEvent("click", true, true)
 
   override def assemble(implicit c: SimpleContext): Html = {
     a(name, href := target)
@@ -23,9 +23,9 @@ case class RouterLink(
 ) extends SimpleComponentBase {
 
   override def assemble(implicit c: SimpleContext): Html = {
-    val link = anonymousChild(PlainLink(name, target))
+    val link = PlainLink(name, target)
     add(
-      from(link)(_.click).to(SimpleRouter.gotoTarget(target))
+      from(link.click).to(SimpleRouter.gotoTarget(target))
     )
     if (deco) {
       span("[", link.wrap, "]")

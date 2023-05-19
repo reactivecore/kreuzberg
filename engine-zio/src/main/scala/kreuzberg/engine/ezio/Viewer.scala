@@ -37,7 +37,7 @@ class Viewer(rootElement: ScalaJsElement) {
   }
 
   /** Find an element for a given Component ID. */
-  def findElement(id: ComponentId): Task[ScalaJsElement] = {
+  def findElement(id: Identifier): Task[ScalaJsElement] = {
     ZIO
       .attempt {
         findElementUnsafe(id)
@@ -45,9 +45,9 @@ class Viewer(rootElement: ScalaJsElement) {
       .logError(s"Could not find element ${id}")
   }
 
-  def findElementUnsafe(id: ComponentId): ScalaJsElement = {
+  def findElementUnsafe(id: Identifier): ScalaJsElement = {
     val element = rootElement
-      .querySelector(s"[data-id=\"${id.id}\"]")
+      .querySelector(s"[data-id=\"${id.value}\"]")
     if (element == null) {
       throw new RuntimeException(s"Could not find element with id ${id}")
     }

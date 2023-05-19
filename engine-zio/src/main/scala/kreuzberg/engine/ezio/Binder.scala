@@ -44,12 +44,27 @@ object Binder {
 
   /** Create a Binder. */
   def create(rootElement: ScalaJsElement, main: Component): Task[Binder] = {
-    val viewer                        = new Viewer(rootElement)
-    val locator: EventManager.Locator = id => viewer.findElementUnsafe(id)
+    val viewer = new Viewer(rootElement)
     for {
       state         <- Ref.make(AssemblyState())
-      eventManager2 <- EventManager.create(state, locator)
       tree          <- Ref.make(TreeNode.empty: TreeNode)
+      locator        = new EventManager.Locator {
+                         override protected def unsafeLocate(id: Identifier): ScalaJsElement = viewer.findElementUnsafe(id)
+
+                         override def locateNode(id: Identifier): Task[TreeNode] = {
+                           for {
+                             root    <- tree.get
+                             element <- ZIO.getOrFailWith(
+                                          new IllegalStateException(s"Could not find ${id}")
+                                        )(root.find(id))
+                           } yield {
+                             element
+                           }
+                         }
+
+                         override def rootTree(): Task[TreeNode] = tree.get
+                       }
+      eventManager2 <- EventManager.create(state, locator)
       mainLock      <- Semaphore.make(1)
     } yield {
       new Binder(state, tree, rootElement, main, eventManager2, mainLock)
@@ -83,7 +98,7 @@ class Binder(
     mainLock.withPermit {
       for {
         _       <- Logger.debugZio("Starting redraw")
-        newTree <- Assembler.assembleNamedChild("root", main).onRef(state)
+        newTree <- Assembler.tree(main).onRef(state)
         _       <- viewer.drawRoot(newTree)
         _       <- tree.set(newTree)
         _       <- Logger.debugZio("Activating Events")
@@ -107,7 +122,7 @@ class Binder(
 
   private def onChangedModelsContainers(
       changedModelIds: Set[Identifier],
-      changedComponentIds: Set[ComponentId]
+      changedComponentIds: Set[Identifier]
   ): Task[Unit] = {
     if (changedComponentIds.isEmpty) {
       return ZIO.unit
@@ -131,12 +146,10 @@ class Binder(
   }
 
   /** Rebuild tree of changed components. */
-  private def updateTree(changed: Set[ComponentId]): Task[Unit] = {
+  private def updateTree(changed: Set[Identifier]): Task[Unit] = {
     for {
       tree0   <- tree.get
-      _        = Logger.debug(s"Tree: ${tree0}")
       updated <- updateSubtree(tree0, changed)
-      _        = Logger.debug(s"Tree After: ${updated}")
       _       <- tree.set(updated)
     } yield {
       ()
@@ -144,7 +157,7 @@ class Binder(
   }
 
   /** Rebuild a subtree. */
-  private def updateSubtree(node: TreeNode, changed: Set[ComponentId]): Task[TreeNode] = {
+  private def updateSubtree(node: TreeNode, changed: Set[Identifier]): Task[TreeNode] = {
     if (changed.contains(node.id)) {
       reassembleNode(node)
     } else {
@@ -156,7 +169,7 @@ class Binder(
   private def reassembleNode(node: TreeNode): Task[TreeNode] = {
     node match {
       case r: ComponentNode[_, _] =>
-        Assembler.assembleWithId(node.id, r.component).onRef(state)
+        Assembler.tree(r.component).onRef(state)
     }
   }
 
@@ -176,7 +189,7 @@ class Binder(
     }
   }
 
-  private def drawChangedEvents(node: TreeNode, changed: Set[ComponentId]): Task[Unit] = {
+  private def drawChangedEvents(node: TreeNode, changed: Set[Identifier]): Task[Unit] = {
     if (changed.contains(node.id)) {
       viewer.updateNode(node)
     } else {
@@ -184,7 +197,7 @@ class Binder(
     }
   }
 
-  private def activateChangedEvents(node: TreeNode, changed: Set[ComponentId]): Task[Unit] = {
+  private def activateChangedEvents(node: TreeNode, changed: Set[Identifier]): Task[Unit] = {
     if (changed.contains(node.id)) {
       eventManager2.activateEvents(node)
     } else {
@@ -196,11 +209,10 @@ class Binder(
   private def garbageCollect(
       tree: TreeNode,
       state: AssemblyState
-  ): (AssemblyState, Set[ComponentId], Set[Identifier]) = {
-    val referencedComponents = tree.referencedComponentIds()
+  ): (AssemblyState, Set[Identifier], Set[Identifier]) = {
+    val referencedComponents = tree.referencedComponentIds + Identifier.RootComponent
 
     val componentFiltered = state.copy(
-      children = state.children.filterKeys(referencedComponents.contains),
       services = state.services.filterKeys(referencedComponents.contains)
     )
 
@@ -215,7 +227,6 @@ class Binder(
     Logger.debug(
       s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models"
     )
-    Logger.debug(s"  Children: ${state.children.size} -> ${modelFiltered.children.size}")
     Logger.debug(s"  Values:   ${state.modelValues.size} -> ${modelFiltered.modelValues.size}")
     Logger.debug(s"  Subscribers: ${state.subscribers.size} -> ${modelFiltered.subscribers.size}")
 

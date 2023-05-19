@@ -20,7 +20,7 @@ class FlatHtmlBuilder {
 
   inline def ++=(s: String): Unit = add(s)
 
-  def addPlaceholder(id: ComponentId): Unit = {
+  def addPlaceholder(id: Identifier): Unit = {
     flush()
     partsBuilder += FlatHtmlElement.PlaceHolder(id)
   }

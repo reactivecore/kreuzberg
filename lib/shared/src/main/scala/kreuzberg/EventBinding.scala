@@ -1,7 +1,5 @@
 package kreuzberg
 
-import kreuzberg.Event.{Custom, JsEvent}
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import kreuzberg.dom.ScalaJsEvent
@@ -12,12 +10,13 @@ import scala.util.Success
 sealed trait EventSource[E] {
 
   /** Extend runtime state to event. */
-  def addState[R, S](from: TreeNodeR[R])(fn: R => S): EventSource[(E, S)] = {
-    EventSource.WithState(this, from.id, from.runtimeProvider, fn)
+  def addState[R, S](from: Component.Aux[R])(fn: R => S): EventSource[(E, S)] = {
+    EventSource.WithState(this, from.id, fn)
   }
 
   /** Replace event state with runtime state */
-  def withState[R, S](from: TreeNodeR[R])(fn: R => S): EventSource[S] = {
+  def withState[R, S](from: Component.Aux[R])(fn: R => S): EventSource[S] = {
+
     addState(from)(fn).map(_._2)
   }
 
@@ -79,19 +78,11 @@ sealed trait EventSource[E] {
     changeModel(model)((e, _) => e)
   }
 
-  /** Trigger some custom event. */
-  def trigger(ce: Event.Custom[E]): EventBinding.SourceSink[E] = {
-    EventBinding(this, EventSink.CustomEventSink(None, ce))
-  }
-
-  /** Trigger some other (usually child) components event. */
-  def trigger[T <: Component](c: TreeNodeC[T])(selector: T => Custom[E]) = {
+  /** Trigger some channel. */
+  def triggerChannel[T](channel: Channel[T]): EventBinding.SourceSink[E] = {
     EventBinding(
       this,
-      EventSink.CustomEventSink(
-        Some(c.id),
-        selector(c.component)
-      )
+      EventSink.ChannelSink(channel)
     )
   }
 
@@ -114,11 +105,17 @@ sealed trait EventSource[E] {
 
 object EventSource {
 
-  /** Some come components' event. */
-  case class ComponentEvent[E](event: Event[E], component: Option[ComponentId] = None) extends EventSource[E]
+  /** JS Event */
+  case class Js[E](jsEvent: JsEvent[E]) extends EventSource[E]
 
-  /** A JS Event from window-Object */
-  case class WindowJsEvent[E](js: JsEvent[E]) extends EventSource[E]
+  object Js {
+    def window(name: String, preventDefault: Boolean = false, capture: Boolean = false): Js[ScalaJsEvent] = Js(
+      JsEvent(None, name, preventDefault, capture)
+    )
+  }
+
+  /** Object got assembled. */
+  case object Assembled extends EventSource[Unit]
 
   case class ChannelSource[E](channel: WeakReference[Channel[E]]) extends EventSource[E]
 
@@ -134,8 +131,7 @@ object EventSource {
 
   case class WithState[E, F, S](
       inner: EventSource[E],
-      componentId: ComponentId,
-      provider: RuntimeProvider[F],
+      componentId: Identifier,
       fetcher: F => S
   ) extends EventSource[(E, S)]
 
@@ -192,13 +188,7 @@ object EventSink {
   /** Applies a map function before calling a sink. */
   case class ContraMap[E, F](sink: EventSink[E], f: F => E) extends EventSink[F]
 
-  /**
-   * Trigger a component event.
-   * @param dst
-   *   if set, send messages to other components Ids.
-   */
-  case class CustomEventSink[E](componentId: Option[ComponentId], event: Event.Custom[E]) extends EventSink[E]
-
+  /** Trigger a Channel. */
   case class ChannelSink[E](channel: WeakReference[Channel[E]]) extends EventSink[E]
 
   object ChannelSink {
@@ -224,23 +214,4 @@ object EventBinding {
       source: EventSource[E],
       sink: EventSink[E]
   ): SourceSink[E] = SourceSink(source, sink)
-
-  def customOwn[T](
-      name: String,
-      preventDefault: Boolean = false,
-      capture: Boolean = false
-  )(
-      f: ScalaJsEvent => Unit
-  ): EventBinding = {
-    EventBinding(
-      EventSource.ComponentEvent[ScalaJsEvent](
-        Event.JsEvent(
-          name,
-          preventDefault,
-          capture
-        )
-      ),
-      EventSink.ExecuteCode(f)
-    )
-  }
 }

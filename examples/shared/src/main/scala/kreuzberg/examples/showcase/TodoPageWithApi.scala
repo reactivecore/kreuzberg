@@ -19,12 +19,12 @@ object LoadingModel {
 
 object TodoAdderForm extends SimpleComponentBase {
   def assemble(implicit c: SimpleContext): Html = {
-    val textInput = child("input", TextInput("name"))
-    val button    = child("addButton", Button("Add"))
+    val textInput = TextInput("name")
+    val button    = Button("Add")
     add(
-      from(button)(_.clicked)
+      from(button.clicked)
         .withState(textInput)(_.text)
-        .trigger(addEvent)
+        .triggerChannel(addEvent)
     )
     form(
       label("Element: "),
@@ -33,7 +33,8 @@ object TodoAdderForm extends SimpleComponentBase {
     )
   }
 
-  val addEvent = Event.Custom[String]("add")
+  val addEvent = Channel.create[String]()
+  // val addEvent = Event.Custom[String]("add")
 }
 
 object TodoPageWithApi extends SimpleComponentBase {
@@ -51,8 +52,7 @@ object TodoPageWithApi extends SimpleComponentBase {
 
     if (todolist == LoadingModel.Loading) {
       add {
-        EventSource
-          .ComponentEvent(Event.Assembled)
+        EventSource.Assembled
           .effect(_ => lister.listItems())
           .intoModel(model)(decodeResult)
       }
@@ -62,11 +62,11 @@ object TodoPageWithApi extends SimpleComponentBase {
       case LoadingModel.Error(e)  => div(s"Could not load model ${e}")
       case LoadingModel.Loading   => div("Loading")
       case LoadingModel.Loaded(v) =>
-        val shower = child("shower", TodoShower(v))
-        val form   = child("form", TodoAdderForm)
+        val shower = TodoShower(v)
+        val form   = TodoAdderForm
 
         add(
-          from(form)(_.addEvent)
+          from(form.addEvent)
             .effect(text => lister.addItem(text))
             .intoModel(model)(_ => LoadingModel.Loading)
             .and

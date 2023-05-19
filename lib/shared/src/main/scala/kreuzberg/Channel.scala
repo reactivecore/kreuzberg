@@ -4,7 +4,7 @@ package kreuzberg
  * A Channel is something where you can send data to and can subscribe in event bindings. They are allowed to be
  * singletons. They are identified using their ID. There is only one channel of the same id allowed within an Engine.
  */
-class Channel[+T] private {
+final class Channel[+T] private {
   val id: Identifier = Identifier.next()
 
   override def hashCode(): Int = id.value

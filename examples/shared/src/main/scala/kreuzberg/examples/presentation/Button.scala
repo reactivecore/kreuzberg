@@ -5,7 +5,7 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 case class Button(title: Model[String]) extends ComponentBase {
-  def click = Event.JsEvent("click")
+  def click = jsEvent("click")
 
   def assemble: AssemblyResult[Runtime] = {
     for {

@@ -1,6 +1,6 @@
 package kreuzberg.scalatags
 
-import kreuzberg.{Assembler, AssemblyState, ComponentBase, ComponentId, ComponentNode, AssemblyResult}
+import kreuzberg.{Assembler, AssemblyState, ComponentBase, ComponentNode, AssemblyResult}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -11,18 +11,14 @@ class ScalaTagsEmbeddedTest extends TestBase {
     }
   }
 
-  def node(i: Int) = ComponentNode.build(
-    ComponentId(i),
-    DummyComponent(i),
-    DummyComponent(i).assemble(AssemblyState())._2
-  )
+  def node(i: Int) = DummyComponent(i)
 
   "collectFrom" should "work" in {
-    val p0          = node(0).wrap
-    val p1          = node(1).wrap
-    val p2          = node(2).wrap
-    val p3          = node(2).wrap
-    val html        = div(
+    val p0   = node(0).wrap
+    val p1   = node(1).wrap
+    val p2   = node(2).wrap
+    val p3   = node(2).wrap
+    val html = div(
       div(
         "foo"
       ),

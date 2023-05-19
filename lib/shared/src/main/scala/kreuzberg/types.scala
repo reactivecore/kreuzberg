@@ -17,9 +17,9 @@ type NodeResult[R, T <: Component.Aux[R]] = Stateful[AssemblyState, ComponentNod
 type TreeNodeResult = Stateful[AssemblyState, TreeNode]
 
 trait RuntimeContext {
-  def jsElement: ScalaJsElement
+  def jsElement(componentId: Identifier): ScalaJsElement
 
-  def jump(componentId: ComponentId): RuntimeContext
+  def runtimeState[R, T <: Component.Aux[R]](component: T): R
 }
 
 type RuntimeProvider[+R] = RuntimeContext => R
@@ -31,4 +31,4 @@ type SimpleComponentBase = imperative.SimpleComponentBase
 type SimpleContext = imperative.SimpleContext
 
 /** Something which can be embedded into HTML. */
-type HtmlEmbedding = TreeNode | Html
+type HtmlEmbedding = Component | Html
