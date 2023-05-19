@@ -13,7 +13,7 @@ trait EventManagerDelegate {
   /** Update with a new state */
   def onIterationEnd(
       state: AssemblyState,
-      changedModels: Set[ModelId]
+      changedModels: Set[Identifier]
   ): Unit
 
   def locate(componentId: ComponentId): ScalaJsElement

@@ -95,7 +95,7 @@ class Binder(
     }
   }
 
-  private def onChangedModels(modelIds: Chunk[ModelId]): Task[Unit] = {
+  private def onChangedModels(modelIds: Chunk[Identifier]): Task[Unit] = {
     val modelIdSet = modelIds.toSet
     state.get.flatMap { currentState =>
       val componentIds = (currentState.subscribers.view.collect {
@@ -106,7 +106,7 @@ class Binder(
   }
 
   private def onChangedModelsContainers(
-      changedModelIds: Set[ModelId],
+      changedModelIds: Set[Identifier],
       changedComponentIds: Set[ComponentId]
   ): Task[Unit] = {
     if (changedComponentIds.isEmpty) {
@@ -193,16 +193,18 @@ class Binder(
   }
 
   /** Garbage collects the AssemblyState, returns referenced New state, and referenced Components and Models */
-  private def garbageCollect(tree: TreeNode, state: AssemblyState): (AssemblyState, Set[ComponentId], Set[ModelId]) = {
+  private def garbageCollect(
+      tree: TreeNode,
+      state: AssemblyState
+  ): (AssemblyState, Set[ComponentId], Set[Identifier]) = {
     val referencedComponents = tree.referencedComponentIds()
 
     val componentFiltered = state.copy(
       children = state.children.filterKeys(referencedComponents.contains),
-      models = state.models.filterKeys(referencedComponents.contains),
       services = state.services.filterKeys(referencedComponents.contains)
     )
 
-    val referencedModels = componentFiltered.models.values.map(_.id).toSet
+    val referencedModels = componentFiltered.subscribers.map(_._1).toSet
     val modelFiltered    = componentFiltered.copy(
       modelValues = componentFiltered.modelValues.view.filterKeys(referencedModels.contains).toMap,
       subscribers = componentFiltered.subscribers.filter { case (modelId, componentId) =>
@@ -214,7 +216,6 @@ class Binder(
       s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models"
     )
     Logger.debug(s"  Children: ${state.children.size} -> ${modelFiltered.children.size}")
-    Logger.debug(s"  Models:   ${state.models.size}   -> ${modelFiltered.models.size}")
     Logger.debug(s"  Values:   ${state.modelValues.size} -> ${modelFiltered.modelValues.size}")
     Logger.debug(s"  Subscribers: ${state.subscribers.size} -> ${modelFiltered.subscribers.size}")
 

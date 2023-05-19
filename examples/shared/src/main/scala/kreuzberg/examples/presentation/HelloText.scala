@@ -33,7 +33,7 @@ object InputField {
 
 object Shower extends SimpleComponentBase {
   def assemble(implicit c: SimpleContext): Html = {
-    val text       = model("text", defaultValue = "")
+    val text       = Model.create("")
     val inputField = anonymousChild(InputField("text"))
     add(
       from(inputField)(_.inputEvent)

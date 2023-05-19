@@ -8,8 +8,6 @@ import kreuzberg.util.{NamedMap, Stateful}
  *   own component id (will be stateful changed on children nodes)
  * @param nextId
  *   next id for components
- * @param nextModelId
- *   next id for models
  * @param children
  *   (owner -> name -> id) contains children relationship for named components
  * @param subscribers
@@ -18,11 +16,9 @@ import kreuzberg.util.{NamedMap, Stateful}
 case class AssemblyState(
     path: List[ComponentId] = List(AssemblyState.RootComponent),
     nextId: ComponentId = ComponentId(1),
-    nextModelId: ModelId = ModelId(1),
     children: NamedMap[ComponentId, ComponentId] = NamedMap.empty,
-    models: NamedMap[ComponentId, Model[_]] = NamedMap.empty,
-    modelValues: Map[ModelId, Any] = Map.empty,
-    subscribers: Vector[(ModelId, ComponentId)] = Vector.empty, // Convert to some multimap?
+    modelValues: Map[Identifier, Any] = Map.empty,
+    subscribers: Vector[(Identifier, ComponentId)] = Vector.empty, // Convert to some multimap?
     services: NamedMap[ComponentId, Any] = NamedMap.empty
 ) {
 
@@ -62,43 +58,16 @@ case class AssemblyState(
     }
   }
 
-  /** Ensure existance of a named model. */
-  def withModel[M](name: String, initial: => M): (AssemblyState, Model[M]) = {
-    withModelOnId(ownId, name, initial)
-  }
-
-  /**
-   * Ensures the existance of a model on the root object. Used by Providers.
-   */
-  def withRootModel[M](name: String, initial: => M): (AssemblyState, Model[M]) = {
-    withModelOnId(AssemblyState.RootComponent, name, initial)
-  }
-
-  private def withModelOnId[M](owner: ComponentId, name: String, initial: => M): (AssemblyState, Model[M]) = {
-    models.get(owner, name) match {
-      case Some(model) =>
-        (this, model.asInstanceOf[Model[M]])
-      case None        =>
-        val m         = Model[M](owner, name, nextModelId)
-        val nextState = copy(
-          models = models.withValue(owner, name, m),
-          modelValues = modelValues + (nextModelId -> initial),
-          nextModelId = nextModelId.inc
-        )
-        (nextState, m)
-    }
-  }
-
   def provide[T: Provider]: (AssemblyState, T) = implicitly[Provider[T]].provide(this)
 
-  def withModelValue[M](id: ModelId, value: M): AssemblyState = {
+  def withModelValue[M](id: Identifier, value: M): AssemblyState = {
     copy(
       modelValues = modelValues + (id -> value)
     )
   }
 
   def subscribe[T](model: Model[T]): (AssemblyState, T) = {
-    val value = modelValues(model.id).asInstanceOf[T]
+    val value = readValue(model)
     copy(
       subscribers = subscribers :+ (model.id -> ownId)
     ) -> value
@@ -106,7 +75,7 @@ case class AssemblyState(
 
   /** Read a value without subscribing it (doesn't make component dependent from it) */
   def readValue[T](model: Model[T]): T = {
-    modelValues(model.id).asInstanceOf[T]
+    modelValues.getOrElse(model.id, model.initialValue()).asInstanceOf[T]
   }
 
   /** Create a service. */

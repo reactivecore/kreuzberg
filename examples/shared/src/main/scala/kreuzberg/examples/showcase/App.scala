@@ -8,17 +8,18 @@ import kreuzberg.scalatags.all.*
 case class App()
     extends ComponentBase(
     ) {
+
+  val model = Model.create(
+    TodoList(
+      Seq(
+        "Hello",
+        "World"
+      )
+    )
+  )
+
   override def assemble: AssemblyResult[Unit] = {
     for {
-      model  <- Model.make(
-                  "main",
-                  TodoList(
-                    Seq(
-                      "Hello",
-                      "World"
-                    )
-                  )
-                )
       menu   <- namedChild("menu", Menu)
       // _            <- subscribe(currentRoute)
       router <- namedChild(

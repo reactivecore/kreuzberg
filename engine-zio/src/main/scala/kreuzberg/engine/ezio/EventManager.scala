@@ -8,7 +8,6 @@ import zio.stream.{ZSink, ZStream}
 import zio.*
 
 import scala.concurrent.Future
-import kreuzberg.EventSink.ContraCollect
 
 import scala.ref.WeakReference
 
@@ -17,15 +16,15 @@ type XStream[T] = ZStream[Any, Nothing, T]
 /** Responsible for activating Events on components and putting them all into one single Iteration Stream. */
 class EventManager(
     locator: Locator,
-    hub: Hub[ModelId],
+    hub: Hub[Identifier],
     state: Ref[AssemblyState],
     eventRegistry: JsEventRegistry[ComponentId],
     componentSubscribers: Ref[MultiListMap[(ComponentId, String), ComponentSubscriber[_]]],
-    channelSubscribers: Ref[MultiListMap[String, ChannelSubscriber[_]]]
+    channelSubscribers: Ref[MultiListMap[Identifier, ChannelSubscriber[_]]]
 ) {
 
   /** Tracked changes for models. */
-  def iterationStream: ZStream[Any, Nothing, Chunk[ModelId]] = ZStream
+  def iterationStream: ZStream[Any, Nothing, Chunk[Identifier]] = ZStream
     .fromHub(hub)
     .groupedWithin(100, 10.millis)
 
@@ -81,7 +80,7 @@ class EventManager(
         }
         toGo -> alive
       }
-      .flatMap { (removal: MultiListMap[String, ChannelSubscriber[_]]) =>
+      .flatMap { (removal: MultiListMap[Identifier, ChannelSubscriber[_]]) =>
         ZIO.foreachDiscard(removal.values) {
           _.cancel()
         }
@@ -132,18 +131,18 @@ class EventManager(
 
   private def convertSink[E](node: TreeNode, sink: EventSink[E]): E => Task[Unit] = {
     sink match {
-      case c: EventSink.ModelChange[_, _]  =>
+      case c: EventSink.ModelChange[_, _]          =>
         convertModelChangeSink(node, c)
-      case EventSink.ExecuteCode(f)        =>
+      case EventSink.ExecuteCode(f)                =>
         input => ZIO.attempt(f(input))
-      case EventSink.Multiple(sinks)       =>
+      case EventSink.Multiple(sinks)               =>
         val converted = sinks.map(convertSink(node, _))
         input => {
           ZIO.collectAllDiscard {
             converted.map(_.apply(input))
           }
         }
-      case ContraCollect(underlying, pf)   =>
+      case EventSink.ContraCollect(underlying, pf) =>
         val converted = convertSink(node, underlying)
         input => {
           if (pf.isDefinedAt(input)) {
@@ -152,9 +151,14 @@ class EventManager(
             ZIO.unit
           }
         }
-      case t: EventSink.CustomEventSink[_] =>
+      case EventSink.ContraMap(underlying, f)      =>
+        val converted = convertSink(node, underlying)
+        input => {
+          converted(f(input))
+        }
+      case t: EventSink.CustomEventSink[_]         =>
         convertComponentTriggerSink(node, t)
-      case c: EventSink.ChannelSink[_]     =>
+      case c: EventSink.ChannelSink[_]             =>
         convertChannelSink(node, c)
     }
   }
@@ -164,13 +168,13 @@ class EventManager(
       {
         for {
           _ <- state.modify { state =>
-                 val oldValue     = state.modelValues(change.modelId).asInstanceOf[M]
+                 val oldValue     = state.readValue(change.model)
                  val updated      = change.f(input, oldValue)
-                 Logger.trace(s"Model Change ${change.modelId} ${oldValue} -> ${updated}")
-                 val updatedState = state.withModelValue(change.modelId, updated)
+                 Logger.trace(s"Model Change ${change.model.id} ${oldValue} -> ${updated}")
+                 val updatedState = state.withModelValue(change.model.id, updated)
                  (oldValue, updated) -> updatedState
                }
-          _ <- hub.offer(change.modelId)
+          _ <- hub.offer(change.model.id)
         } yield {
           ()
         }
@@ -374,12 +378,12 @@ class EventManager(
   }
 
   /** Remove all not referenced bindings. */
-  def garbageCollect(referencedComponentIds: Set[ComponentId], referencedModelIds: Set[ModelId]): Task[Unit] = {
+  def garbageCollect(referencedComponentIds: Set[ComponentId], referencedModelIds: Set[Identifier]): Task[Unit] = {
     // TODO: Event Target removal?!
     for {
       _ <-
         Logger.debugZio(
-          s"Garbage collect, referenced components: ${referencedComponentIds.toSeq.map(_.id).sorted} / models: ${referencedModelIds.toSeq.map(_.id).sorted}"
+          s"Garbage collect, referenced components: ${referencedComponentIds.toSeq.map(_.id).sorted} / models: ${referencedModelIds.toSeq.map(_.value).sorted}"
         )
       _ <- garbageCollectComponentSubscribers(referencedComponentIds)
       _ <- eventRegistry.cancelUnreferenced(referencedComponentIds)
@@ -456,10 +460,10 @@ object EventManager {
 
   def create(state: Ref[AssemblyState], locator: Locator): Task[EventManager] = {
     for {
-      hub                  <- Hub.bounded[ModelId](256)
+      hub                  <- Hub.bounded[Identifier](256)
       eventRegistry        <- JsEventRegistry.create[ComponentId]
       componentSubscribers <- Ref.make(MultiListMap.empty[(ComponentId, String), ComponentSubscriber[_]])
-      channelSubscribers   <- Ref.make(MultiListMap.empty[String, ChannelSubscriber[_]])
+      channelSubscribers   <- Ref.make(MultiListMap.empty[Identifier, ChannelSubscriber[_]])
     } yield {
       new EventManager(locator, hub, state, eventRegistry, componentSubscribers, channelSubscribers)
     }
@@ -467,6 +471,6 @@ object EventManager {
 
   case class Iteration(
       state: AssemblyState,
-      changedModels: Set[ModelId]
+      changedModels: Set[Identifier]
   )
 }
