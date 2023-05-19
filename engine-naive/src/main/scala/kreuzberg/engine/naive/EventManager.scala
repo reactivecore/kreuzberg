@@ -6,6 +6,7 @@ import kreuzberg.dom.*
 
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.ref.WeakReference
 import scala.util.Try
 import scala.util.control.NonFatal
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -48,17 +49,23 @@ class EventManager(delegate: EventManagerDelegate) {
       owner: ComponentId
   )
 
+  /** Bindings to channel events. */
+  private case class ChannelBinding[T](
+      handler: T => Unit,
+      owner: ComponentId
+  )
+
   /** Pending Changes. */
   private val _pending = new mutable.Queue[PendingChange]()
-
-  /** Bindings to Model changes. */
-  private val _modelBindings = new MutableMultimap[ModelId, ModelBindings[_]]()
 
   /** Bindings to Window Events. */
   private val _windowEventBindings = new MutableMultimap[String, WindowEventBinding]()
 
   /** Bindings to Component Events. */
   private val _componentEventBindings = new MutableMultimap[(ComponentId, String), ComponentEventBinding[_]]()
+
+  /** Bindings to channels. */
+  private val _channelBindings = new MutableMultimap[String, ChannelBinding[_]]()
 
   // Keeping track of registered window events (we do not yet remove them)
   private val _registeredWindowEvents = mutable.Set[String]()
@@ -68,9 +75,9 @@ class EventManager(delegate: EventManagerDelegate) {
   /** Activate Events on a Node. */
   def activateEvents(node: TreeNode): Unit = {
     // Drop Existing model bindings
-    _modelBindings.filterValuesInPlace(_.owner != node.id)
     _windowEventBindings.filterValuesInPlace(_.owner != node.id)
     _componentEventBindings.filterValuesInPlace(_.owner != node.id)
+    _channelBindings.filterValuesInPlace(_.owner != node.id)
 
     node.children.foreach { case child: ComponentNode[_, _] =>
       activateEvents(child)
@@ -80,15 +87,13 @@ class EventManager(delegate: EventManagerDelegate) {
 
   def clear(): Unit = {
     Logger.debug("Full Clear")
-    _modelBindings.clear()
     _changedModel.clear()
   }
 
   def garbageCollect(referencedComponents: Set[ComponentId], referencedModels: Set[ModelId]): Unit = {
-    _modelBindings.filterKeysInPlace(referencedModels.contains)
-    _modelBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _windowEventBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _componentEventBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
+    _channelBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
   }
 
   private def activateEvent(node: TreeNode, eventBinding: EventBinding): Unit = {
@@ -107,7 +112,7 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def transformSink[T](node: TreeNode, eventSink: EventSink[T]): T => Unit = {
     eventSink match
-      case EventSink.ModelChange(modelId, f)         =>
+      case EventSink.ModelChange(modelId, f)       =>
         eventData =>
           val change = PendingModelChange(
             modelId,
@@ -115,6 +120,8 @@ class EventManager(delegate: EventManagerDelegate) {
           )
           _pending.append(change)
           ensureNextIteration()
+      case EventSink.ChannelSink(channel)          =>
+        eventData => triggerChannel(channel, eventData)
       case EventSink.ExecuteCode(f)                => f
       case EventSink.Multiple(sinks)               =>
         val converted = sinks.map(transformSink(node, _))
@@ -132,6 +139,14 @@ class EventManager(delegate: EventManagerDelegate) {
           _componentEventBindings.foreachKey(dst.getOrElse(node.id) -> ce.name) { binding =>
             binding.asInstanceOf[ComponentEventBinding[T]].handler(eventData)
           }
+  }
+
+  private def triggerChannel[T](ref: WeakReference[Channel[T]], data: T): Unit = {
+    ref.get match {
+      case Some(c) =>
+        _channelBindings.foreachKey(c.id) { _.asInstanceOf[ChannelBinding[T]].handler(data) }
+      case None     => // nothing
+    }
   }
 
   private def buildRuntimeContext(id: ComponentId): RuntimeContext = {
@@ -206,20 +221,10 @@ class EventManager(delegate: EventManagerDelegate) {
         )
       case e: EventSource.EffectEvent[_, _, _]                          =>
         bindEffect(ownNode, e, sink)
-      case m: EventSource.ModelChange[_]                                =>
-        bindModelChange(
-          ownNode,
-          m,
-          (from, to) => {
-            sink(from, to)
-          }
-        )
       case a: EventSource.AndSource[_]                                  =>
         bindAnd(ownNode, a, sink)
-  }
-
-  private def bindModelChange[T](ownNode: TreeNode, source: EventSource.ModelChange[T], sink: (T, T) => Unit): Unit = {
-    _modelBindings.add(source.modelId, ModelBindings(sink, ownNode.id))
+      case c: EventSource.ChannelSource[_]                              =>
+        bindChannel(ownNode, c, sink)
   }
 
   private def bindRepEvent[E](ownNode: TreeNode, repEvent: EventSource.ComponentEvent[E], sink: E => Unit): Unit = {
@@ -254,6 +259,12 @@ class EventManager(delegate: EventManagerDelegate) {
       sink1(value)
     }
     bindEventSource(ownNode, event.binding.source, combined)
+  }
+
+  private def bindChannel[T](ownNode: TreeNode, event: EventSource.ChannelSource[T], sink: T => Unit): Unit = {
+    event.channel.get.foreach { c =>
+      _channelBindings.add(c.id, ChannelBinding(sink, ownNode.id))
+    }
   }
 
   private def bindEvent[E](componentId: ComponentId, event: Event[E], sink: E => Unit): Unit = {
@@ -352,13 +363,10 @@ class EventManager(delegate: EventManagerDelegate) {
     val updated = change.fn(value)
     if (value != updated) {
       Logger.debug(
-        s"Updating ${change.id} from ${value} to ${updated}, bindings: ${_modelBindings.sizeForKey(change.id)}"
+        s"Updating ${change.id} from ${value} to ${updated}"
       )
       _currentState = _currentState.withModelValue(change.id, updated)
       _changedModel.add(change.id)
-      _modelBindings.foreachKey(change.id) { binding =>
-        binding.asInstanceOf[ModelBindings[T]].handler(value, updated)
-      }
     }
   }
 

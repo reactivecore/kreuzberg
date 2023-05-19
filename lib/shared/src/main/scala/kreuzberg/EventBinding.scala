@@ -5,6 +5,8 @@ import kreuzberg.Event.{Custom, JsEvent}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import kreuzberg.dom.ScalaJsEvent
+
+import scala.ref.WeakReference
 import scala.util.Failure
 import scala.util.Success
 sealed trait EventSource[E] {
@@ -118,6 +120,12 @@ object EventSource {
   /** A JS Event from window-Object */
   case class WindowJsEvent[E](js: JsEvent[E]) extends EventSource[E]
 
+  case class ChannelSource[E](channel: WeakReference[Channel[E]]) extends EventSource[E]
+
+  object ChannelSource {
+    inline def apply[E](channel: Channel[E]): ChannelSource[E] = ChannelSource[E](WeakReference(channel))
+  }
+
   /** Some side effect operatio (e.g. API Call) */
   case class EffectEvent[E, F[_], R](
       trigger: EventSource[E],
@@ -130,16 +138,6 @@ object EventSource {
       provider: RuntimeProvider[F],
       fetcher: F => S
   ) extends EventSource[(E, S)]
-
-  case class ModelChange[M](
-      modelId: ModelId
-  ) extends EventSource[(M, M)]
-
-  object ModelChange {
-    def apply[M](model: Model[M]): ModelChange[M] = {
-      ModelChange(model.id)
-    }
-  }
 
   case class MapSource[E, F](
       from: EventSource[E],
@@ -194,6 +192,12 @@ object EventSink {
    *   if set, send messages to other components Ids.
    */
   case class CustomEventSink[E](componentId: Option[ComponentId], event: Event.Custom[E]) extends EventSink[E]
+
+  case class ChannelSink[E](channel: WeakReference[Channel[E]]) extends EventSink[E]
+
+  object ChannelSink {
+    inline def apply[E](channel: Channel[E]): ChannelSink[E] = ChannelSink(WeakReference(channel))
+  }
 }
 
 sealed trait EventBinding
