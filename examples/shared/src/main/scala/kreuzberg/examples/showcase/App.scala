@@ -18,7 +18,7 @@ case class App()
     )
   )
 
-  override def assemble: AssemblyResult[Unit] = {
+  override def assemble: AssemblyResult = {
     Assembly(
       div(
         Menu.wrap,

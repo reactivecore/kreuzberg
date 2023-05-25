@@ -5,7 +5,7 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 case class NotFoundPage(path: String) extends ComponentBase {
-  override def assemble: AssemblyResult[Unit] = {
+  override def assemble: AssemblyResult = {
     div(
       s"Path ${path} not found"
     )

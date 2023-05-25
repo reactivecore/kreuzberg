@@ -26,7 +26,7 @@ case class ValidatingTextInput(
     name: String,
     validator: String => Option[String]
 ) extends ComponentBase {
-  override def assemble: AssemblyResult[Unit] = {
+  override def assemble: AssemblyResult = {
     val valueModel = Model.create("")
     val errorModel = Model.create(None: Option[String])
     for {
@@ -35,7 +35,7 @@ case class ValidatingTextInput(
       errorShower   = ErrorShower(errorModel)
       bindError     =
         from(textInput.inputEvent)
-          .withState(textInput)(_.text)
+          .withState(textInput.text)
           .changeModel(valueModel) { (v, _) =>
             Logger.debug(s"Setting value to ${v}")
             v

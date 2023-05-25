@@ -8,12 +8,12 @@ case class TodoAdder(
     model: Model[TodoList]
 ) extends ComponentBase {
 
-  def assemble: AssemblyResult[Runtime] = {
+  val textInput = TextInput("name")
+  val button    = Button("Add")
 
-    val textInput = TextInput("name")
-    val button    = Button("Add")
-    val binding   = from(button.clicked)
-      .withState(textInput)(_.text)
+  def assemble: AssemblyResult = {
+    val binding = from(button.clicked)
+      .withState(textInput.text)
       .changeModel(model) { (t, current) =>
         Logger.debug(s"Appending ${t}")
         val result = current.append(t)

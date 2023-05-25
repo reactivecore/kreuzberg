@@ -49,20 +49,7 @@ object Binder {
       state         <- Ref.make(AssemblyState())
       tree          <- Ref.make(TreeNode.empty: TreeNode)
       locator        = new EventManager.Locator {
-                         override protected def unsafeLocate(id: Identifier): ScalaJsElement = viewer.findElementUnsafe(id)
-
-                         override def locateNode(id: Identifier): Task[TreeNode] = {
-                           for {
-                             root    <- tree.get
-                             element <- ZIO.getOrFailWith(
-                                          new IllegalStateException(s"Could not find ${id}")
-                                        )(root.find(id))
-                           } yield {
-                             element
-                           }
-                         }
-
-                         override def rootTree(): Task[TreeNode] = tree.get
+                         override def unsafeLocate(id: Identifier): ScalaJsElement = viewer.findElementUnsafe(id)
                        }
       eventManager2 <- EventManager.create(state, locator)
       mainLock      <- Semaphore.make(1)
@@ -168,7 +155,7 @@ class Binder(
   /** Reassemble a single node. */
   private def reassembleNode(node: TreeNode): Task[TreeNode] = {
     node match {
-      case r: ComponentNode[_, _] =>
+      case r: ComponentNode[_] =>
         Assembler.tree(r.component).onRef(state)
     }
   }
@@ -176,7 +163,7 @@ class Binder(
   /** Transform node children using f */
   private def transformNodeChildren(node: TreeNode, f: TreeNode => Task[TreeNode]): Task[TreeNode] = {
     node match {
-      case c: ComponentNode[_, _] =>
+      case c: ComponentNode[_] =>
         if (c.children.isEmpty) {
           ZIO.succeed(node)
         } else {

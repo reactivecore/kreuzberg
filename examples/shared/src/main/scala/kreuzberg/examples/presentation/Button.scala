@@ -7,7 +7,7 @@ import kreuzberg.scalatags.all.*
 case class Button(title: Model[String]) extends ComponentBase {
   def click = jsEvent("click")
 
-  def assemble: AssemblyResult[Runtime] = {
+  def assemble: AssemblyResult = {
     for {
       titleValue <- subscribe(title)
     } yield {

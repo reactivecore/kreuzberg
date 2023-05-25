@@ -6,11 +6,8 @@ package kreuzberg
  *   HTML Code with embedded Components
  * @param handlers
  *   Event Handlers
- * @param provider
- *   Runtime type provider.
  */
-case class Assembly[+R](
+case class Assembly(
     html: Html,
-    handlers: Vector[EventBinding] = Vector.empty,
-    provider: RuntimeProvider[R] = _ => ()
+    handlers: Vector[EventBinding] = Vector.empty
 )

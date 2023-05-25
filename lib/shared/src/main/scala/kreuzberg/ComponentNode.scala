@@ -63,25 +63,19 @@ sealed trait TreeNodeC[T <: Component] extends TreeNode {
   def component: T
 }
 
-/** TreeNode with representation type. */
-sealed trait TreeNodeR[+R] extends TreeNode {
-  def runtimeProvider: RuntimeProvider[R]
-}
-
 object TreeNode {
 
   object emptyComponent extends Component {
     type Runtime = Unit
-    def assemble: AssemblyResult[Unit] = {
+    def assemble: AssemblyResult = {
       Stateful.pure(Assembly(emptyRootHtml))
     }
   }
 
-  val empty = ComponentNode[Unit, emptyComponent.type](
+  val empty = ComponentNode[emptyComponent.type](
     component = emptyComponent,
     html = emptyRootHtml.flat(),
     children = Vector.empty,
-    runtimeProvider = _ => (),
     handlers = Vector.empty
   )
 
@@ -93,17 +87,13 @@ object TreeNode {
  * A Tree Representation of a component.
  * @tparam T
  *   value of the component
- * @tparam R
- *   runtime type
  */
-case class ComponentNode[+R, T <: Component.Aux[R]](
+case class ComponentNode[T <: Component](
     component: T,
     html: FlatHtml,
     children: Vector[TreeNode],
-    runtimeProvider: RuntimeProvider[R],
     handlers: Vector[EventBinding]
-) extends TreeNodeC[T]
-    with TreeNodeR[R] {
+) extends TreeNodeC[T] {
   override def toString: String = s"Component ${id}/${component}"
 
   private lazy val childrenMap: Map[Identifier, TreeNode] = children.map { t => t.id -> t }.toMap

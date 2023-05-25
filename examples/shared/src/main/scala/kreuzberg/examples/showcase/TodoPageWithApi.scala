@@ -23,7 +23,7 @@ object TodoAdderForm extends SimpleComponentBase {
     val button    = Button("Add")
     add(
       from(button.clicked)
-        .withState(textInput)(_.text)
+        .withState(textInput.text)
         .triggerChannel(addEvent)
     )
     form(

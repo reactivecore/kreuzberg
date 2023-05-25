@@ -5,7 +5,7 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 object IndexPage extends ComponentBase {
-  override def assemble: AssemblyResult[Unit] = {
+  override def assemble: AssemblyResult = {
     div("Welcome to this cool page")
   }
 }

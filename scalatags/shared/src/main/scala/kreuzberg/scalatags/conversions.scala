@@ -18,11 +18,11 @@ implicit def htmlEmbed(in: HtmlEmbedding): ScalaTagsEmbedding = in match {
   case h: Html       => ScalaTagsHtmlEmbedding(h)
 }
 
-implicit def scalaTagsToAssemblyResult(st: TypedTag[String]): AssemblyResult[Unit] = {
+implicit def scalaTagsToAssemblyResult(st: TypedTag[String]): AssemblyResult = {
   AssemblyResult.fromHtml(scalaTagsToHtml(st))
 }
 
-implicit def scalaTagsToAssembly(st: TypedTag[String]): Assembly[Unit] = {
+implicit def scalaTagsToAssembly(st: TypedTag[String]): Assembly = {
   Assembly(scalaTagsToHtml(st))
 }
 

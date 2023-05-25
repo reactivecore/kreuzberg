@@ -1,7 +1,6 @@
 package kreuzberg.engine.ezio
 
 import kreuzberg.*
-import kreuzberg.Component.Aux
 import kreuzberg.dom.*
 import kreuzberg.engine.ezio.EventManager.{ChannelSubscriber, ComponentSubscriber, Iteration, Locator, create}
 import kreuzberg.engine.ezio.utils.MultiListMap
@@ -90,7 +89,7 @@ class EventManager(
   private def sourceToStream[E](owner: TreeNode, source: EventSource[E]): Task[XStream[E]] = {
     source match
       case j: EventSource.Js[_]                =>
-        j.jsEvent.component match {
+        j.jsEvent.componentId match {
           case None              => registeredJsEvent(owner.id, org.scalajs.dom.window, j.jsEvent)
           case Some(componentId) =>
             locator.locate(componentId).flatMap { js =>
@@ -101,7 +100,7 @@ class EventManager(
         ZIO.succeed(
           ZStream.succeed(())
         )
-      case e: EventSource.WithState[_, _, _]   => {
+      case e: EventSource.WithState[_, _]      => {
         convertWithState(owner, e)
       }
       case e: EventSource.EffectEvent[_, _, _] =>
@@ -244,25 +243,45 @@ class EventManager(
     }
   }
 
-  private def convertWithState[E, F, S](
+  private def convertWithState[E, S](
       node: TreeNode,
-      withState: EventSource.WithState[E, F, S]
+      withState: EventSource.WithState[E, S]
   ): Task[XStream[(E, S)]] = {
+    // TODO: FIXME
     sourceToStream(node, withState.inner).map { underlying =>
       val transformed = underlying
         .mapZIO { value =>
           for {
-            ctx     <- locator.buildRuntimeContext()
-            state   <- ZIO.attempt(ctx.unsafeFindState[F](withState.componentId))
-            fetched <- ZIO.attempt(withState.fetcher(state))
+            state <- fetchState(withState.runtimeState)
           } yield {
-            value -> fetched
+            value -> state
           }
         }
         .tapError(e => Logger.warnZio(e.getMessage))
         .orDie
       transformed
     }
+  }
+
+  private def fetchState[S](s: RuntimeState[S]): Task[S] = {
+    ZIO.attempt(fetchStateUnsafe(s))
+  }
+
+  private def fetchStateUnsafe[S](s: RuntimeState[S]): S = {
+    s match
+      case js: RuntimeState.JsRuntimeState[_, _] => {
+        fetchJsRuntimeStateUnsafe(js)
+      }
+      case RuntimeState.And(left, right)         => {
+        (fetchStateUnsafe(left), fetchStateUnsafe(right))
+      }
+      case RuntimeState.Mapping(from, mapFn)     => {
+        mapFn(fetchStateUnsafe(from))
+      }
+  }
+
+  private def fetchJsRuntimeStateUnsafe[R <: ScalaJsElement, S](s: RuntimeState.JsRuntimeState[R, S]): S = {
+    s.fetcher(locator.unsafeLocate(s.componentId).asInstanceOf[R])
   }
 
   private def convertChannelSource[E](
@@ -327,45 +346,12 @@ object EventManager {
     def onEmit(data: E): UIO[Unit]
   }
 
-  trait RuntimeContextEx extends RuntimeContext {
-    def unsafeFindState[R](componentId: Identifier): R
-  }
-
   /** Helper for locating elements and providing runtime contexts. */
   trait Locator {
-
-    protected def unsafeLocate(id: Identifier): ScalaJsElement
+    def unsafeLocate(id: Identifier): ScalaJsElement
 
     def locate(id: Identifier): Task[ScalaJsElement] = {
       ZIO.attempt(unsafeLocate(id))
-    }
-
-    def rootTree(): Task[TreeNode]
-
-    def locateNode(id: Identifier): Task[TreeNode]
-
-    def buildRuntimeContext(): Task[RuntimeContextEx] = for {
-      treeSnapShot <- rootTree()
-    } yield {
-      new RuntimeContextEx {
-        override def jsElement(componentId: Identifier): ScalaJsElement = {
-          unsafeLocate(componentId)
-        }
-
-        override def runtimeState[R, T <: Aux[R]](component: T): R = {
-          unsafeFindState(component.id)
-        }
-
-        override def unsafeFindState[R](componentId: Identifier): R = {
-          treeSnapShot.find(componentId) match {
-            case Some(value) =>
-              value.asInstanceOf[TreeNodeR[R]].runtimeProvider(this)
-            case None        =>
-              Logger.warn(s"Could not find component ${componentId} in Tree")
-              throw new IllegalStateException(s"Could not find ${componentId}")
-          }
-        }
-      }
     }
   }
 

@@ -21,7 +21,7 @@ object TriggerPage extends SimpleComponentBase {
 
     add(
       from(editor.inputEvent)
-        .withState(editor)(_.text)
+        .withState(editor.text)
         .changeModel(value)((n, _) => n)
     )
     div(

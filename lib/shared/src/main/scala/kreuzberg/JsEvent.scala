@@ -6,8 +6,8 @@ import kreuzberg.dom.ScalaJsEvent
 /**
  * A JavaScript DOM Event (not yet ready)
  *
- * @param component
- *   the component, if not given, it's a window event.
+ * @param componentId
+ *   the component ID, if not given, it's a window event.
  * @param name
  *   name of the event
  * @param fn
@@ -16,7 +16,7 @@ import kreuzberg.dom.ScalaJsEvent
  *   if true, the event will be captured.
  */
 case class JsEvent[T](
-    component: Option[Identifier],
+    componentId: Option[Identifier],
     name: String,
     fn: ScalaJsEvent => T,
     capture: Boolean
