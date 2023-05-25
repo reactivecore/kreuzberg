@@ -9,11 +9,11 @@ import kreuzberg.dom.ScalaJsElement
 trait ComponentDsl {
   self: Component =>
 
-  implicit def htmlToAssemblyResult(in: Html): AssemblyResult[Unit] = {
+  implicit def htmlToAssemblyResult(in: Html): AssemblyResult = {
     Stateful.pure(Assembly(in))
   }
 
-  implicit def assemblyToAssemblyResult[R](assembly: Assembly[R]): AssemblyResult[R] = {
+  implicit def assemblyToAssemblyResult(assembly: Assembly): AssemblyResult = {
     Stateful.pure(assembly)
   }
 
@@ -38,4 +38,9 @@ trait ComponentDsl {
     JsEvent(None, name, preventDefault, capture)
 
   def from[E](jsEvent: JsEvent[E]): EventSource.Js[E] = EventSource.Js(jsEvent)
+
+  /** Declares a js runtime state. */
+  def jsState[T](f: DomElement => T): RuntimeState.JsRuntimeState[DomElement, T] = {
+    RuntimeState.JsRuntimeState(id, f)
+  }
 }

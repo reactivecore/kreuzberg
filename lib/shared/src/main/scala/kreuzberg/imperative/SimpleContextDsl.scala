@@ -31,20 +31,15 @@ trait SimpleContextDsl {
   def windowEvent(name: String, preventDefault: Boolean = false, capture: Boolean = false): JsEvent[ScalaJsEvent] =
     JsEvent(None, name, preventDefault, capture)
 
-  import scala.language.implicitConversions
-
-  implicit def htmlToAssembly(in: Html): Assembly[Unit] = {
-    Assembly(in)
+  /** Declares a js runtime state. */
+  def jsState[T](f: DomElement => T): RuntimeState.JsRuntimeState[DomElement, T] = {
+    RuntimeState.JsRuntimeState(id, f)
   }
 
-  def html[T](in: T)(implicit f: T => Html): Html = f(in)
+  import scala.language.implicitConversions
 
-  extension (html: Html) {
-    def withRuntime[T](f: RuntimeContext ?=> T): (Html, RuntimeProvider[T]) = {
-      html -> { rc =>
-        f(using rc)
-      }
-    }
+  implicit def htmlToAssembly(in: Html): Assembly = {
+    Assembly(in)
   }
 
   protected def add(binding0: EventBinding, others: EventBinding*)(implicit c: SimpleContext): Unit = {

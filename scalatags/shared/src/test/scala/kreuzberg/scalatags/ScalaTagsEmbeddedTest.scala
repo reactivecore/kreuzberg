@@ -6,7 +6,7 @@ import kreuzberg.scalatags.all.*
 
 class ScalaTagsEmbeddedTest extends TestBase {
   case class DummyComponent(i: Int) extends ComponentBase {
-    def assemble: AssemblyResult[Unit] = {
+    def assemble: AssemblyResult = {
       div(s"Hello World ${i}")
     }
   }

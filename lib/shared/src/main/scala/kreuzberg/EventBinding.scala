@@ -2,7 +2,7 @@ package kreuzberg
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
-import kreuzberg.dom.ScalaJsEvent
+import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
 
 import scala.ref.WeakReference
 import scala.util.Failure
@@ -10,14 +10,13 @@ import scala.util.Success
 sealed trait EventSource[E] {
 
   /** Extend runtime state to event. */
-  def addState[R, S](from: Component.Aux[R])(fn: R => S): EventSource[(E, S)] = {
-    EventSource.WithState(this, from.id, fn)
+  def addState[R <: ScalaJsElement, S](from: RuntimeState[S]): EventSource[(E, S)] = {
+    EventSource.WithState(this, from)
   }
 
-  /** Replace event state with runtime state */
-  def withState[R, S](from: Component.Aux[R])(fn: R => S): EventSource[S] = {
-
-    addState(from)(fn).map(_._2)
+  /** Replaces event state with runtime state. */
+  def withState[R <: ScalaJsElement, S](from: RuntimeState[S]): EventSource[S] = {
+    addState(from).map(_._2)
   }
 
   def map[F](f: E => F): EventSource[F] = EventSource.MapSource(this, f)
@@ -123,16 +122,16 @@ object EventSource {
     inline def apply[E](channel: Channel[E]): ChannelSource[E] = ChannelSource[E](WeakReference(channel))
   }
 
-  /** Some side effect operatio (e.g. API Call) */
+  /** Some side effect operation (e.g. API Call) */
   case class EffectEvent[E, F[_], R](
       trigger: EventSource[E],
       effectOperation: EffectOperation[E, F, R]
   ) extends EventSource[Try[R]]
 
-  case class WithState[E, F, S](
+  /** Add some component state to the Event. */
+  case class WithState[E, S](
       inner: EventSource[E],
-      componentId: Identifier,
-      fetcher: F => S
+      runtimeState: RuntimeState[S]
   ) extends EventSource[(E, S)]
 
   case class MapSource[E, F](

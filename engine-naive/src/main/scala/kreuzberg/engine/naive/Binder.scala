@@ -40,10 +40,6 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
     viewer.findElement(componentId)
   }
 
-  override def locateNode(componentId: Identifier): Option[TreeNode] = {
-    _tree.find(componentId)
-  }
-
   private val viewer       = new Viewer(rootElement)
   private val eventManager = new EventManager(this)
 
@@ -91,7 +87,7 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
 
   private def reassembleNode(node: TreeNode): Stateful[AssemblyState, TreeNode] = {
     node match {
-      case r: ComponentNode[_, _] =>
+      case r: ComponentNode[_] =>
         Assembler.tree(r.component)
     }
   }
@@ -101,7 +97,7 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
       f: TreeNode => Stateful[AssemblyState, TreeNode]
   ): Stateful[AssemblyState, TreeNode] = {
     node match {
-      case c: ComponentNode[_, _] =>
+      case c: ComponentNode[_] =>
         if (c.children.isEmpty) {
           Stateful.pure(node)
         } else {

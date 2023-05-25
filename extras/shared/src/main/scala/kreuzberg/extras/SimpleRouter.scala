@@ -21,7 +21,7 @@ case class SimpleRouter(
     titlePrefix: String = ""
 ) extends ComponentBase {
 
-  override def assemble: AssemblyResult[Unit] = {
+  override def assemble: AssemblyResult = {
     for {
       routingState   <- subscribe(SimpleRouter.routingStateModel)
       _               =
@@ -74,8 +74,7 @@ case class SimpleRouter(
           gotoBinding,
           onLoadBinding,
           popStateBinding
-        ),
-        provider = _ => ()
+        )
       )
     }
   }

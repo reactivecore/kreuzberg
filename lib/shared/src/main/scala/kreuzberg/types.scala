@@ -4,25 +4,17 @@ import kreuzberg.dom.ScalaJsElement
 import kreuzberg.util.Stateful
 import scala.language.implicitConversions
 
-type AssemblyResult[+R] = Stateful[AssemblyState, Assembly[R]]
+type AssemblyResult = Stateful[AssemblyState, Assembly]
 
 object AssemblyResult {
-  implicit def fromHtml(html: Html): AssemblyResult[Unit] = {
+  implicit def fromHtml(html: Html): AssemblyResult = {
     Stateful.pure(Assembly(html))
   }
 }
 
-type NodeResult[R, T <: Component.Aux[R]] = Stateful[AssemblyState, ComponentNode[R, T]]
+type NodeResult[T <: Component] = Stateful[AssemblyState, ComponentNode[T]]
 
 type TreeNodeResult = Stateful[AssemblyState, TreeNode]
-
-trait RuntimeContext {
-  def jsElement(componentId: Identifier): ScalaJsElement
-
-  def runtimeState[R, T <: Component.Aux[R]](component: T): R
-}
-
-type RuntimeProvider[+R] = RuntimeContext => R
 
 // Imperative often used components
 

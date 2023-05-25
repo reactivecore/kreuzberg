@@ -6,7 +6,7 @@ import kreuzberg.scalatags.all.*
 import kreuzberg.util.Stateful
 
 case class TodoItemShower(item: String) extends ComponentBase {
-  override def assemble: AssemblyResult[Unit] = span(item)
+  override def assemble: AssemblyResult = span(item)
 }
 
 case class TodoShower(todoList: TodoList) extends SimpleComponentBase {

@@ -1,7 +1,6 @@
 package kreuzberg.engine.naive
 
 import kreuzberg.*
-import kreuzberg.Component.Aux
 import kreuzberg.engine.naive.utils.MutableMultimap
 import kreuzberg.dom.*
 
@@ -76,7 +75,7 @@ class EventManager(delegate: EventManagerDelegate) {
     _windowEventBindings.filterValuesInPlace(_.owner != node.id)
     _channelBindings.filterValuesInPlace(_.owner != node.id)
 
-    node.children.foreach { case child: ComponentNode[_, _] =>
+    node.children.foreach { case child: ComponentNode[_] =>
       activateEvents(child)
     }
     node.handlers.foreach(activateEvent(node, _))
@@ -143,30 +142,10 @@ class EventManager(delegate: EventManagerDelegate) {
     }
   }
 
-  private object runtimeContext extends RuntimeContext {
-    override def jsElement(componentId: Identifier) = {
-      delegate.locate(componentId)
-    }
-
-    override def runtimeState[R, T <: Aux[R]](component: T): R = {
-      runtimeStateUnsafe(component.id)
-    }
-
-    def runtimeStateUnsafe[R](id: Identifier): R = {
-      delegate.locateNode(id) match {
-        case None           => {
-          throw new IllegalStateException(s"Component ${id} not found")
-        }
-        case Some(treeNode) =>
-          treeNode.asInstanceOf[TreeNodeR[R]].runtimeProvider(this)
-      }
-    }
-  }
-
   private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
     eventSource match
       case j: EventSource.Js[_]                =>
-        j.jsEvent.component match {
+        j.jsEvent.componentId match {
           case None              =>
             val handler: ScalaJsEvent => Unit = { in =>
               try {
@@ -201,7 +180,7 @@ class EventManager(delegate: EventManagerDelegate) {
         scalajs.js.timers.setTimeout(0) {
           sink(())
         }
-      case ws: EventSource.WithState[_, _, _]  =>
+      case ws: EventSource.WithState[_, _]     =>
         bindWithState(ownNode, ws, (a, b) => sink((a, b)))
       case EventSource.MapSource(from, fn)     =>
         bindEventSource(
@@ -232,20 +211,41 @@ class EventManager(delegate: EventManagerDelegate) {
         bindChannel(ownNode, c, sink)
   }
 
-  private def bindWithState[E, F, S](
+  private def bindWithState[E, S](
       ownNode: TreeNode,
-      eventSource: EventSource.WithState[E, F, S],
+      eventSource: EventSource.WithState[E, S],
       sink: (E, S) => Unit
   ): Unit = {
     bindEventSource[E](
       ownNode,
       eventSource.inner,
       x => {
-        val state  = runtimeContext.runtimeStateUnsafe[F](eventSource.componentId)
-        val mapped = eventSource.fetcher(state)
-        sink(x, mapped)
+        try {
+          val state = fetchStateUnsafe(eventSource.runtimeState)
+          sink(x, state)
+        } catch {
+          case NonFatal(e) =>
+            Logger.warn(s"Error fetching runtime state: ${e.getMessage}")
+        }
       }
     )
+  }
+
+  private def fetchStateUnsafe[S](s: RuntimeState[S]): S = {
+    s match
+      case js: RuntimeState.JsRuntimeState[_, _] => {
+        fetchJsRuntimeStateUnsafe(js)
+      }
+      case RuntimeState.And(left, right)         => {
+        (fetchStateUnsafe(left), fetchStateUnsafe(right))
+      }
+      case RuntimeState.Mapping(from, mapFn)     => {
+        mapFn(fetchStateUnsafe(from))
+      }
+  }
+
+  private def fetchJsRuntimeStateUnsafe[R <: ScalaJsElement, S](s: RuntimeState.JsRuntimeState[R, S]): S = {
+    s.fetcher(delegate.locate(s.componentId).asInstanceOf[R])
   }
 
   private def bindEffect[E, F[_], R](
@@ -284,9 +284,9 @@ class EventManager(delegate: EventManagerDelegate) {
   }
 
   private def bindJsEvent[E](
-                              source: org.scalajs.dom.EventTarget,
-                              event: JsEvent[E],
-                              sink: E => Unit
+      source: org.scalajs.dom.EventTarget,
+      event: JsEvent[E],
+      sink: E => Unit
   ): Unit = {
     source.addEventListener(
       event.name,

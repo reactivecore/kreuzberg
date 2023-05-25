@@ -17,6 +17,4 @@ trait EventManagerDelegate {
   ): Unit
 
   def locate(componentId: Identifier): ScalaJsElement
-
-  def locateNode(componentId: Identifier): Option[TreeNode]
 }
