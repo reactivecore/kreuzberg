@@ -1,7 +1,7 @@
 package kreuzberg.xml
 
-import kreuzberg.imperative.{SimpleComponentBase, SimpleContext}
-import kreuzberg._
+import kreuzberg.*
+import kreuzberg.engine.common.Assembler
 
 class ScalaXmlHtmlTest extends TestBase {
 
@@ -11,7 +11,7 @@ class ScalaXmlHtmlTest extends TestBase {
     val packed = ScalaXmlHtml(sample)
     packed.renderToString() shouldBe "<hello>World</hello>"
     packed.withId(Identifier(123)).renderToString() shouldBe """<hello data-id="123">World</hello>"""
-    packed.embeddedNodes shouldBe empty
+    packed.embeddedComponents shouldBe empty
   }
 
   it should "like comments" in {
@@ -41,7 +41,7 @@ class ScalaXmlHtmlTest extends TestBase {
     val node = Assembler.single(() => Text())
     val html = node.html
 
-    html.embeddedNodes.map(_.id.value) shouldBe Seq(2, 3)
+    html.embeddedComponents.map(_.id.value) shouldBe Seq(2, 3)
     html.renderToString() shouldBe """<div>This is data <component id="2"/>,<component id="3"/></div>"""
 
     val fullHtml = Assembler.singleTree(() => Text()).render()

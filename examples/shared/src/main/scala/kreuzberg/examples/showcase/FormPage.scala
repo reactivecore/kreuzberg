@@ -7,7 +7,7 @@ import kreuzberg.scalatags.all.*
 import scala.util.{Success, Try}
 
 object FormPage extends ComponentBase {
-  override def assemble: AssemblyResult = {
+  def assemble(using context: AssemblerContext): Assembly = {
     val nameForm = ValidatingTextInput(
       "name",
       s => {

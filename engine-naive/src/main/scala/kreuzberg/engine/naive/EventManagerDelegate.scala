@@ -1,19 +1,19 @@
 package kreuzberg.engine.naive
 
-import kreuzberg.AssemblyState
 import kreuzberg.dom.ScalaJsElement
 import kreuzberg.*
+import kreuzberg.engine.common.ModelValues
 
 /** Callback for EventManager. */
 trait EventManagerDelegate {
 
   /** Returns the current state. */
-  def state: AssemblyState
+  def modelValues: ModelValues
 
   /** Update with a new state */
   def onIterationEnd(
-      state: AssemblyState,
-      changedModels: Set[Identifier]
+                      state: ModelValues,
+                      changedModels: Set[Identifier]
   ): Unit
 
   def locate(componentId: Identifier): ScalaJsElement

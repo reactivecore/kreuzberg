@@ -2,7 +2,6 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.*
 import kreuzberg.extras.RouterLink
-import kreuzberg.imperative.{SimpleContext, SimpleComponentBase}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 

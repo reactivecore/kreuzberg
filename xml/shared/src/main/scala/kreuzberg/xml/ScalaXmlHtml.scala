@@ -1,5 +1,5 @@
 package kreuzberg.xml
-import kreuzberg.{Component, FlatHtmlBuilder, Html, Identifier, TreeNode}
+import kreuzberg.{Component, FlatHtmlBuilder, Html, Identifier}
 
 import scala.xml.{Elem, Node, Null, SpecialNode, UnprefixedAttribute, Utility}
 
@@ -27,12 +27,12 @@ case class ScalaXmlHtml(elem: Elem) extends Html {
     )
   }
 
-  override def embeddedNodes: Iterable[Component] = {
+  override def embeddedComponents: Iterable[Component] = {
     val collector = Vector.newBuilder[Component]
 
     def traverse(node: Node): Unit = {
       node match {
-        case h: ScalaXmlHtmlEmbedding      => collector ++= h.html.embeddedNodes
+        case h: ScalaXmlHtmlEmbedding      => collector ++= h.html.embeddedComponents
         case t: ScalaXmlComponentEmbedding => collector += t.component
         case other                         =>
           other.child.foreach(traverse)

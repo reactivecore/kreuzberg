@@ -10,16 +10,24 @@ case class TodoAdder(
 
   val textInput = TextInput("name")
   val button    = Button("Add")
+  val onSubmit  = jsEvent("submit", true)
 
-  def assemble: AssemblyResult = {
-    val binding = from(button.clicked)
-      .withState(textInput.text)
-      .changeModel(model) { (t, current) =>
+  def assemble(using context: AssemblerContext): Assembly = {
+    val sink = EventSink.ModelChange[String, TodoList](
+      model,
+      { (t, current) =>
         Logger.debug(s"Appending ${t}")
         val result = current.append(t)
         Logger.debug(s"Result ${result}")
         result
       }
+    )
+
+    val binding = from(onSubmit).mapUnit
+      .or(from(button.clicked).mapUnit)
+      .withState(textInput.text)
+      .to(sink)
+
     Assembly(
       form(
         textInput.wrap,

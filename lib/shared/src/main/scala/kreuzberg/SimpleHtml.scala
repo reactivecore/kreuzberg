@@ -27,8 +27,8 @@ case class SimpleHtml(
     )
   }
 
-  override def embeddedNodes: Iterable[Component] = {
-    children.flatMap(_.embeddedNodes)
+  override def embeddedComponents: Iterable[Component] = {
+    children.flatMap(_.embeddedComponents)
   }
 
   override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
@@ -60,14 +60,14 @@ case class SimpleHtml(
 }
 
 sealed trait SimpleHtmlNode {
-  def embeddedNodes: Iterable[Component]
+  def embeddedComponents: Iterable[Component]
 
   def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit
 }
 
 object SimpleHtmlNode {
   case class Text(text: String) extends SimpleHtmlNode {
-    override def embeddedNodes: Iterable[Component] = Iterable.empty
+    override def embeddedComponents: Iterable[Component] = Iterable.empty
 
     override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
       flatHtmlBuilder ++= escape(text)
@@ -75,7 +75,7 @@ object SimpleHtmlNode {
   }
 
   case class Wrapper(html: Html) extends SimpleHtmlNode {
-    override def embeddedNodes: Iterable[Component] = html.embeddedNodes
+    override def embeddedComponents: Iterable[Component] = html.embeddedComponents
 
     override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
       html.flatToBuilder(flatHtmlBuilder)
@@ -85,7 +85,7 @@ object SimpleHtmlNode {
   case class EmbeddedComponent(component: Component) extends SimpleHtmlNode {
     def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = flatHtmlBuilder.addPlaceholder(component.id)
 
-    def embeddedNodes: Iterable[Component] = List(component)
+    def embeddedComponents: Iterable[Component] = List(component)
   }
 
   def escape(s: String): String = {

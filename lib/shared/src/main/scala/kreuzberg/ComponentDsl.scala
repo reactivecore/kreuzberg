@@ -1,6 +1,5 @@
 package kreuzberg
 
-import kreuzberg.util.Stateful
 import kreuzberg.Component
 import kreuzberg.dom.ScalaJsEvent
 import scala.language.implicitConversions
@@ -9,38 +8,40 @@ import kreuzberg.dom.ScalaJsElement
 trait ComponentDsl {
   self: Component =>
 
-  implicit def htmlToAssemblyResult(in: Html): AssemblyResult = {
-    Stateful.pure(Assembly(in))
+  protected implicit def htmlToAssemblyResult(in: Html): Assembly = {
+    Assembly(in)
   }
 
-  implicit def assemblyToAssemblyResult(assembly: Assembly): AssemblyResult = {
-    Stateful.pure(assembly)
-  }
+  protected def from[E](jsEvent: JsEvent[E]): EventSource.Js[E] = EventSource.Js(jsEvent)
 
-  def subscribe[T](model: Model[T]): Stateful[AssemblyState, T] = {
-    Stateful { state =>
-      state.subscribe(self.id, model)
-    }
-  }
+  protected def from[E](channel: Channel[E]): EventSource.ChannelSource[E] = EventSource.ChannelSource(channel)
 
-  def provide[T: Provider]: Stateful[AssemblyState, T] = {
-    Stateful(_.provide)
-  }
-
-  def read[T](model: Model[T]): Stateful[AssemblyState, T] = {
-    Stateful.get(_.readValue(model))
-  }
-
-  def jsEvent(name: String, preventDefault: Boolean = false, capture: Boolean = false): JsEvent[ScalaJsEvent] =
+  /** Declare a Javascript event. */
+  protected def jsEvent(
+      name: String,
+      preventDefault: Boolean = false,
+      capture: Boolean = false
+  ): JsEvent[ScalaJsEvent] =
     JsEvent(Some(id), name, preventDefault, capture)
 
-  def windowEvent(name: String, preventDefault: Boolean = false, capture: Boolean = false): JsEvent[ScalaJsEvent] =
+  /** Declare a Window JS Event. */
+  protected def windowEvent(
+      name: String,
+      preventDefault: Boolean = false,
+      capture: Boolean = false
+  ): JsEvent[ScalaJsEvent] =
     JsEvent(None, name, preventDefault, capture)
 
-  def from[E](jsEvent: JsEvent[E]): EventSource.Js[E] = EventSource.Js(jsEvent)
-
   /** Declares a js runtime state. */
-  def jsState[T](f: DomElement => T): RuntimeState.JsRuntimeState[DomElement, T] = {
+  protected def jsState[T](f: DomElement => T): RuntimeState.JsRuntimeState[DomElement, T] = {
     RuntimeState.JsRuntimeState(id, f)
+  }
+
+  protected def provide[T: Provider](using c: ServiceRepository): T = {
+    c.service[T]
+  }
+
+  protected def read[M](model: Model[M])(using c: AssemblerContext): M = {
+    c.value(model)
   }
 }

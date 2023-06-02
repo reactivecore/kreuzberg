@@ -1,6 +1,5 @@
 package kreuzberg
 import scala.collection.mutable
-import kreuzberg.util.SimpleThreadLocal
 
 /** Helper for Building [[FlatHtml]] instances */
 class FlatHtmlBuilder {

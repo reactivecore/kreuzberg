@@ -1,7 +1,6 @@
 package kreuzberg.rpc
 
-import kreuzberg.{AssemblyState, Logger, Provider}
-import kreuzberg.util.Stateful
+import kreuzberg.{Logger, Provider, ServiceRepository}
 
 import scala.concurrent.{ExecutionContext, Future}
 import org.scalajs.dom.Fetch
@@ -51,11 +50,12 @@ object ApiRestClient {
   import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
   given provider: Provider[CallingBackend[Future, String]] with {
-    override def provide: Stateful[AssemblyState, ApiRestClient] = {
+
+    override def name: String = "apirestclient"
+
+    override def create(using serviceRepository: ServiceRepository): CallingBackend[Future, String] = {
       val url = "/api/"
-      Stateful { current =>
-        current.rootService("apirestclient", () => new ApiRestClient(url))
-      }
+      new ApiRestClient(url)
     }
   }
 }

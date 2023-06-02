@@ -2,7 +2,6 @@ package kreuzberg.extras
 
 import scalatags.Text.all._
 import kreuzberg._
-import kreuzberg.imperative._
 import kreuzberg.scalatags._
 
 case class PlainLink(

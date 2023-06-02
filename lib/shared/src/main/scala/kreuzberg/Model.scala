@@ -1,7 +1,5 @@
 package kreuzberg
 
-import kreuzberg.util.Stateful
-
 /**
  * A Model is something which holds a value and can be subscribed to. In contrast to channels, models carry a current
  * value and are subscribed by components. They are allowed to be singletons. They are identified using their ID. There

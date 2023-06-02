@@ -2,6 +2,7 @@ package kreuzberg.engine.ezio
 
 import kreuzberg.*
 import kreuzberg.dom.*
+import kreuzberg.engine.common.TreeNode
 import zio.{Task, ZIO}
 
 import scala.util.control.NonFatal

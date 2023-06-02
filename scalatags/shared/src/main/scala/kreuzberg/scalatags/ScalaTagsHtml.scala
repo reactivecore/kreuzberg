@@ -1,6 +1,5 @@
 package kreuzberg.scalatags
-import kreuzberg.{Component, FlatHtmlBuilder, Html, Identifier, TreeNode}
-import kreuzberg.util.SimpleThreadLocal
+import kreuzberg.{Component, FlatHtmlBuilder, Html, Identifier}
 import scalatags.Text.TypedTag
 import scalatags.Text.all.*
 import scalatags.text.Builder
@@ -26,9 +25,9 @@ case class ScalaTagsHtml(tag: TypedTag[String]) extends Html {
     )
   }
 
-  override def embeddedNodes: Iterable[Component] = {
+  override def embeddedComponents: Iterable[Component] = {
     ScalaTagsEmbedding.collectFrom(tag).flatMap {
-      case ScalaTagsHtmlEmbedding(html)  => html.embeddedNodes
+      case ScalaTagsHtmlEmbedding(html)   => html.embeddedComponents
       case ScalaTagsComponentEmbedding(c) => Seq(c)
     }
   }

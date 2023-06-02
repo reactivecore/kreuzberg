@@ -3,6 +3,7 @@ package kreuzberg.engine.naive
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
 import kreuzberg.dom.*
+import kreuzberg.engine.common.{ModelValues, ComponentNode, TreeNode}
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -67,7 +68,7 @@ class EventManager(delegate: EventManagerDelegate) {
   // Keeping track of registered window events (we do not yet remove them)
   private val _registeredWindowEvents = mutable.Set[String]()
 
-  private var _currentState = AssemblyState()
+  private var _currentState = ModelValues()
 
   /** Activate Events on a Node. */
   def activateEvents(node: TreeNode): Unit = {
@@ -209,6 +210,9 @@ class EventManager(delegate: EventManagerDelegate) {
         bindAnd(ownNode, a, sink)
       case c: EventSource.ChannelSource[_]     =>
         bindChannel(ownNode, c, sink)
+      case o: EventSource.OrSource[_]          =>
+        bindEventSource(ownNode, o.left, sink)
+        bindEventSource(ownNode, o.right, sink)
   }
 
   private def bindWithState[E, S](
@@ -316,7 +320,7 @@ class EventManager(delegate: EventManagerDelegate) {
   /** Run the next iteration. */
   private def onNextIteration(): Unit = {
     Logger.debug("Starting Iteration")
-    _currentState = delegate.state
+    _currentState = delegate.modelValues
     _hasNextIteration = false
     _inIteration = true
     _changedModel.clear()

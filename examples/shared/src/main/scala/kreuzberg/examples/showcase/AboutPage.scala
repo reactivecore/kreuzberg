@@ -5,14 +5,14 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 object AboutVersionShower extends ComponentBase {
-  override def assemble: AssemblyResult = span("1.2")
+  def assemble(using context: AssemblerContext): Assembly = {
+    span("1.2")
+  }
 }
 
 object AboutPage extends ComponentBase {
 
-  override def assemble: AssemblyResult = {
-    Assembly(
-      div("Hello World", AboutVersionShower.wrap)
-    )
+  def assemble(using context: AssemblerContext): Assembly = {
+    div("Hello World", AboutVersionShower.wrap)
   }
 }

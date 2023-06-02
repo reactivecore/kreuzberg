@@ -1,7 +1,6 @@
 package kreuzberg.engine.ezio
 import kreuzberg.Logger
 import kreuzberg.Logger.isDebug
-import kreuzberg.util.Stateful
 import zio.{Fiber, Ref, Task, Trace, UIO, ZIO}
 
 import scala.util.control.NonFatal
@@ -39,23 +38,6 @@ extension (l: Logger.type) {
     ZIO.attempt(
       Logger.info(str)
     )
-  }
-}
-
-extension [S, T](s: Stateful[S, T]) {
-
-  /** Run the stateful operation on a reference. */
-  def onRef(ref: Ref[S]): Task[T] = {
-    ref.modify { current =>
-      try {
-        val (nextState, result) = s.fn(current)
-        ZIO.succeed(result) -> nextState
-      } catch {
-        case NonFatal(e) =>
-          ZIO.fail(e) -> current
-      }
-    }.flatten
-
   }
 }
 

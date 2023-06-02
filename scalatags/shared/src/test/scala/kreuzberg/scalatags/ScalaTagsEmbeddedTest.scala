@@ -1,12 +1,12 @@
 package kreuzberg.scalatags
 
-import kreuzberg.{Assembler, AssemblyState, ComponentBase, ComponentNode, AssemblyResult}
+import kreuzberg.*
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-class ScalaTagsEmbeddedTest extends TestBase {
+class ScalaTagsEmbeddedTest extends kreuzberg.scalatags.TestBase {
   case class DummyComponent(i: Int) extends ComponentBase {
-    def assemble: AssemblyResult = {
+    def assemble(using context: AssemblerContext): Assembly = {
       div(s"Hello World ${i}")
     }
   }

@@ -1,10 +1,10 @@
 package kreuzberg.engine.naive
 
 import kreuzberg.*
-import kreuzberg.util.Stateful
 import kreuzberg.engine.naive.utils.MutableMultimap
-import kreuzberg.util.Stateful
 import kreuzberg.dom.*
+import kreuzberg.engine.common.{Assembler, ModelValues, SimpleServiceRepository, TreeNode}
+
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
@@ -26,13 +26,14 @@ object Binder {
 
 /** Binds a root element to a Node. */
 class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerDelegate {
-  private var _currentState: AssemblyState = AssemblyState()
-  private var _tree: TreeNode              = TreeNode.empty
+  private var _modelValues: ModelValues       = ModelValues()
+  private val _serviceRepo: ServiceRepository = new SimpleServiceRepository()
+  private var _tree: TreeNode                 = TreeNode.empty
 
-  override def state: AssemblyState = _currentState
+  override def modelValues: ModelValues = _modelValues
 
-  override def onIterationEnd(state: AssemblyState, changedModels: Set[Identifier]): Unit = {
-    _currentState = state
+  override def onIterationEnd(modelValues: ModelValues, changedModels: Set[Identifier]): Unit = {
+    _modelValues = modelValues
     redrawChanged(changedModels)
   }
 
@@ -49,20 +50,25 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
 
   private def redraw(): Unit = {
     Logger.debug("Starting Redraw")
-    val (nextState, tree) = Assembler.tree(main)(_currentState)
+    val tree = Assembler.tree(main)
     viewer.drawRoot(tree)
-    _currentState = nextState
     _tree = tree
     eventManager.clear()
     eventManager.activateEvents(tree)
-    _currentState = garbageCollect(tree, _currentState)
+    garbageCollect()
     Logger.debug("End Redraw")
   }
 
+  private given assemblerContext: AssemblerContext = new AssemblerContext {
+    override def value[M](model: Model[M]): M = _modelValues.readValue(model)
+
+    override def service[S](using provider: Provider[S]): S = _serviceRepo.service
+  }
+
   private def redrawChanged(changedModels: Set[Identifier]): Unit = {
-    val changedContainers = (_currentState.subscribers.collect {
+    val changedContainers = _tree.allSubscriptions.collect {
       case (modelId, containerId) if changedModels.contains(modelId) => containerId
-    }).toSet
+    }.toSet
 
     Logger.debug(s"Changed Containers: ${changedContainers}")
     if (changedContainers.isEmpty) {
@@ -70,44 +76,11 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
       return
     }
 
-    val (updatedState, updatedTree) = updateTree(_tree, changedContainers)(_currentState)
+    val updatedTree = _tree.rebuildChanged(changedContainers)
     _tree = updatedTree
     drawChangedEvents(updatedTree, changedContainers)
     activateChangedEvents(updatedTree, changedContainers)
-    _currentState = garbageCollect(updatedTree, updatedState)
-  }
-
-  private def updateTree(node: TreeNode, changedComponents: Set[Identifier]): Stateful[AssemblyState, TreeNode] = {
-    if (changedComponents.contains(node.id)) {
-      reassembleNode(node)
-    } else {
-      transformNodeChildren(node, updateTree(_, changedComponents))
-    }
-  }
-
-  private def reassembleNode(node: TreeNode): Stateful[AssemblyState, TreeNode] = {
-    node match {
-      case r: ComponentNode[_] =>
-        Assembler.tree(r.component)
-    }
-  }
-
-  private def transformNodeChildren(
-      node: TreeNode,
-      f: TreeNode => Stateful[AssemblyState, TreeNode]
-  ): Stateful[AssemblyState, TreeNode] = {
-    node match {
-      case c: ComponentNode[_] =>
-        if (c.children.isEmpty) {
-          Stateful.pure(node)
-        } else {
-          for {
-            updated <- Stateful.accumulate(c.children)(f)
-          } yield {
-            c.copy(children = updated)
-          }
-        }
-    }
+    garbageCollect()
   }
 
   private def drawChangedEvents(node: TreeNode, changedComponents: Set[Identifier]): Unit = {
@@ -126,20 +99,13 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
     }
   }
 
-  private def garbageCollect(tree: TreeNode, state: AssemblyState): AssemblyState = {
-    val referencedComponents = tree.referencedComponentIds + Identifier.RootComponent
+  private def garbageCollect(): Unit = {
+    val referencedComponents = (_tree.allReferencedComponentIds ++ Iterator(Identifier.RootComponent)).toSet
 
-    val componentFiltered = state.copy(
-      services = state.services.filterKeys(referencedComponents.contains)
-    )
+    val referencedModels = _tree.allSubscriptions.map(_._1).toSet
 
-    val referencedModels = componentFiltered.subscribers.map(_._1).toSet
-
-    val modelFiltered = componentFiltered.copy(
-      modelValues = componentFiltered.modelValues.view.filterKeys(referencedModels.contains).toMap,
-      subscribers = componentFiltered.subscribers.filter { case (modelId, componentId) =>
-        referencedModels.contains(modelId) && referencedComponents.contains(componentId)
-      }.distinct
+    val stateUpdated = _modelValues.copy(
+      modelValues = _modelValues.modelValues.view.filterKeys(referencedModels.contains).toMap
     )
 
     eventManager.garbageCollect(referencedComponents, referencedModels)
@@ -147,9 +113,8 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
     Logger.debug(
       s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models"
     )
-    Logger.debug(s"  Values:   ${state.modelValues.size} -> ${modelFiltered.modelValues.size}")
-    Logger.debug(s"  Subscribers: ${state.subscribers.size} -> ${modelFiltered.subscribers.size}")
+    Logger.debug(s"  Values:   ${_modelValues.modelValues.size} -> ${stateUpdated.modelValues.size}")
 
-    modelFiltered
+    _modelValues = stateUpdated
   }
 }
