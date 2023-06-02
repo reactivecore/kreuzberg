@@ -5,16 +5,17 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 case class TodoPage(model: Model[TodoList]) extends ComponentBase {
-  override def assemble: AssemblyResult = {
-    for {
-      value <- subscribe(model)
-      shower = TodoShower(value)
-      adder  = TodoAdder(model)
-    } yield {
+  def assemble(using context: AssemblerContext): Assembly = {
+    val value  = read(model)
+    val shower = TodoShower(value)
+    val adder  = TodoAdder(model)
+
+    Assembly(
       div(
         shower.wrap,
         adder.wrap
-      )
-    }
+      ),
+      subscriptions = Vector(model)
+    )
   }
 }

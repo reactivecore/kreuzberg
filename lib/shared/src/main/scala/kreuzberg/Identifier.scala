@@ -1,7 +1,6 @@
 package kreuzberg
 
 import kreuzberg.IdentifierFactory.instance
-import kreuzberg.util.SimpleThreadLocal
 
 import java.util.concurrent.atomic.AtomicInteger
 

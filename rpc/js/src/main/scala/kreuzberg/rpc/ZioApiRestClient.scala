@@ -1,7 +1,6 @@
 package kreuzberg.rpc
 
-import kreuzberg.{AssemblyState, Provider}
-import kreuzberg.util.Stateful
+import kreuzberg.{Provider, ServiceRepository}
 import zio.{Task, ZIO}
 
 import scala.concurrent.Future
@@ -16,11 +15,13 @@ class ZioApiRestClient(baseUrl: String) extends CallingBackend[Task, String] {
 
 object ZioApiRestClient {
   given provider: Provider[CallingBackend[Task, String]] with {
-    override def provide: Stateful[AssemblyState, ZioApiRestClient] = {
+
+    override def name: String = "apirestclient"
+
+    override def create(using serviceRepository: ServiceRepository): CallingBackend[Task, String] = {
       val url = "/api/"
-      Stateful { current =>
-        current.rootService("apirestclient", () => new ZioApiRestClient(url))
-      }
+      new ZioApiRestClient(url)
     }
+
   }
 }

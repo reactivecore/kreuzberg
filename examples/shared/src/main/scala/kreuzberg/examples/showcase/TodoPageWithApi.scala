@@ -1,6 +1,5 @@
 package kreuzberg.examples.showcase
 import kreuzberg.*
-import kreuzberg.imperative.*
 import kreuzberg.scalatags.all.*
 import kreuzberg.scalatags.*
 import kreuzberg.rpc.*
@@ -18,11 +17,15 @@ object LoadingModel {
 }
 
 object TodoAdderForm extends SimpleComponentBase {
+
+  val submit = jsEvent("submit", true)
+
   def assemble(implicit c: SimpleContext): Html = {
     val textInput = TextInput("name")
     val button    = Button("Add")
     add(
-      from(button.clicked)
+      from(submit).mapUnit
+        .or(from(button.clicked).mapUnit)
         .withState(textInput.text)
         .triggerChannel(addEvent)
     )
@@ -34,7 +37,6 @@ object TodoAdderForm extends SimpleComponentBase {
   }
 
   val addEvent = Channel.create[String]()
-  // val addEvent = Event.Custom[String]("add")
 }
 
 object TodoPageWithApi extends SimpleComponentBase {

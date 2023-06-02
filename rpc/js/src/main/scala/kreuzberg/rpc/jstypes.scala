@@ -1,7 +1,6 @@
 package kreuzberg.rpc
 
-import kreuzberg.{AssemblyState, Provider}
-import kreuzberg.util.Stateful
+import kreuzberg.Provider
 import zio.Task
 
 import scala.concurrent.Future

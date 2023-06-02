@@ -1,6 +1,6 @@
-package kreuzberg.util
+package kreuzberg
 
-class SimpleThreadLocal[T](initial: T) {
+private[kreuzberg] class SimpleThreadLocal[T](initial: T) {
   private val _val    = new ThreadLocal[T] {
     override def initialValue(): T = {
       initial

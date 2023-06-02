@@ -100,6 +100,8 @@ sealed trait EventSource[E] {
 
   /** Connect this source to a sink */
   def to(sink: EventSink[E]): EventBinding.SourceSink[E] = EventBinding.SourceSink(this, sink)
+
+  def or(source: EventSource[E]): EventSource[E] = EventSource.OrSource(this, source)
 }
 
 object EventSource {
@@ -148,6 +150,11 @@ object EventSource {
   /** Pseudo Event source, to chain multiple reactions on one source. */
   case class AndSource[E](
       binding: EventBinding.SourceSink[E]
+  ) extends EventSource[E]
+
+  case class OrSource[E](
+      left: EventSource[E],
+      right: EventSource[E]
   ) extends EventSource[E]
 }
 

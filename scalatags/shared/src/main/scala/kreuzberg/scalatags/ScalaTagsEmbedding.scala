@@ -1,7 +1,7 @@
 package kreuzberg.scalatags
 
-import kreuzberg.util.SimpleThreadLocal
-import kreuzberg.{Component, FlatHtmlBuilder, Html, TreeNode}
+import kreuzberg.SimpleThreadLocal
+import kreuzberg.{Component, FlatHtmlBuilder, Html}
 import scalatags.Text.TypedTag
 import scalatags.text.Builder
 

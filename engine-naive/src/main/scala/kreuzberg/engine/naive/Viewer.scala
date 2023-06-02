@@ -1,8 +1,10 @@
 package kreuzberg.engine.naive
 
-import kreuzberg.{Logger, TreeNode}
+import kreuzberg.Logger
 import kreuzberg.*
 import kreuzberg.dom.*
+import kreuzberg.engine.common.TreeNode
+
 import scala.util.control.NonFatal
 
 /** Responsible for drawing componnent trees. */
@@ -11,7 +13,6 @@ class Viewer(rootElement: ScalaJsElement) {
   /** Redraw root node */
   def drawRoot(node: TreeNode): Unit = {
     val html = node.render()
-    println(s"Generated HTML: ${html}")
     rootElement.innerHTML = html
   }
 

@@ -4,6 +4,7 @@ import java.io.Writer
 import scala.collection.mutable
 import scala.language.implicitConversions
 
+/** Abstract HTML Code which can contain other HTML Snippets and embedded Components. */
 trait Html {
 
   /** Appends the data.id attribut to the HTML Code. */
@@ -13,7 +14,7 @@ trait Html {
   def addComment(c: String): Html
 
   /** Returns all embedded components within the HTML Code. */
-  def embeddedNodes: Iterable[Component]
+  def embeddedComponents: Iterable[Component]
 
   /** Render the HTML. */
   def render(sb: StringBuilder): Unit = {

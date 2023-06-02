@@ -1,7 +1,6 @@
 package kreuzberg.examples.showcase
 
-import kreuzberg.{Html, Model}
-import kreuzberg.imperative.{SimpleComponentBase, SimpleContext}
+import kreuzberg.{Html, Model, SimpleComponentBase, SimpleContext}
 import kreuzberg.xml._
 
 /** Demonstrates the use of Scala XML. */

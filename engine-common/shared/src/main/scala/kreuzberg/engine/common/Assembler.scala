@@ -1,23 +1,20 @@
-package kreuzberg
+package kreuzberg.engine.common
 
 import kreuzberg.dom.ScalaJsNode
-import kreuzberg.util.Stateful
+import kreuzberg.{AssemblerContext, Assembly, Component, IdentifierFactory}
 
 import scala.language.implicitConversions
 
 object Assembler {
 
-  def tree[T <: Component](component: T): NodeResult[T] = {
-    for {
-      assembly <- component.assemble
-      tree     <- treeFromAssembly(component, assembly)
-    } yield tree
+  def tree[T <: Component](component: T)(using AssemblerContext): ComponentNode[T] = {
+    treeFromAssembly(component, component.assemble)
   }
 
   private def treeFromAssembly[T <: Component](
       component: T,
       assembly: Assembly
-  ): NodeResult[T] = {
+  )(using AssemblerContext): ComponentNode[T] = {
     val withId    = assembly.html.withId(component.id)
     val comment   = component.comment
     val htmlToUse = if (comment.isEmpty()) {
@@ -26,19 +23,16 @@ object Assembler {
       withId.addComment(comment)
     }
     val flat      = htmlToUse.flat()
-
-    for {
-      children <- Stateful.accumulate(htmlToUse.embeddedNodes) { component =>
-                    tree(component)
-                  }
-    } yield {
-      ComponentNode(
-        component,
-        flat,
-        children,
-        assembly.handlers
-      )
-    }
+    val children  = htmlToUse.embeddedComponents.view.map { component =>
+      tree(component)
+    }.toVector
+    ComponentNode(
+      component,
+      flat,
+      children,
+      assembly.handlers,
+      assembly.subscriptions.map(_.id)
+    )
   }
 
   /**
@@ -47,7 +41,7 @@ object Assembler {
   def single[T <: Component](component: () => T): Assembly = {
     IdentifierFactory.withFresh {
       val c = component()
-      c.assemble(AssemblyState())._2
+      c.assemble(using AssemblerContext.empty)
     }
   }
 
@@ -57,7 +51,7 @@ object Assembler {
   def singleTree[T <: Component](component: () => T): ComponentNode[T] = {
     IdentifierFactory.withFresh {
       val c = component()
-      tree(c)(AssemblyState())._2
+      tree(c)(using AssemblerContext.empty)
     }
   }
 }

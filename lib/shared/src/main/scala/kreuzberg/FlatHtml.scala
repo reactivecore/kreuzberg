@@ -1,17 +1,15 @@
 package kreuzberg
 
-import kreuzberg.util.SimpleThreadLocal
-
 import scala.collection.mutable
 
 sealed trait FlatHtmlElement
 
 object FlatHtmlElement {
-  case class Part(s: String)              extends FlatHtmlElement
+  case class Part(s: String)             extends FlatHtmlElement
   case class PlaceHolder(id: Identifier) extends FlatHtmlElement
 }
 
-/** Flattened HTML generated from a component for fast rerendering. */
+/** Flattened HTML generated from a component for faster rerendering. */
 class FlatHtml(parts: Array[FlatHtmlElement]) {
 
   /** Rerender Flat HTML. */

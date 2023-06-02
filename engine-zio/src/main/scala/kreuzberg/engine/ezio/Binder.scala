@@ -1,8 +1,8 @@
 package kreuzberg.engine.ezio
 
 import kreuzberg.*
-import kreuzberg.util.Stateful
 import kreuzberg.dom.*
+import kreuzberg.engine.common.{Assembler, ModelValues, SimpleServiceRepository, TreeNode}
 import zio.stream.{ZChannel, ZSink, ZStream}
 import zio.*
 
@@ -46,34 +46,35 @@ object Binder {
   def create(rootElement: ScalaJsElement, main: Component): Task[Binder] = {
     val viewer = new Viewer(rootElement)
     for {
-      state         <- Ref.make(AssemblyState())
+      modelValues   <- Ref.make(ModelValues())
       tree          <- Ref.make(TreeNode.empty: TreeNode)
       locator        = new EventManager.Locator {
                          override def unsafeLocate(id: Identifier): ScalaJsElement = viewer.findElementUnsafe(id)
                        }
-      eventManager2 <- EventManager.create(state, locator)
+      eventManager2 <- EventManager.create(modelValues, locator)
       mainLock      <- Semaphore.make(1)
     } yield {
-      new Binder(state, tree, rootElement, main, eventManager2, mainLock)
+      new Binder(modelValues, tree, rootElement, main, eventManager2, mainLock)
     }
   }
 }
 
 /** Binds a root element to a Node. */
 class Binder(
-    state: Ref[AssemblyState],
+    state: Ref[ModelValues],
     tree: Ref[TreeNode],
     rootElement: ScalaJsElement,
     main: Component,
-    eventManager2: EventManager,
+    eventManager: EventManager,
     mainLock: Semaphore
 ) {
 
-  private val viewer = new Viewer(rootElement)
+  private val viewer                         = new Viewer(rootElement)
+  private val serviceRepo: ServiceRepository = new SimpleServiceRepository
 
   def run(): Task[Unit] = {
     for {
-      _ <- eventManager2.iterationStream.runForeach(onChangedModels).forkZioLogged("Iteration Stream")
+      _ <- eventManager.iterationStream.runForeach(onChangedModels).forkZioLogged("Iteration Stream")
       _ <- firstDraw()
       _ <- ZIO.never
     } yield {
@@ -85,11 +86,12 @@ class Binder(
     mainLock.withPermit {
       for {
         _       <- Logger.debugZio("Starting redraw")
-        newTree <- Assembler.tree(main).onRef(state)
+        context <- buildContext()
+        newTree  = Assembler.tree(main)(using context)
         _       <- viewer.drawRoot(newTree)
         _       <- tree.set(newTree)
         _       <- Logger.debugZio("Activating Events")
-        _       <- eventManager2.activateEvents(newTree)
+        _       <- eventManager.activateEvents(newTree)
         _       <- Logger.debugZio("Activated Events")
         _       <- state.update(state => garbageCollect(newTree, state)._1)
         _       <- Logger.debugZio("End Redraw")
@@ -97,10 +99,19 @@ class Binder(
     }
   }
 
+  private def buildContext(): Task[AssemblerContext] = {
+    state.get.map { state =>
+      new AssemblerContext:
+        override def value[M](model: Model[M]): M = state.readValue(model)
+
+        override def service[S](using provider: Provider[S]): S = serviceRepo.service
+    }
+  }
+
   private def onChangedModels(modelIds: Chunk[Identifier]): Task[Unit] = {
     val modelIdSet = modelIds.toSet
-    state.get.flatMap { currentState =>
-      val componentIds = (currentState.subscribers.view.collect {
+    tree.get.flatMap { tree =>
+      val componentIds = (tree.allSubscriptions.collect {
         case (modelId, componentIds) if modelIdSet.contains(modelId) => componentIds
       }).toSet
       onChangedModelsContainers(modelIdSet, componentIds)
@@ -117,7 +128,8 @@ class Binder(
     mainLock.withPermit {
       for {
         _          <- Logger.debugZio(s"Changed Model Ids: ${changedModelIds}/ Components ${changedComponentIds}")
-        _          <- updateTree(changedComponentIds)
+        context    <- buildContext()
+        _          <- updateTree(changedComponentIds)(using context)
         treeNow    <- tree.get
         _          <- drawChangedEvents(treeNow, changedComponentIds)
         _          <- activateChangedEvents(treeNow, changedComponentIds)
@@ -125,7 +137,7 @@ class Binder(
                         val (updatedState, components, models) = garbageCollect(treeNow, state)
                         (components, models) -> updatedState
                       }
-        _          <- eventManager2.garbageCollect(referenced._1, referenced._2)
+        _          <- eventManager.garbageCollect(referenced._1, referenced._2)
       } yield {
         ()
       }
@@ -133,47 +145,8 @@ class Binder(
   }
 
   /** Rebuild tree of changed components. */
-  private def updateTree(changed: Set[Identifier]): Task[Unit] = {
-    for {
-      tree0   <- tree.get
-      updated <- updateSubtree(tree0, changed)
-      _       <- tree.set(updated)
-    } yield {
-      ()
-    }
-  }
-
-  /** Rebuild a subtree. */
-  private def updateSubtree(node: TreeNode, changed: Set[Identifier]): Task[TreeNode] = {
-    if (changed.contains(node.id)) {
-      reassembleNode(node)
-    } else {
-      transformNodeChildren(node, updateSubtree(_, changed))
-    }
-  }
-
-  /** Reassemble a single node. */
-  private def reassembleNode(node: TreeNode): Task[TreeNode] = {
-    node match {
-      case r: ComponentNode[_] =>
-        Assembler.tree(r.component).onRef(state)
-    }
-  }
-
-  /** Transform node children using f */
-  private def transformNodeChildren(node: TreeNode, f: TreeNode => Task[TreeNode]): Task[TreeNode] = {
-    node match {
-      case c: ComponentNode[_] =>
-        if (c.children.isEmpty) {
-          ZIO.succeed(node)
-        } else {
-          ZIO.foreach(c.children)(f).map { x =>
-            c.copy(
-              children = x
-            )
-          }
-        }
-    }
+  private def updateTree(changed: Set[Identifier])(using AssemblerContext): Task[Unit] = {
+    tree.update(_.rebuildChanged(changed))
   }
 
   private def drawChangedEvents(node: TreeNode, changed: Set[Identifier]): Task[Unit] = {
@@ -186,36 +159,28 @@ class Binder(
 
   private def activateChangedEvents(node: TreeNode, changed: Set[Identifier]): Task[Unit] = {
     if (changed.contains(node.id)) {
-      eventManager2.activateEvents(node)
+      eventManager.activateEvents(node)
     } else {
       ZIO.foreachDiscard(node.children)(activateChangedEvents(_, changed))
     }
   }
 
-  /** Garbage collects the AssemblyState, returns referenced New state, and referenced Components and Models */
+  /** Garbage collects the models, returns referenced New state, and referenced Components and Models */
   private def garbageCollect(
       tree: TreeNode,
-      state: AssemblyState
-  ): (AssemblyState, Set[Identifier], Set[Identifier]) = {
-    val referencedComponents = tree.referencedComponentIds + Identifier.RootComponent
+      modelValues: ModelValues
+  ): (ModelValues, Set[Identifier], Set[Identifier]) = {
+    val referencedComponents = (tree.allReferencedComponentIds ++ Iterator(Identifier.RootComponent)).toSet
 
-    val componentFiltered = state.copy(
-      services = state.services.filterKeys(referencedComponents.contains)
-    )
-
-    val referencedModels = componentFiltered.subscribers.map(_._1).toSet
-    val modelFiltered    = componentFiltered.copy(
-      modelValues = componentFiltered.modelValues.view.filterKeys(referencedModels.contains).toMap,
-      subscribers = componentFiltered.subscribers.filter { case (modelId, componentId) =>
-        referencedModels.contains(modelId) && referencedComponents.contains(componentId)
-      }.distinct
+    val referencedModels = tree.allSubscriptions.map(_._1).toSet
+    val modelFiltered    = modelValues.copy(
+      modelValues = modelValues.modelValues.view.filterKeys(referencedModels.contains).toMap
     )
 
     Logger.debug(
       s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models"
     )
-    Logger.debug(s"  Values:   ${state.modelValues.size} -> ${modelFiltered.modelValues.size}")
-    Logger.debug(s"  Subscribers: ${state.subscribers.size} -> ${modelFiltered.subscribers.size}")
+    Logger.debug(s"  Values:   ${modelValues.modelValues.size} -> ${modelFiltered.modelValues.size}")
 
     (modelFiltered, referencedComponents, referencedModels)
   }

@@ -1,7 +1,6 @@
 package kreuzberg.extras
 
 import kreuzberg._
-import kreuzberg.util.Stateful
 
 /** A Route within [[SimpleRouter]] */
 trait Route {

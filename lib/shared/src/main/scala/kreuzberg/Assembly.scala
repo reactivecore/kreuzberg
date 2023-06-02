@@ -6,8 +6,11 @@ package kreuzberg
  *   HTML Code with embedded Components
  * @param handlers
  *   Event Handlers
+ * @param subscriptions
+ *   Component Subscriptions
  */
 case class Assembly(
     html: Html,
-    handlers: Vector[EventBinding] = Vector.empty
+    handlers: Vector[EventBinding] = Vector.empty,
+    subscriptions: Vector[Model[_]] = Vector.empty
 )

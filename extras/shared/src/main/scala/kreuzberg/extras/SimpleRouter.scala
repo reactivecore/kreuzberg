@@ -2,7 +2,6 @@ package kreuzberg.extras
 
 import kreuzberg.*
 import kreuzberg.extras.SimpleRouter.RoutingState
-import kreuzberg.util.Stateful
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -21,62 +20,63 @@ case class SimpleRouter(
     titlePrefix: String = ""
 ) extends ComponentBase {
 
-  override def assemble: AssemblyResult = {
-    for {
-      routingState   <- subscribe(SimpleRouter.routingStateModel)
-      _               =
-        Logger.debug(s"Rendering SimpleRouter with value ${routingState} on model ${SimpleRouter.routingStateModel.id}")
-      routeValue      = routingState.currentRoute.getOrElse(BrowserRouting.getCurrentPath())
-      route           = decideRoute(routeValue)
-      component       = route.component(routeValue)
-      gotoBinding     =
-        EventSource
-          .ChannelSource(SimpleRouter.gotoChannel)
-          .executeCode { target =>
-            val title = decideRoute(target).title(target)
-            Logger.debug(s"Model change ${routingState.currentRoute} -> ${target}")
-            val path  = BrowserRouting.getCurrentPath()
-            if (target != path) { // Otherwise we would also push a state change on a pop change
-              Logger.debug(s"Push state ${title}/${target}")
-              BrowserRouting.pushState(title, target)
-            }
-            BrowserRouting.setDocumentTitle(titlePrefix + title)
-          }
-          .and
-          .changeModel(SimpleRouter.routingStateModel) { (path, model) =>
-            model.copy(currentRoute = Some(path))
-          }
-      onLoadBinding   = EventSource.Js
-                          .window("load")
-                          .changeModel(SimpleRouter.routingStateModel) { (_, m) =>
-                            val path = BrowserRouting.getCurrentPath()
-                            Logger.debug(s"Load Event: ${path}")
-                            RoutingState(Some(path))
-                          }
-                          .and
-                          .executeCode { _ =>
-                            val path  = BrowserRouting.getCurrentPath()
-                            val title = decideRoute(path).title(path)
-                            BrowserRouting.setDocumentTitle(titlePrefix + title)
-                          }
-      popStateBinding = EventSource.Js
-                          .window("popstate")
-                          .changeModel(SimpleRouter.routingStateModel) { (_, current) =>
-                            val path = BrowserRouting.getCurrentPath()
-                            Logger.debug(s"Popstate event ${path}")
-                            RoutingState(Some(path))
-                          }
+  override def assemble(using context: AssemblerContext): Assembly = {
+    val routingState = read(SimpleRouter.routingStateModel)
+    Logger.debug(s"Rendering SimpleRouter with value ${routingState} on model ${SimpleRouter.routingStateModel.id}")
 
-    } yield {
-      Assembly(
-        div(component.wrap),
-        Vector(
-          gotoBinding,
-          onLoadBinding,
-          popStateBinding
-        )
-      )
-    }
+    val routeValue = routingState.currentRoute.getOrElse(BrowserRouting.getCurrentPath())
+    val route      = decideRoute(routeValue)
+    val component  = route.component(routeValue)
+
+    val gotoBinding =
+      EventSource
+        .ChannelSource(SimpleRouter.gotoChannel)
+        .executeCode { target =>
+          val title = decideRoute(target).title(target)
+          Logger.debug(s"Model change ${routingState.currentRoute} -> ${target}")
+          val path  = BrowserRouting.getCurrentPath()
+          if (target != path) { // Otherwise we would also push a state change on a pop change
+            Logger.debug(s"Push state ${title}/${target}")
+            BrowserRouting.pushState(title, target)
+          }
+          BrowserRouting.setDocumentTitle(titlePrefix + title)
+        }
+        .and
+        .changeModel(SimpleRouter.routingStateModel) { (path, model) =>
+          model.copy(currentRoute = Some(path))
+        }
+
+    val onLoadBinding = EventSource.Js
+      .window("load")
+      .changeModel(SimpleRouter.routingStateModel) { (_, m) =>
+        val path = BrowserRouting.getCurrentPath()
+        Logger.debug(s"Load Event: ${path}")
+        RoutingState(Some(path))
+      }
+      .and
+      .executeCode { _ =>
+        val path  = BrowserRouting.getCurrentPath()
+        val title = decideRoute(path).title(path)
+        BrowserRouting.setDocumentTitle(titlePrefix + title)
+      }
+
+    val popStateBinding = EventSource.Js
+      .window("popstate")
+      .changeModel(SimpleRouter.routingStateModel) { (_, current) =>
+        val path = BrowserRouting.getCurrentPath()
+        Logger.debug(s"Popstate event ${path}")
+        RoutingState(Some(path))
+      }
+
+    Assembly(
+      div(component.wrap),
+      handlers = Vector(
+        gotoBinding,
+        onLoadBinding,
+        popStateBinding
+      ),
+      subscriptions = Vector(SimpleRouter.routingStateModel)
+    )
   }
 
   private def decideRoute(path: String): Route = {

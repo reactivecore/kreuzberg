@@ -1,6 +1,5 @@
-package kreuzberg
-
-import kreuzberg.util.Stateful
+package kreuzberg.engine.common
+import kreuzberg.*
 
 /** Represents an assembled node in a tree. */
 sealed trait TreeNode {
@@ -15,6 +14,9 @@ sealed trait TreeNode {
   /** Event Handlers. */
   def handlers: Vector[EventBinding]
 
+  /** Model Ids a node subscribed to. */
+  def subscriptions: Vector[Identifier]
+
   /** Renders the tree node. */
   def render(): String = {
     val sb = StringBuilder()
@@ -24,51 +26,40 @@ sealed trait TreeNode {
 
   def renderTo(sb: StringBuilder): Unit
 
-  /** Returns referenced component ids. */
-  lazy val referencedComponentIds: Set[Identifier] = {
-    val builder = Set.newBuilder[Identifier]
-    builder += id
-    children.foreach { node =>
-      builder ++= node.referencedComponentIds
+  /** All subscriptions of this tree, modelId to component id. */
+  def allSubscriptions: Iterator[(Identifier, Identifier)] = {
+    for {
+      node         <- iterator
+      subscription <- node.subscriptions
+    } yield {
+      subscription -> node.id
     }
-    builder.result()
   }
 
-  /** Find a node by identifier. */
-  def find(identifier: Identifier): Option[TreeNode] = {
-    if (id == identifier) {
-      Some(this)
-    } else if (referencedComponentIds.contains(identifier)) {
-      val it = children.iterator
-      while (it.hasNext) {
-        it.next().find(identifier) match {
-          case Some(found) => return Some(found)
-          case None        => // continue
-        }
-      }
-      None
-    } else {
-      None
-    }
+  /** All referenced component ids. */
+  def allReferencedComponentIds: Iterator[Identifier] = {
+    iterator.map(_.id)
   }
 
   def foreach(f: TreeNode => Unit): Unit = {
     children.foreach(_.foreach(f))
     f(this)
   }
-}
 
-/** TreeNode with Component Type. */
-sealed trait TreeNodeC[T <: Component] extends TreeNode {
-  def component: T
+  def iterator: Iterator[TreeNode] = {
+    Iterator(this) ++ children.iterator.flatMap(_.iterator)
+  }
+
+  /** Rebuild changed nodes. */
+  def rebuildChanged(changed: Set[Identifier])(using assemblerContext: AssemblerContext): TreeNode
 }
 
 object TreeNode {
 
   object emptyComponent extends Component {
     type Runtime = Unit
-    def assemble: AssemblyResult = {
-      Stateful.pure(Assembly(emptyRootHtml))
+    def assemble(using c: AssemblerContext): Assembly = {
+      Assembly(emptyRootHtml)
     }
   }
 
@@ -76,7 +67,8 @@ object TreeNode {
     component = emptyComponent,
     html = emptyRootHtml.flat(),
     children = Vector.empty,
-    handlers = Vector.empty
+    handlers = Vector.empty,
+    subscriptions = Vector.empty
   )
 
   private def emptyRootHtml: Html =
@@ -92,8 +84,9 @@ case class ComponentNode[T <: Component](
     component: T,
     html: FlatHtml,
     children: Vector[TreeNode],
-    handlers: Vector[EventBinding]
-) extends TreeNodeC[T] {
+    handlers: Vector[EventBinding],
+    subscriptions: Vector[Identifier]
+) extends TreeNode {
   override def toString: String = s"Component ${id}/${component}"
 
   private lazy val childrenMap: Map[Identifier, TreeNode] = children.map { t => t.id -> t }.toMap
@@ -107,4 +100,19 @@ case class ComponentNode[T <: Component](
   }
 
   override def id: Identifier = component.id
+
+  override def rebuildChanged(changed: Set[Identifier])(using assemblerContext: AssemblerContext): TreeNode = {
+    if (changed.contains(id)) {
+      Assembler.tree(component)
+    } else {
+      if (children.isEmpty) {
+        this
+      } else {
+        val updated = children.map(_.rebuildChanged(changed))
+        copy(
+          children = updated
+        )
+      }
+    }
+  }
 }

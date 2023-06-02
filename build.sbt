@@ -56,6 +56,7 @@ val logsettings = libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.4.5"
 )
 
+/** Defines a component. */
 lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   .settings(
     name         := "kreuzberg",
@@ -67,15 +68,24 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   )
   .jsSettings(
     libraryDependencies ++= Seq(
-      "org.scala-js"  %%% "scalajs-dom"               % "2.3.0",
-      ("org.scala-js" %%% "scalajs-weakreferences"    % "1.0.0").cross(CrossVersion.for3Use2_13)
+      "org.scala-js"  %%% "scalajs-dom"            % "2.3.0",
+      ("org.scala-js" %%% "scalajs-weakreferences" % "1.0.0").cross(CrossVersion.for3Use2_13)
     )
   )
+
+/** Common codes for Engine */
+lazy val engineCommon = (crossProject(JSPlatform, JVMPlatform) in file("engine-common"))
+  .settings(
+    name := "kreuzberg-engine-common",
+    publishSettings,
+    testSettings
+  )
+  .dependsOn(lib)
 
 /** Naive simple engine implementation (mutable like hell, but small in Size) */
 lazy val engineNaive = (project in file("engine-naive"))
   .enablePlugins(ScalaJSPlugin)
-  .dependsOn(lib.js)
+  .dependsOn(lib.js, engineCommon.js)
   .settings(
     name := "kreuzberg-engine-naive",
     publishSettings,
@@ -85,7 +95,7 @@ lazy val engineNaive = (project in file("engine-naive"))
 /** ZIO Based Engine (slower, bigger size, cleaner) */
 lazy val engineZio = (project in file("engine-zio"))
   .enablePlugins(ScalaJSPlugin)
-  .dependsOn(lib.js)
+  .dependsOn(lib.js, engineCommon.js)
   .settings(
     name := "kreuzberg-engine-zio",
     publishSettings,
@@ -109,7 +119,7 @@ lazy val xml = (crossProject(JSPlatform, JVMPlatform) in file("xml"))
     publishSettings,
     testSettings
   )
-  .dependsOn(lib)
+  .dependsOn(lib, engineCommon % Test)
 
 lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags"))
   .settings(
@@ -120,7 +130,7 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags")
     publishSettings,
     testSettings
   )
-  .dependsOn(lib)
+  .dependsOn(lib, engineCommon % Test)
 
 lazy val rpc = (crossProject(JSPlatform, JVMPlatform) in file("rpc"))
   .settings(
@@ -227,6 +237,8 @@ lazy val root = (project in file("."))
     lib.jvm,
     engineNaive,
     engineZio,
+    engineCommon.js,
+    engineCommon.jvm,
     xml.js,
     xml.jvm,
     scalatags.js,

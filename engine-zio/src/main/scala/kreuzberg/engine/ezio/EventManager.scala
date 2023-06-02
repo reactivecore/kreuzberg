@@ -2,6 +2,7 @@ package kreuzberg.engine.ezio
 
 import kreuzberg.*
 import kreuzberg.dom.*
+import kreuzberg.engine.common.{ModelValues, TreeNode}
 import kreuzberg.engine.ezio.EventManager.{ChannelSubscriber, ComponentSubscriber, Iteration, Locator, create}
 import kreuzberg.engine.ezio.utils.MultiListMap
 import zio.stream.{ZSink, ZStream}
@@ -16,7 +17,7 @@ type XStream[T] = ZStream[Any, Nothing, T]
 class EventManager(
     locator: Locator,
     hub: Hub[Identifier],
-    state: Ref[AssemblyState],
+    modelValues: Ref[ModelValues],
     eventRegistry: JsEventRegistry[Identifier],
     channelSubscribers: Ref[MultiListMap[Identifier, ChannelSubscriber[_]]]
 ) {
@@ -113,6 +114,13 @@ class EventManager(
         andEvent(owner, a)
       case c: EventSource.ChannelSource[_]     =>
         convertChannelSource(owner, c)
+      case o: EventSource.OrSource[_]          =>
+        for {
+          left  <- sourceToStream(owner, o.left)
+          right <- sourceToStream(owner, o.right)
+        } yield {
+          left.merge(right)
+        }
   }
 
   private def convertSink[E](node: TreeNode, sink: EventSink[E]): E => Task[Unit] = {
@@ -151,7 +159,7 @@ class EventManager(
     input =>
       {
         for {
-          _ <- state.modify { state =>
+          _ <- modelValues.modify { state =>
                  val oldValue     = state.readValue(change.model)
                  val updated      = change.f(input, oldValue)
                  Logger.trace(s"Model Change ${change.model.id} ${oldValue} -> ${updated}")
@@ -180,7 +188,7 @@ class EventManager(
           subscribersMap <- channelSubscribers.get
           subscribers     = subscribersMap.get(found.id)
           _              <-
-            Logger.debugZio(
+            Logger.traceZio(
               s"Will send ${input} on ${found} to ${subscribers.size} receivers (owners=${subscribers
                   .map(_.owner)})"
             )
@@ -355,7 +363,7 @@ object EventManager {
     }
   }
 
-  def create(state: Ref[AssemblyState], locator: Locator): Task[EventManager] = {
+  def create(state: Ref[ModelValues], locator: Locator): Task[EventManager] = {
     for {
       hub                <- Hub.bounded[Identifier](256)
       eventRegistry      <- JsEventRegistry.create[Identifier]
@@ -366,7 +374,7 @@ object EventManager {
   }
 
   case class Iteration(
-      state: AssemblyState,
+      state: ModelValues,
       changedModels: Set[Identifier]
   )
 }

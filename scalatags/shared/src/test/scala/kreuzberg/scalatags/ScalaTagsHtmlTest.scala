@@ -1,8 +1,8 @@
 package kreuzberg.scalatags
-import kreuzberg.{Assembler, Identifier, Html}
-import kreuzberg.imperative.{SimpleComponentBase, SimpleContext}
+import kreuzberg.{Html, Identifier, SimpleComponentBase, SimpleContext}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
+import kreuzberg.engine.common.Assembler
 
 class ScalaTagsHtmlTest extends TestBase {
   val simple = ScalaTagsHtml(
