@@ -1,4 +1,4 @@
-package kreuzberg.examples.showcase
+package kreuzberg.examples.showcase.components
 
 import kreuzberg.*
 import kreuzberg.scalatags.*
@@ -24,36 +24,36 @@ case class ErrorShower(model: Model[Option[String]]) extends SimpleComponentBase
 case class ValidatingTextInput(
     name: String,
     validator: String => Option[String]
-) extends ComponentBase {
+) extends SimpleComponentBase {
 
-  def assemble(using context: AssemblerContext): Assembly = {
+  def assemble(using context: SimpleContext): Html = {
     val valueModel   = Model.create("")
     val errorModel   = Model.create(None: Option[String])
     val initialValue = read(valueModel)
 
     val textInput   = TextInput(name, initialValue)
     val errorShower = ErrorShower(errorModel)
-    val bindError   = from(textInput.inputEvent)
-      .withState(textInput.text)
-      .changeModel(valueModel) { (v, _) =>
-        Logger.debug(s"Setting value to ${v}")
-        v
-      }
-      .and
-      .changeModel(errorModel) { (v, _) =>
-        {
-          val error = validator(v)
-          Logger.debug(s"Setting error to ${error}")
-          error
-        }
-      }
 
-    Assembly(
-      div(
-        textInput.wrap,
-        errorShower.wrap
-      ),
-      Vector(bindError)
+    add(
+      textInput.onInputEvent
+        .withState(textInput.text)
+        .changeModel(valueModel) { (v, _) =>
+          Logger.debug(s"Setting value to ${v}")
+          v
+        }
+        .and
+        .changeModel(errorModel) { (v, _) =>
+          {
+            val error = validator(v)
+            Logger.debug(s"Setting error to ${error}")
+            error
+          }
+        }
+    )
+
+    div(
+      textInput.wrap,
+      errorShower.wrap
     )
   }
 }

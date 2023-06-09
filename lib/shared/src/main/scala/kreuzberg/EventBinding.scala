@@ -7,15 +7,17 @@ import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
 import scala.ref.WeakReference
 import scala.util.Failure
 import scala.util.Success
-sealed trait EventSource[E] {
+
+/** A Source of an [[EventBinding]]. */
+sealed trait EventSource[+E] {
 
   /** Extend runtime state to event. */
-  def addState[R <: ScalaJsElement, S](from: RuntimeState[S]): EventSource[(E, S)] = {
+  def addState[S](from: RuntimeState[S]): EventSource[(E, S)] = {
     EventSource.WithState(this, from)
   }
 
   /** Replaces event state with runtime state. */
-  def withState[R <: ScalaJsElement, S](from: RuntimeState[S]): EventSource[S] = {
+  def withState[S](from: RuntimeState[S]): EventSource[S] = {
     addState(from).map(_._2)
   }
 
@@ -28,16 +30,18 @@ sealed trait EventSource[E] {
   }
 
   /** Throw away any data. */
-  def mapUnit: EventSource[Unit] = map(_ => ())
+  inline def mapUnit: EventSource[Unit] = map(_ => ())
 
-  def effect[F[_], R](op: EffectOperation[E, F, R]): EventSource.EffectEvent[E, F, R] =
+  def effect[T >: E, F[_], R](op: EffectOperation[T, F, R]): EventSource.EffectEvent[T, F, R] =
     EventSource.EffectEvent(this, op)
 
-  def effect[F[_], R](f: E => F[R])(implicit effectSupport: EffectSupport[F]): EventSource.EffectEvent[E, F, R] =
+  def effect[T >: E, F[_], R](f: T => F[R])(
+      implicit effectSupport: EffectSupport[F]
+  ): EventSource.EffectEvent[T, F, R] =
     EventSource.EffectEvent(this, EffectOperation(e => f(e)))
 
   /** Execute custom Code. */
-  def executeCode(f: E => Unit): EventBinding.SourceSink[E] = {
+  def executeCode[T >: E](f: T => Unit): EventBinding.SourceSink[T] = {
     EventBinding.SourceSink(this, EventSink.ExecuteCode(f))
   }
 
@@ -45,40 +49,40 @@ sealed trait EventSource[E] {
    * Do nothing (e.g. some events already have an effect just because they are registered, e.g. Drag and Drop events
    * with preventDefault)
    */
-  def doNothing: EventBinding.SourceSink[E] = {
+  def doNothing[T >: E]: EventBinding.SourceSink[T] = {
     executeCode(_ => ())
   }
 
   /** Shortcut for building event bindings */
-  def changeModel[M](model: Model[M])(f: (E, M) => M): EventBinding.SourceSink[E] = {
+  def changeModel[T >: E, M](model: Model[M])(f: (T, M) => M): EventBinding.SourceSink[T] = {
     val sink = EventSink.ModelChange(model, f)
     EventBinding(this, sink)
   }
 
   /** Change model without caring about the value of the event. */
-  def changeModelDirect[M](model: Model[M])(f: M => M): EventBinding.SourceSink[E] = {
-    val sink = EventSink.ModelChange[E, M](model, (_, m) => f(m))
+  def changeModelDirect[T >: E, M](model: Model[M])(f: M => M): EventBinding.SourceSink[T] = {
+    val sink = EventSink.ModelChange[T, M](model, (_, m) => f(m))
     EventBinding(this, sink)
   }
 
   /** Set the model to a value without caring about the value of the event or model before */
-  def setModel[M](model: Model[M], value: M): EventBinding.SourceSink[E] = {
+  def setModel[T >: E, M](model: Model[M], value: M): EventBinding.SourceSink[T] = {
     val sink = EventSink.ModelChange(model, (_, _) => value)
     EventBinding(this, sink)
   }
 
   /** Change model without caring about the previous value of the model. */
-  def intoModel[M](model: Model[M])(f: E => M): EventBinding.SourceSink[E] = {
+  def intoModel[T >: E, M](model: Model[M])(f: T => M): EventBinding.SourceSink[T] = {
     changeModel(model)((e, _) => f(e))
   }
 
   /** Change model without caring about the previous value of the model. */
-  def intoModel(model: Model[E]): EventBinding.SourceSink[E] = {
+  def intoModel[T >: E](model: Model[T]): EventBinding.SourceSink[T] = {
     changeModel(model)((e, _) => e)
   }
 
   /** Trigger some channel. */
-  def triggerChannel[T](channel: Channel[T]): EventBinding.SourceSink[E] = {
+  def trigger[T >: E](channel: Channel[T]): EventBinding.SourceSink[T] = {
     EventBinding(
       this,
       EventSink.ChannelSink(channel)
@@ -99,9 +103,10 @@ sealed trait EventSource[E] {
   }
 
   /** Connect this source to a sink */
-  def to(sink: EventSink[E]): EventBinding.SourceSink[E] = EventBinding.SourceSink(this, sink)
+  def to[T >: E](sink: EventSink[T]): EventBinding.SourceSink[T] = EventBinding.SourceSink(this, sink)
 
-  def or(source: EventSource[E]): EventSource[E] = EventSource.OrSource(this, source)
+  /** Combine with some other event source. */
+  def or[T >: E](source: EventSource[T]): EventSource[T] = EventSource.OrSource(this, source)
 }
 
 object EventSource {
@@ -158,6 +163,7 @@ object EventSource {
   ) extends EventSource[E]
 }
 
+/** Sink of an [[EventBinding]] */
 sealed trait EventSink[-E] {
 
   /** Add another sink */

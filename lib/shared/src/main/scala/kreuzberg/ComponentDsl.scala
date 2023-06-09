@@ -12,9 +12,11 @@ trait ComponentDsl {
     Assembly(in)
   }
 
-  protected def from[E](jsEvent: JsEvent[E]): EventSource.Js[E] = EventSource.Js(jsEvent)
+  /** Implicitly convert JS Events into event sources. */
+  protected implicit def from[E](jsEvent: JsEvent[E]): EventSource.Js[E] = EventSource.Js(jsEvent)
 
-  protected def from[E](channel: Channel[E]): EventSource.ChannelSource[E] = EventSource.ChannelSource(channel)
+  /** Implicitly convert Channels into event sources. */
+  protected implicit def from[E](channel: Channel[E]): EventSource.ChannelSource[E] = EventSource.ChannelSource(channel)
 
   /** Declare a Javascript event. */
   protected def jsEvent(

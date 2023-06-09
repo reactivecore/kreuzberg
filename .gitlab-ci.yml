@@ -11,7 +11,6 @@ cache:
 
 stages:
   - build
-  - publish
 
 before_script:
   # Enable the usage of sources over https
@@ -35,11 +34,3 @@ test:
   script:
     # Execute your project's tests
     - sbt clean test
-
-publish:
-  stage: publish
-  only:
-    variables:
-      - $CI_COMMIT_REF_PROTECTED == "true"
-  script:
-    - sbt publish

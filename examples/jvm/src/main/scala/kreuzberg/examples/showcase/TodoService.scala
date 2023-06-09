@@ -1,10 +1,11 @@
 package kreuzberg.examples.showcase
 
+import kreuzberg.examples.showcase.todo.TodoApi
 import zio.IO
 import zio.ZIO
 import zio.Task
 
-class ListerImpl extends Lister[Task] {
+class TodoService extends TodoApi[Task] {
   private var items: Vector[String] = Vector.empty
   private object lock
 

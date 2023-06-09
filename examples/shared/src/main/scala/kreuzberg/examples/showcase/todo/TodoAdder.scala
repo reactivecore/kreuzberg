@@ -1,18 +1,20 @@
-package kreuzberg.examples.showcase
+package kreuzberg.examples.showcase.todo
 
 import kreuzberg.*
+import kreuzberg.examples.showcase.components.{Button, TextInput}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
+/** A Simple form which allows to add elements to the todo list. */
 case class TodoAdder(
     model: Model[TodoList]
-) extends ComponentBase {
+) extends SimpleComponentBase {
 
   val textInput = TextInput("name")
   val button    = Button("Add")
   val onSubmit  = jsEvent("submit", true)
 
-  def assemble(using context: AssemblerContext): Assembly = {
+  def assemble(using context: SimpleContext): Html = {
     val sink = EventSink.ModelChange[String, TodoList](
       model,
       { (t, current) =>
@@ -23,19 +25,16 @@ case class TodoAdder(
       }
     )
 
-    val binding = from(onSubmit).mapUnit
-      .or(from(button.clicked).mapUnit)
-      .withState(textInput.text)
-      .to(sink)
+    add(
+      onSubmit
+        .or(button.onClicked)
+        .withState(textInput.text)
+        .changeModel(model) { (entry, current) => current.append(entry) }
+    )
 
-    Assembly(
-      form(
-        textInput.wrap,
-        button.wrap
-      ),
-      Vector(
-        binding
-      )
+    form(
+      textInput.wrap,
+      button.wrap
     )
   }
 }

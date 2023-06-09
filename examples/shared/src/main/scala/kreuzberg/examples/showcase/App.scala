@@ -1,38 +1,31 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg.*
+import kreuzberg.examples.showcase.pages.{FormPage, IndexPage, NotFoundPage, XmlPage, WizzardPage}
+import kreuzberg.examples.showcase.todo.{TodoList, TodoPage, TodoPageWithApi}
 import kreuzberg.extras.{Route, SimpleRouter}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-case class App() extends ComponentBase {
+/** Sample Application. */
+object App extends SimpleComponentBase {
 
-  val model = Model.create(
-    TodoList(
-      Seq(
-        "Hello",
-        "World"
-      )
-    )
-  )
-
-  def assemble(using context: AssemblerContext): Assembly = {
+  def assemble(using context: SimpleContext): Html = {
     div(
       Menu.wrap,
       SimpleRouter(
-        routes(model),
+        routes,
         Route.DependentRoute({ case s => NotFoundPage(s) }, _ => "Not Found")
       )
     )
   }
 
-  private def routes(model: Model[TodoList]) = Vector(
+  private def routes = Vector(
     Route.SimpleRoute("/", "Welcome", IndexPage),
-    Route.SimpleRoute("/about", "About", AboutPage),
-    Route.SimpleRoute("/todo", "Todo App", TodoPage(model)),
+    Route.SimpleRoute("/todo", "Todo App", TodoPage),
     Route.SimpleRoute("/todoapi", "Todo App (API)", TodoPageWithApi),
     Route.SimpleRoute("/form", "Form", FormPage),
     Route.SimpleRoute("/wizzard", "Wizzard", WizzardPage),
-    Route.SimpleRoute("/trigger", "Trigger", TriggerPage)
+    Route.SimpleRoute("/xml", "XML", XmlPage)
   )
 }

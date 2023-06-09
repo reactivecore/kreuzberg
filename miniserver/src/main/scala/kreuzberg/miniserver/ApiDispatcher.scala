@@ -16,7 +16,7 @@ case class ApiDispatcher(backend: ZioDispatcher) {
   def app(): HttpApp[Any, Throwable] = Http.collectZIO[Request] {
     case Method.GET -> "" /: "api" /: path                      =>
       ZIO.succeed(Response.text("API Requests requires POST").withStatus(Status.MethodNotAllowed))
-    case r @ Method.POST -> !! / "api" / serviceName / callName =>
+    case r @ Method.POST -> Root / "api" / serviceName / callName =>
       encodeErrors(serviceName, callName) {
         for {
           body     <- r.body.asString

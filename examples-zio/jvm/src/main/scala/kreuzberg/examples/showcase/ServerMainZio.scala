@@ -1,5 +1,6 @@
 package kreuzberg.examples.showcase
 
+import kreuzberg.examples.showcase.todo.TodoApi
 import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, Bootstrapper, MiniServerConfig}
 import kreuzberg.rpc.Dispatcher
 import zio.ZIO
@@ -16,7 +17,7 @@ object ServerMainZio
         ),
         api = Some {
           ZIO.attempt(
-            Dispatcher.makeCustomDispatcher[zio.Task, String, Lister[zio.Task]](new ListerImpl)
+            Dispatcher.makeCustomDispatcher[zio.Task, String, TodoApi[zio.Task]](new TodoService)
           )
         }
       )

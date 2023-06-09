@@ -1,7 +1,8 @@
-package kreuzberg.examples.showcase
+package kreuzberg.examples.showcase.todo
 
-import kreuzberg._
+import kreuzberg.*
 
+/** A Simple TODO List. */
 case class TodoList(
     elements: Seq[String]
 ) {
