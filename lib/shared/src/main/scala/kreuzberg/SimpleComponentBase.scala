@@ -4,8 +4,8 @@ import kreuzberg.*
 import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
 
 /**
- * A Component base which uses a more imperative [[AssemblerContext]] for collecting event handlers and model Generally
- * easier to use
+ * A Component base which uses a more imperative [[AssemblerContext]] for collecting event handlers and model
+ * subscriptions.
  */
 abstract class SimpleComponentBase extends SimpleContextDsl with Component {
   def assemble(using c: SimpleContext): Html

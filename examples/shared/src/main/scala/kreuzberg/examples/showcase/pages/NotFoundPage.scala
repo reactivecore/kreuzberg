@@ -1,6 +1,6 @@
-package kreuzberg.examples.showcase
+package kreuzberg.examples.showcase.pages
 
-import kreuzberg._
+import kreuzberg.*
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 

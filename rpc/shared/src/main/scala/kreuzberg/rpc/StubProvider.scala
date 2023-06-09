@@ -8,7 +8,7 @@ import scala.concurrent.Future
 object StubProvider {
 
   /** Provides a stub for given Client. */
-  inline def stubProvider[T](using restClientProvider: Provider[CallingBackend[Future, String]]): Provider[T] =
+  inline given stubProvider[T](using restClientProvider: Provider[CallingBackend[Future, String]]): Provider[T] =
     new Provider[T] {
 
       override def name: String = "stub_" + Stub.serviceName[T]

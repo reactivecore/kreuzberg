@@ -1,9 +1,9 @@
-package kreuzberg.examples.showcase
+package kreuzberg.examples.showcase.components
 
 import kreuzberg.*
+import kreuzberg.dom.{ScalaJsElement, ScalaJsInput}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
-import kreuzberg.dom.{ScalaJsElement, ScalaJsInput}
 
 case class TextInput(fieldName: String, initialValue: String = "") extends SimpleComponentBase {
 
@@ -15,7 +15,7 @@ case class TextInput(fieldName: String, initialValue: String = "") extends Simpl
     input(name := fieldName, value := initialValue)
   }
 
-  def change     = jsEvent("change")
-  def inputEvent = jsEvent("input")
+  def onChange     = jsEvent("change")
+  def onInputEvent = jsEvent("input")
   def text       = jsState(_.value)
 }

@@ -1,25 +1,24 @@
-package kreuzberg.examples.showcase
+package kreuzberg.examples.showcase.todo
 
-import kreuzberg._
+import kreuzberg.*
+import kreuzberg.examples.showcase.todo.{TodoItemShower, TodoList}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-case class TodoItemShower(item: String) extends ComponentBase {
-  override def assemble(using context: AssemblerContext): Assembly = {
+case class TodoItemShower(item: String) extends SimpleComponentBase {
+  override def assemble(using context: SimpleContext): Html = {
     span(item)
   }
 }
 
 case class TodoShower(todoList: TodoList) extends SimpleComponentBase {
 
-
-
   def assemble(implicit c: SimpleContext): Html = {
     val parts = todoList.elements.map { element =>
-      div(
+      li(
         TodoItemShower(element).wrap
       )
     }
-    div(parts)
+    ul(parts)
   }
 }

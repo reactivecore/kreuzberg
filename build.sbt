@@ -4,12 +4,12 @@ val versionTag = sys.env
   .filter(_.startsWith("v"))
   .map(_.stripPrefix("v"))
 
-val snapshotVersion = "0.5-SNAPSHOT"
+val snapshotVersion = "0.6-SNAPSHOT"
 val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
 
-ThisBuild / scalaVersion := "3.2.2"
+ThisBuild / scalaVersion := "3.3.0"
 
 ThisBuild / scalacOptions += "-Xcheck-macros"
 ThisBuild / scalacOptions += "-feature"
@@ -20,56 +20,60 @@ ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
 
-val zioVersion       = "2.0.13"
-val scalatagsVersion = "0.12.0"
-val zioServerVersion = "3.0.0-RC1"
+val zioVersion                   = "2.0.15"
+val zioLoggingVersion            = "2.1.13"
+val scalatagsVersion             = "0.12.0"
+val zioServerVersion             = "3.0.0-RC2"
+val scalatestVersion             = "3.2.16"
+val logbackVersion               = "1.4.7"
+val scalaJsDomVersion            = "2.6.0"
+val scalaJsWeakReferencesVersion = "1.0.0"
+val scalaJsJavaTimeVersion       = "2.5.0"
+val scalaXmlVersion              = "2.1.0"
+val upickleVersion               = "3.1.0"
+val scalaTagsVersion             = "0.12.0"
 
-val publishSettings = Seq(
-  publishTo           := {
-    val nexus = "https://sonatype.rcxt.de/repository/reactivecore/"
-    if (isSnapshot.value)
-      Some("snapshots" at nexus)
-    else
-      Some("releases" at nexus)
-  },
-  publishMavenStyle   := true,
-  credentials += {
-    for {
-      username <- sys.env.get("SONATYPE_USERNAME")
-      password <- sys.env.get("SONATYPE_PASSWORD")
-    } yield {
-      Credentials("Sonatype Nexus Repository Manager", "sonatype.rcxt.de", username, password)
-    }
-  }.getOrElse(
-    Credentials(Path.userHome / ".sbt" / "sonatype.rcxt.de.credentials")
+def publishSettings = Seq(
+  publishTo           := sonatypePublishTo.value,
+  licenses            := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
+  homepage            := Some(url("https://github.com/reactivecore/rc-circe-json-schema")),
+  developers          := List(
+    Developer(
+      id = "nob13",
+      name = "Norbert Schultz",
+      email = "norbert.schultz@reactivecore.de",
+      url = url("https://www.reactivecore.de")
+    )
   ),
   publish / test      := {},
   publishLocal / test := {}
 )
 
+usePgpKeyHex("77D0E9E04837F8CBBCD56429897A43978251C225")
+
 val testSettings = libraryDependencies ++= Seq(
-  "org.scalatest" %%% "scalatest"          % "3.2.14" % Test,
-  "org.scalatest" %%% "scalatest-flatspec" % "3.2.14" % Test
+  "org.scalatest" %%% "scalatest"          % scalatestVersion % Test,
+  "org.scalatest" %%% "scalatest-flatspec" % scalatestVersion % Test
 )
 
 val logsettings = libraryDependencies ++= Seq(
-  "ch.qos.logback" % "logback-classic" % "1.4.5"
+  "ch.qos.logback" % "logback-classic" % logbackVersion
 )
 
 /** Defines a component. */
 lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   .settings(
     name         := "kreuzberg",
-    publishSettings,
     testSettings,
+    publishSettings,
     libraryDependencies += (
       "dev.zio" %%% "zio" % zioVersion % Provided
     )
   )
   .jsSettings(
     libraryDependencies ++= Seq(
-      "org.scala-js"  %%% "scalajs-dom"            % "2.3.0",
-      ("org.scala-js" %%% "scalajs-weakreferences" % "1.0.0").cross(CrossVersion.for3Use2_13)
+      "org.scala-js"  %%% "scalajs-dom"            % scalaJsDomVersion,
+      ("org.scala-js" %%% "scalajs-weakreferences" % scalaJsWeakReferencesVersion).cross(CrossVersion.for3Use2_13)
     )
   )
 
@@ -77,8 +81,8 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
 lazy val engineCommon = (crossProject(JSPlatform, JVMPlatform) in file("engine-common"))
   .settings(
     name := "kreuzberg-engine-common",
-    publishSettings,
-    testSettings
+    testSettings,
+    publishSettings
   )
   .dependsOn(lib)
 
@@ -88,8 +92,8 @@ lazy val engineNaive = (project in file("engine-naive"))
   .dependsOn(lib.js, engineCommon.js)
   .settings(
     name := "kreuzberg-engine-naive",
-    publishSettings,
-    testSettings
+    testSettings,
+    publishSettings
   )
 
 /** ZIO Based Engine (slower, bigger size, cleaner) */
@@ -98,26 +102,26 @@ lazy val engineZio = (project in file("engine-zio"))
   .dependsOn(lib.js, engineCommon.js)
   .settings(
     name := "kreuzberg-engine-zio",
-    publishSettings,
     libraryDependencies ++= Seq(
       "dev.zio"           %%% "zio"                  % zioVersion,
       "dev.zio"           %%% "zio-streams"          % zioVersion,
-      "org.scala-js"      %%% "scalajs-dom"          % "2.3.0",
-      "io.github.cquiroz" %%% "scala-java-time"      % "2.5.0",
-      "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.5.0"
+      "org.scala-js"      %%% "scalajs-dom"          % scalaJsDomVersion,
+      "io.github.cquiroz" %%% "scala-java-time"      % scalaJsJavaTimeVersion,
+      "io.github.cquiroz" %%% "scala-java-time-tzdb" % scalaJsJavaTimeVersion
     ),
-    testSettings
+    testSettings,
+    publishSettings
   )
 
 lazy val xml = (crossProject(JSPlatform, JVMPlatform) in file("xml"))
   .settings(
     name := "kreuzberg-xml",
     libraryDependencies ++= Seq(
-      "org.scala-lang.modules"  %% "scala-xml" % "2.1.0",
-      "org.scala-lang.modules" %%% "scala-xml" % "2.1.0"
+      "org.scala-lang.modules"  %% "scala-xml" % scalaXmlVersion,
+      "org.scala-lang.modules" %%% "scala-xml" % scalaXmlVersion
     ),
-    publishSettings,
-    testSettings
+    testSettings,
+    publishSettings
   )
   .dependsOn(lib, engineCommon % Test)
 
@@ -125,10 +129,10 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags")
   .settings(
     name := "kreuzberg-scalatags",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "scalatags" % "0.12.0"
+      "com.lihaoyi" %%% "scalatags" % scalaTagsVersion
     ),
-    publishSettings,
-    testSettings
+    testSettings,
+    publishSettings
   )
   .dependsOn(lib, engineCommon % Test)
 
@@ -136,20 +140,20 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform) in file("rpc"))
   .settings(
     name               := "kreuzberg-rpc",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "upickle" % "3.0.0-M2",
+      "com.lihaoyi" %%% "upickle" % upickleVersion,
       "dev.zio"     %%% "zio"     % zioVersion % Provided
     ),
     evictionErrorLevel := Level.Warn,
-    publishSettings,
-    testSettings
+    testSettings,
+    publishSettings
   )
   .dependsOn(lib)
 
 lazy val extras = (crossProject(JSPlatform, JVMPlatform) in file("extras"))
   .settings(
     name := "kreuzberg-extras",
-    publishSettings,
-    testSettings
+    testSettings,
+    publishSettings
   )
   .dependsOn(lib, scalatags)
 
@@ -158,10 +162,10 @@ lazy val miniserver = (project in file("miniserver"))
     name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio-http"           % zioServerVersion,
-      "dev.zio" %% "zio-logging-slf4j2" % "2.1.10"
+      "dev.zio" %% "zio-logging-slf4j2" % zioLoggingVersion
     ),
-    publishSettings,
-    testSettings
+    testSettings,
+    publishSettings
   )
   .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm)
 
@@ -209,6 +213,7 @@ lazy val runner = (project in file("runner"))
     Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
     Compile / run / mainClass := (examples.jvm / Compile / run / mainClass).value,
     reStartArgs               := Seq("serve"),
+    publishArtifact           := false,
     publish                   := {},
     publishLocal              := {}
   )
@@ -219,6 +224,7 @@ lazy val runnerZio = (project in file("runner-zio"))
     Compile / compile         := (Compile / compile).dependsOn(examplesZio.js / Compile / fastOptJS).value,
     Compile / run / mainClass := (examplesZio.jvm / Compile / run / mainClass).value,
     reStartArgs               := Seq("serve"),
+    publishArtifact           := false,
     publish                   := {},
     publishLocal              := {}
   )
@@ -229,8 +235,8 @@ lazy val root = (project in file("."))
     name            := "kreuzberg-root",
     publish         := {},
     publishLocal    := {},
-    test            := {},
-    publishArtifact := false
+    publishArtifact := false,
+    test            := {}
   )
   .aggregate(
     lib.js,

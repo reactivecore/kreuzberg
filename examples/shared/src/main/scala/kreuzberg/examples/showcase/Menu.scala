@@ -11,10 +11,9 @@ case object Menu extends SimpleComponentBase {
     "/"         -> "Index",
     "/todo"     -> "Todo App",
     "/todoapi"  -> "Todo App API",
-    "/about"    -> "About",
     "/form"     -> "Form",
     "/wizzard"  -> "Wizzard",
-    "/trigger"  -> "Trigger",
+    "/xml"      -> "XML",
     "/notfound" -> "Not Found"
   )
 

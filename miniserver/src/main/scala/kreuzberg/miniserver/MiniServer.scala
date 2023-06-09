@@ -30,7 +30,7 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
         case Some(Location.ResourcePath(path)) =>
           Http.fromResource(path)
       }
-    case Method.GET -> !!                     =>
+    case Method.GET -> Root                   =>
       Http.fromHandler(
         Handler.html(
           indexHtml
@@ -49,7 +49,7 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
   val myApp = for {
     _            <- preflightCheck
     _            <- ZIO.logInfo(s"Going to listen on ${config.port}")
-    apiEffect    = config.api.getOrElse(ZIO.succeed(Dispatcher.empty: ZioDispatcher))
+    apiEffect     = config.api.getOrElse(ZIO.succeed(Dispatcher.empty: ZioDispatcher))
     dispatcher   <- apiEffect
     apiDispatcher = ApiDispatcher(dispatcher)
     all           = (apiDispatcher.app() ++ assetProvider).withDefaultErrorResponse

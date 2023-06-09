@@ -1,6 +1,6 @@
-package kreuzberg.examples.showcase
+package kreuzberg.examples.showcase.components
 
-import kreuzberg._
+import kreuzberg.*
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -9,5 +9,5 @@ case class Button(caption: String) extends ComponentBase {
     button(`type` := "button", caption)
   }
 
-  def clicked = jsEvent("click")
+  def onClicked = jsEvent("click")
 }
