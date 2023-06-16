@@ -30,6 +30,9 @@ case class TodoAdder(
         .or(button.onClicked)
         .withState(textInput.text)
         .changeModel(model) { (entry, current) => current.append(entry) }
+        .and
+        .map { _ => "" }
+        .intoProperty(textInput.text)
     )
 
     form(

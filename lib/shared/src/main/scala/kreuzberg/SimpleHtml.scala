@@ -57,6 +57,18 @@ case class SimpleHtml(
     flatHtmlBuilder ++= escaped
     flatHtmlBuilder ++= ">"
   }
+
+  override def appendChild(html: Html): Html = {
+    copy(
+      children = children :+ SimpleHtmlNode.maybeWrap(html)
+    )
+  }
+
+  override def prependChild(html: Html): Html = {
+    copy(
+      children = SimpleHtmlNode.maybeWrap(html) +: children
+    )
+  }
 }
 
 sealed trait SimpleHtmlNode {
@@ -86,6 +98,13 @@ object SimpleHtmlNode {
     def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = flatHtmlBuilder.addPlaceholder(component.id)
 
     def embeddedComponents: Iterable[Component] = List(component)
+  }
+
+  def maybeWrap(html: Html): SimpleHtmlNode = {
+    html match {
+      case s: SimpleHtml => s
+      case other         => Wrapper(other)
+    }
   }
 
   def escape(s: String): String = {

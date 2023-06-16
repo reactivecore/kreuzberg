@@ -133,6 +133,10 @@ class EventManager(delegate: EventManagerDelegate) {
       case EventSink.ContraMap(underlying, f)      =>
         val converted = transformSink(node, underlying)
         eventData => converted(f(eventData))
+      case EventSink.SetProperty(property)         =>
+        eventData => {
+          updateJsProperty(eventData, property)
+        }
   }
 
   private def triggerChannel[T](ref: WeakReference[Channel[T]], data: T): Unit = {
@@ -237,19 +241,23 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def fetchStateUnsafe[S](s: RuntimeState[S]): S = {
     s match
-      case js: RuntimeState.JsRuntimeState[_, _] => {
+      case js: RuntimeState.JsRuntimeStateBase[_, _] => {
         fetchJsRuntimeStateUnsafe(js)
       }
-      case RuntimeState.And(left, right)         => {
+      case RuntimeState.And(left, right)             => {
         (fetchStateUnsafe(left), fetchStateUnsafe(right))
       }
-      case RuntimeState.Mapping(from, mapFn)     => {
+      case RuntimeState.Mapping(from, mapFn)         => {
         mapFn(fetchStateUnsafe(from))
       }
   }
 
-  private def fetchJsRuntimeStateUnsafe[R <: ScalaJsElement, S](s: RuntimeState.JsRuntimeState[R, S]): S = {
-    s.fetcher(delegate.locate(s.componentId).asInstanceOf[R])
+  private def updateJsProperty[R <: ScalaJsElement, S](value: S, p: RuntimeState.JsProperty[R, S]): Unit = {
+    p.setter(delegate.locate(p.componentId).asInstanceOf[R], value)
+  }
+
+  private def fetchJsRuntimeStateUnsafe[R <: ScalaJsElement, S](s: RuntimeState.JsRuntimeStateBase[R, S]): S = {
+    s.getter(delegate.locate(s.componentId).asInstanceOf[R])
   }
 
   private def bindEffect[E, F[_], R](
@@ -352,7 +360,7 @@ class EventManager(delegate: EventManagerDelegate) {
   }
 
   private def handlePendingModelChange[T](change: PendingModelChange[T]): Unit = {
-    val value   = _currentState.readValue(change.model)
+    val value   = _currentState.value(change.model)
     val updated = change.fn(value)
     if (value != updated) {
       Logger.debug(

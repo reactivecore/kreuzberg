@@ -44,8 +44,31 @@ case class ScalaTagsHtml(tag: TypedTag[String]) extends Html {
       tag.writeTo(writer)
     }
   }
+
+  override def appendChild(html: Html): Html = {
+    ScalaTagsHtml(
+      tag(ScalaTagsHtml.maybeWrap(html))
+    )
+  }
+
+  override def prependChild(html: Html): Html = {
+    ScalaTagsHtml(
+      tag.copy(
+        modifiers = tag.modifiers :+ List(ScalaTagsHtml.maybeWrap(html))
+      )
+    )
+  }
 }
 
 object ScalaTagsHtml {
+
+  def maybeWrap(html: Html): Frag = {
+    html match {
+      case s: ScalaTagsHtml => s.tag
+      case other            =>
+        ScalaTagsHtmlEmbedding(html)
+    }
+  }
+
   implicit def fromScalaTags(inner: TypedTag[String]): ScalaTagsHtml = ScalaTagsHtml(inner)
 }

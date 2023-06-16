@@ -1,4 +1,5 @@
 package kreuzberg.xml
+import kreuzberg.xml.ScalaXmlHtml.maybeEmbed
 import kreuzberg.{Component, FlatHtmlBuilder, Html, Identifier}
 
 import scala.xml.{Elem, Node, Null, SpecialNode, UnprefixedAttribute, Utility}
@@ -46,6 +47,31 @@ case class ScalaXmlHtml(elem: Elem) extends Html {
   override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
     FlatHtmlBuilder.withFlatHtmlBuilder(flatHtmlBuilder) {
       Utility.serialize(elem, sb = flatHtmlBuilder.getStringBuilder)
+    }
+  }
+
+  override def appendChild(html: Html): Html = {
+    ScalaXmlHtml(
+      elem.copy(
+        child = elem.child :+ maybeEmbed(html)
+      )
+    )
+  }
+
+  override def prependChild(html: Html): Html = {
+    ScalaXmlHtml(
+      elem.copy(
+        child = maybeEmbed(html) +: elem.child
+      )
+    )
+  }
+}
+
+object ScalaXmlHtml {
+  def maybeEmbed(html: Html): Node = {
+    html match {
+      case s: ScalaXmlHtml => s.elem
+      case other           => ScalaXmlHtmlEmbedding(html)
     }
   }
 }

@@ -17,8 +17,7 @@ object TodoPage extends SimpleComponentBase {
   )
 
   def assemble(using context: SimpleContext): Html = {
-    val value  = subscribe(model)
-    val shower = TodoShower(value)
+    val shower = TodoShower(model)
     val adder  = TodoAdder(model)
 
     div(

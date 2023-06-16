@@ -39,11 +39,19 @@ trait ComponentDsl {
     RuntimeState.JsRuntimeState(id, f)
   }
 
+  /** Declares a js runtime property. */
+  protected def jsProperty[T](
+      getter: DomElement => T,
+      setter: (DomElement, T) => Unit
+  ): RuntimeState.JsProperty[DomElement, T] = {
+    RuntimeState.JsProperty(id, getter, setter)
+  }
+
   protected def provide[T: Provider](using c: ServiceRepository): T = {
     c.service[T]
   }
 
-  protected def read[M](model: Model[M])(using c: AssemblerContext): M = {
+  protected def read[M](model: Subscribeable[M])(using c: AssemblerContext): M = {
     c.value(model)
   }
 }

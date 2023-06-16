@@ -17,11 +17,11 @@ trait ScalaJsElement {
 trait ScalaJsInput extends ScalaJsElement {
 
   /** Text Input of input field */
-  def value: String
+  var value: String
 }
 
 trait ScalaJsTextArea extends ScalaJsElement {
-  
+
   /** Text Input of text area */
   def value: String
 }

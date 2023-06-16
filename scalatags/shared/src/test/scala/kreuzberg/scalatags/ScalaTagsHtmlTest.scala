@@ -1,5 +1,5 @@
 package kreuzberg.scalatags
-import kreuzberg.{Html, Identifier, SimpleComponentBase, SimpleContext}
+import kreuzberg.{Html, Identifier, SimpleComponentBase, SimpleContext, SimpleHtml}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 import kreuzberg.engine.common.Assembler
@@ -77,4 +77,19 @@ class ScalaTagsHtmlTest extends TestBase {
     rendered shouldBe """<div data-id="1"><!-- Nested --><span data-id="2"><!-- Foo -->Boom!</span><p><div><span data-id="3"><!-- Foo -->Boom!</span></div></p></div>"""
   }
 
+  it should "append and prepend" in {
+    val html = ScalaTagsHtml(div("Hello World"))
+    html
+      .appendChild(
+        ScalaTagsHtml(h1("Boom"))
+      )
+      .prependChild(
+        ScalaTagsHtml(h2("Bar"))
+      )
+      .toString shouldBe "<div><h2>Bar</h2>Hello World<h1>Boom</h1></div>"
+    html
+      .appendChild(SimpleHtml("buz"))
+      .prependChild(SimpleHtml("biz"))
+      .toString shouldBe "<div><biz></biz>Hello World<buz></buz></div>"
+  }
 }
