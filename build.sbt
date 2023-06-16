@@ -173,7 +173,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
     name            := "examples",
     publishArtifact := false,
-    publish         := {},
+    publish / skip  := true,
     publishLocal    := {}
   )
   .jsSettings(
@@ -192,7 +192,7 @@ lazy val examplesZio = (crossProject(JSPlatform, JVMPlatform) in file("examples-
   .settings(
     name            := "examples-zio",
     publishArtifact := false,
-    publish         := {},
+    publish / skip  := true,
     publishLocal    := {}
   )
   .jsSettings(
@@ -214,7 +214,7 @@ lazy val runner = (project in file("runner"))
     Compile / run / mainClass := (examples.jvm / Compile / run / mainClass).value,
     reStartArgs               := Seq("serve"),
     publishArtifact           := false,
-    publish                   := {},
+    publish / skip            := true,
     publishLocal              := {}
   )
   .dependsOn(examples.jvm)
@@ -225,7 +225,7 @@ lazy val runnerZio = (project in file("runner-zio"))
     Compile / run / mainClass := (examplesZio.jvm / Compile / run / mainClass).value,
     reStartArgs               := Seq("serve"),
     publishArtifact           := false,
-    publish                   := {},
+    publish / skip            := true,
     publishLocal              := {}
   )
   .dependsOn(examplesZio.jvm)
@@ -233,9 +233,9 @@ lazy val runnerZio = (project in file("runner-zio"))
 lazy val root = (project in file("."))
   .settings(
     name            := "kreuzberg-root",
-    publish         := {},
     publishLocal    := {},
     publishArtifact := false,
+    publish / skip  := true,
     test            := {}
   )
   .aggregate(
