@@ -4,6 +4,7 @@ import kreuzberg.*
 import kreuzberg.examples.showcase.components.{Button, TextInput}
 import kreuzberg.examples.showcase.todo.TodoList
 import kreuzberg.examples.showcase.*
+import kreuzberg.examples.showcase.todo.TodoPageWithApi.provide
 import kreuzberg.rpc.*
 import kreuzberg.rpc.StubProvider.stubProvider
 import kreuzberg.scalatags.*
@@ -34,6 +35,13 @@ object TodoAdderForm extends SimpleComponentBase {
         .withState(textInput.text)
         .trigger(onAdd)
     )
+    add(
+      clear
+        .map(_ => "")
+        .intoProperty(textInput.text)
+        .and
+        .executeCode(_ => println("Cleared?!"))
+    )
     form(
       label("Element: "),
       textInput.wrap,
@@ -42,6 +50,42 @@ object TodoAdderForm extends SimpleComponentBase {
   }
 
   val onAdd = Channel.create[String]()
+  val clear = Channel.create[Any]()
+}
+
+case class LazyTodoViewer(model: Model[LoadingState[TodoList]]) extends SimpleComponentBase {
+
+  private def decodeResult(t: Try[Seq[String]]): LoadingState[TodoList] = {
+    t.fold(t => LoadingState.Error(Failure.fromThrowable(t)), x => LoadingState.Loaded(TodoList(x)))
+  }
+
+  override def assemble(using c: SimpleContext): Html = {
+    val lister   = provide[TodoApi[Future]]
+    val todolist = subscribe(model)
+
+    if (todolist == LoadingState.Loading) {
+      add {
+        EventSource.Assembled
+          .effect(_ => lister.listItems())
+          .intoModel(model)(decodeResult)
+      }
+    }
+
+    val showingModel = model.map {
+      case LoadingState.Loaded(data) => data
+      case _                         => TodoList(Nil)
+    }
+
+    todolist match {
+      case LoadingState.Error(e)  => div(s"Could not load model ${e}")
+      case LoadingState.Loading   => div("Loading...")
+      case LoadingState.Loaded(v) =>
+        val shower = TodoShower(showingModel)
+        div(
+          shower.wrap
+        )
+    }
+  }
 }
 
 object TodoPageWithApi extends SimpleComponentBase {
@@ -53,41 +97,28 @@ object TodoPageWithApi extends SimpleComponentBase {
   val model = Model.create[LoadingState[TodoList]](LoadingState.Loading)
 
   def assemble(implicit c: SimpleContext): Html = {
-    val todolist = subscribe(model)
-    val lister   = provide[TodoApi[Future]]
+    val lister = provide[TodoApi[Future]]
+    val viewer = LazyTodoViewer(model)
+    val form   = TodoAdderForm
 
-    if (todolist == LoadingState.Loading) {
-      add {
-        EventSource.Assembled
-          .effect(_ => lister.listItems())
-          .intoModel(model)(decodeResult)
-      }
-    }
+    add(
+      form.onAdd
+        .effect(text => lister.addItem(text))
+        .intoModel(model)(_ => LoadingState.Loading)
+        .and
+        .effect(_ => lister.listItems())
+        .intoModel(model)(decodeResult)
+        .and
+        .trigger(form.clear)
+    )
 
-    todolist match {
-      case LoadingState.Error(e)  => div(s"Could not load model ${e}")
-      case LoadingState.Loading   => div("Loading...")
-      case LoadingState.Loaded(v) =>
-        val shower = TodoShower(v)
-        val form   = TodoAdderForm
-
-        add(
-          form.onAdd
-            .effect(text => lister.addItem(text))
-            .intoModel(model)(_ => LoadingState.Loading)
-            .and
-            .effect(_ => lister.listItems())
-            .intoModel(model)(decodeResult)
-        )
-
-        div(
-          h2("API Based TODO App"),
-          div(
-            "This example shows how to use auto-generated API-Interfaces to implement a TODO App"
-          ),
-          shower.wrap,
-          form.wrap
-        )
-    }
+    div(
+      h2("API Based TODO App"),
+      div(
+        "This example shows how to use auto-generated API-Interfaces to implement a TODO App"
+      ),
+      viewer.wrap,
+      form.wrap
+    )
   }
 }

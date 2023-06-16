@@ -47,4 +47,20 @@ class ScalaXmlHtmlTest extends TestBase {
     val fullHtml = Assembler.singleTree(() => Text()).render()
     fullHtml shouldBe """<div data-id="1"><!-- Text -->This is data <div data-id="2"><!-- Child -->This is a child of Hello</div>,<div data-id="3"><!-- Child -->This is a child of World</div></div>"""
   }
+
+  it should "append and prepend" in {
+    val html = ScalaXmlHtml(<div>Hello World</div>)
+    html
+      .appendChild(
+        ScalaXmlHtml(<h1>Boom</h1>)
+      )
+      .prependChild(
+        ScalaXmlHtml(<h2>Bar</h2>)
+      )
+      .toString shouldBe "<div><h2>Bar</h2>Hello World<h1>Boom</h1></div>"
+    html
+      .appendChild(SimpleHtml("buz"))
+      .prependChild(SimpleHtml("biz"))
+      .toString shouldBe "<div><biz></biz>Hello World<buz></buz></div>"
+  }
 }

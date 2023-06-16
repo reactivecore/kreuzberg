@@ -152,6 +152,8 @@ class EventManager(
         }
       case c: EventSink.ChannelSink[_]             =>
         convertChannelSink(node, c)
+      case s: EventSink.SetProperty[_, _]          =>
+        convertSetProperty(node, s)
     }
   }
 
@@ -160,7 +162,7 @@ class EventManager(
       {
         for {
           _ <- modelValues.modify { state =>
-                 val oldValue     = state.readValue(change.model)
+                 val oldValue     = state.value(change.model)
                  val updated      = change.f(input, oldValue)
                  Logger.trace(s"Model Change ${change.model.id} ${oldValue} -> ${updated}")
                  val updatedState = state.withModelValue(change.model.id, updated)
@@ -196,6 +198,16 @@ class EventManager(
         } yield {
           ()
         }
+    }
+  }
+
+  private def convertSetProperty[R <: ScalaJsElement, E](
+      node: TreeNode,
+      sink: EventSink.SetProperty[R, E]
+  ): E => Task[Unit] = { input =>
+    ZIO.attempt {
+      val node = locator.unsafeLocate(sink.property.componentId).asInstanceOf[R]
+      sink.property.setter(node, input)
     }
   }
 
@@ -255,7 +267,6 @@ class EventManager(
       node: TreeNode,
       withState: EventSource.WithState[E, S]
   ): Task[XStream[(E, S)]] = {
-    // TODO: FIXME
     sourceToStream(node, withState.inner).map { underlying =>
       val transformed = underlying
         .mapZIO { value =>
@@ -277,19 +288,19 @@ class EventManager(
 
   private def fetchStateUnsafe[S](s: RuntimeState[S]): S = {
     s match
-      case js: RuntimeState.JsRuntimeState[_, _] => {
+      case js: RuntimeState.JsRuntimeStateBase[_, _] => {
         fetchJsRuntimeStateUnsafe(js)
       }
-      case RuntimeState.And(left, right)         => {
+      case RuntimeState.And(left, right)             => {
         (fetchStateUnsafe(left), fetchStateUnsafe(right))
       }
-      case RuntimeState.Mapping(from, mapFn)     => {
+      case RuntimeState.Mapping(from, mapFn)         => {
         mapFn(fetchStateUnsafe(from))
       }
   }
 
-  private def fetchJsRuntimeStateUnsafe[R <: ScalaJsElement, S](s: RuntimeState.JsRuntimeState[R, S]): S = {
-    s.fetcher(locator.unsafeLocate(s.componentId).asInstanceOf[R])
+  private def fetchJsRuntimeStateUnsafe[R <: ScalaJsElement, S](s: RuntimeState.JsRuntimeStateBase[R, S]): S = {
+    s.getter(locator.unsafeLocate(s.componentId).asInstanceOf[R])
   }
 
   private def convertChannelSource[E](

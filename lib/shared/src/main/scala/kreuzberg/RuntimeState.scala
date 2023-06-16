@@ -16,12 +16,18 @@ sealed trait RuntimeState[S] {
 
 object RuntimeState {
 
+  /** Base for runtime state. */
+  sealed trait JsRuntimeStateBase[D <: ScalaJsElement, S] extends RuntimeState[S] {
+    def componentId: Identifier
+    def getter: D => S
+  }
+
   /**
    * Encapsulates a JS DOM runtime state field.
    *
    * @param componentId
    *   component ID
-   * @param fetcher
+   * @param getter
    *   function which fetches the state from DOM element type
    * @tparam D
    *   DOM Element Type
@@ -30,8 +36,15 @@ object RuntimeState {
    */
   case class JsRuntimeState[D <: ScalaJsElement, S](
       componentId: Identifier,
-      fetcher: D => S
-  ) extends RuntimeState[S]
+      getter: D => S
+  ) extends JsRuntimeStateBase[D, S]
+
+  /** Encapsulates a read/writable property. */
+  case class JsProperty[D <: ScalaJsElement, S](
+      componentId: Identifier,
+      getter: D => S,
+      setter: (D, S) => Unit
+  ) extends JsRuntimeStateBase[D, S]
 
   case class And[S1, S2](
       left: RuntimeState[S1],

@@ -5,7 +5,7 @@ trait SimpleContextDsl extends ComponentDsl {
   self: Component =>
 
   /** Subscribe some model and read at the same time. */
-  protected def subscribe[M](model: Model[M])(using c: SimpleContext): M = {
+  protected def subscribe[M](model: Subscribeable[M])(using c: SimpleContext): M = {
     c.addSubscription(model)
     c.value(model)
   }

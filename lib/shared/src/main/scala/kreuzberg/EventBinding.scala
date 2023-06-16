@@ -1,5 +1,7 @@
 package kreuzberg
 
+import kreuzberg.RuntimeState.JsProperty
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
@@ -79,6 +81,11 @@ sealed trait EventSource[+E] {
   /** Change model without caring about the previous value of the model. */
   def intoModel[T >: E](model: Model[T]): EventBinding.SourceSink[T] = {
     changeModel(model)((e, _) => e)
+  }
+
+  /** Write a value into a property */
+  def intoProperty[T >: E, D <: ScalaJsElement](prop: JsProperty[D, T]): EventBinding.SourceSink[T] = {
+    EventBinding(this, EventSink.SetProperty(prop))
   }
 
   /** Trigger some channel. */
@@ -202,6 +209,9 @@ object EventSink {
 
   /** Trigger a Channel. */
   case class ChannelSink[E](channel: WeakReference[Channel[E]]) extends EventSink[E]
+
+  /** Set a javascript property */
+  case class SetProperty[D <: ScalaJsElement, S](property: JsProperty[D, S]) extends EventSink[S]
 
   object ChannelSink {
     inline def apply[E](channel: Channel[E]): ChannelSink[E] = ChannelSink(WeakReference(channel))

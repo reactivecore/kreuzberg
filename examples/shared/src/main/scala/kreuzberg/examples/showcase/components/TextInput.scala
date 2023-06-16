@@ -17,5 +17,5 @@ case class TextInput(fieldName: String, initialValue: String = "") extends Simpl
 
   def onChange     = jsEvent("change")
   def onInputEvent = jsEvent("input")
-  def text       = jsState(_.value)
+  def text         = jsProperty(_.value, (r, v) => r.value = v)
 }

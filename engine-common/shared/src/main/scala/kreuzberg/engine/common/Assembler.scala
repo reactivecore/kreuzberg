@@ -11,10 +11,10 @@ object Assembler {
     treeFromAssembly(component, component.assemble)
   }
 
-  private def treeFromAssembly[T <: Component](
+  def treeFromAssembly[T <: Component](
       component: T,
       assembly: Assembly
-  )(using AssemblerContext): ComponentNode[T] = {
+  )(using ctx: AssemblerContext): ComponentNode[T] = {
     val withId    = assembly.html.withId(component.id)
     val comment   = component.comment
     val htmlToUse = if (comment.isEmpty()) {
@@ -22,13 +22,12 @@ object Assembler {
     } else {
       withId.addComment(comment)
     }
-    val flat      = htmlToUse.flat()
     val children  = htmlToUse.embeddedComponents.view.map { component =>
       tree(component)
     }.toVector
     ComponentNode(
       component,
-      flat,
+      htmlToUse,
       children,
       assembly.handlers,
       assembly.subscriptions.map(_.id)

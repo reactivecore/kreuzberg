@@ -3,7 +3,16 @@ package kreuzberg.engine.naive
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
 import kreuzberg.dom.*
-import kreuzberg.engine.common.{Assembler, ModelValues, SimpleServiceRepository, TreeNode}
+import kreuzberg.engine.common.UpdatePath.Change
+import kreuzberg.engine.common.{
+  Assembler,
+  UpdatePath,
+  BrowserDrawer,
+  ComponentNode,
+  ModelValues,
+  SimpleServiceRepository,
+  TreeNode
+}
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -33,15 +42,16 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
   override def modelValues: ModelValues = _modelValues
 
   override def onIterationEnd(modelValues: ModelValues, changedModels: Set[Identifier]): Unit = {
+    val before = _modelValues
     _modelValues = modelValues
-    redrawChanged(changedModels)
+    redrawChanged(changedModels, before)
   }
 
   override def locate(componentId: Identifier): ScalaJsElement = {
-    viewer.findElement(componentId)
+    browser.findElement(componentId)
   }
 
-  private val viewer       = new Viewer(rootElement)
+  private val browser      = new BrowserDrawer(rootElement)
   private val eventManager = new EventManager(this)
 
   def run(): Unit = {
@@ -51,7 +61,7 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
   private def redraw(): Unit = {
     Logger.debug("Starting Redraw")
     val tree = Assembler.tree(main)
-    viewer.drawRoot(tree)
+    browser.drawRoot(tree)
     _tree = tree
     eventManager.clear()
     eventManager.activateEvents(tree)
@@ -60,43 +70,32 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
   }
 
   private given assemblerContext: AssemblerContext = new AssemblerContext {
-    override def value[M](model: Model[M]): M = _modelValues.readValue(model)
+    override def value[M](model: Subscribeable[M]): M = _modelValues.value(model)
 
     override def service[S](using provider: Provider[S]): S = _serviceRepo.service
   }
 
-  private def redrawChanged(changedModels: Set[Identifier]): Unit = {
-    val changedContainers = _tree.allSubscriptions.collect {
-      case (modelId, containerId) if changedModels.contains(modelId) => containerId
-    }.toSet
-
-    Logger.debug(s"Changed Containers: ${changedContainers}")
-    if (changedContainers.isEmpty) {
-      Logger.debug("No changed containers, skipping redraw")
+  private def redrawChanged(changedModels: Set[Identifier], before: ModelValueProvider): Unit = {
+    val path = UpdatePath.build(_tree, changedModels, before)
+    if (path.isEmpty) {
       return
     }
 
-    val updatedTree = _tree.rebuildChanged(changedContainers)
-    _tree = updatedTree
-    drawChangedEvents(updatedTree, changedContainers)
-    activateChangedEvents(updatedTree, changedContainers)
-    garbageCollect()
-  }
+    _tree = path.tree
 
-  private def drawChangedEvents(node: TreeNode, changedComponents: Set[Identifier]): Unit = {
-    if (changedComponents.contains(node.id)) {
-      viewer.updateNode(node)
-    } else {
-      node.children.foreach(drawChangedEvents(_, changedComponents))
-    }
-  }
+    // Rendering
+    browser.drawUpdatePath(path)
 
-  private def activateChangedEvents(node: TreeNode, changedComponents: Set[Identifier]): Unit = {
-    if (changedComponents.contains(node.id)) {
+    // Activating Events
+    for {
+      change <- path.changes
+      node   <- change.nodes
+    } {
+      Logger.trace(s"Activating events on node ${node.id}")
       eventManager.activateEvents(node)
-    } else {
-      node.children.foreach(activateChangedEvents(_, changedComponents))
     }
+
+    garbageCollect()
   }
 
   private def garbageCollect(): Unit = {

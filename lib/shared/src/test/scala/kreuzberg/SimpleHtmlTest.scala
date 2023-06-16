@@ -45,4 +45,13 @@ class SimpleHtmlTest extends TestBase {
     )
     node.toString shouldBe s"<$badEscaped $badEscaped $badEscaped=\"$badEscaped\">$badEscaped</$badEscaped>"
   }
+
+  it should "append and prepend" in {
+    SimpleHtml("div")
+      .prependChild(
+        SimpleHtml("foo")
+      )
+      .appendChild(SimpleHtml("bar"))
+      .toString shouldBe "<div><foo></foo><bar></bar></div>"
+  }
 }

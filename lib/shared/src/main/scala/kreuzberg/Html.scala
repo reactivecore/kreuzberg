@@ -45,4 +45,10 @@ trait Html {
 
   /** Serializes into a FlatHtmlBuilder. */
   def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit
+
+  /** Append a child HTML Node. */
+  def appendChild(html: Html): Html
+
+  /** Prepend a child Node. */
+  def prependChild(html: Html): Html
 }

@@ -2,7 +2,7 @@ package kreuzberg.engine.ezio
 
 import kreuzberg.*
 import kreuzberg.dom.*
-import kreuzberg.engine.common.{Assembler, ModelValues, SimpleServiceRepository, TreeNode}
+import kreuzberg.engine.common.{Assembler, UpdatePath, BrowserDrawer, ModelValues, SimpleServiceRepository, TreeNode}
 import zio.stream.{ZChannel, ZSink, ZStream}
 import zio.*
 
@@ -44,24 +44,27 @@ object Binder {
 
   /** Create a Binder. */
   def create(rootElement: ScalaJsElement, main: Component): Task[Binder] = {
-    val viewer = new Viewer(rootElement)
+    val browser = new BrowserDrawer(rootElement)
     for {
       modelValues   <- Ref.make(ModelValues())
+      previousState <- Ref.make(ModelValues())
       tree          <- Ref.make(TreeNode.empty: TreeNode)
       locator        = new EventManager.Locator {
-                         override def unsafeLocate(id: Identifier): ScalaJsElement = viewer.findElementUnsafe(id)
+                         override def unsafeLocate(id: Identifier): ScalaJsElement = browser.findElement(id)
                        }
-      eventManager2 <- EventManager.create(modelValues, locator)
+      eventManager  <- EventManager.create(modelValues, locator)
       mainLock      <- Semaphore.make(1)
     } yield {
-      new Binder(modelValues, tree, rootElement, main, eventManager2, mainLock)
+      new Binder(browser, modelValues, previousState, tree, rootElement, main, eventManager, mainLock)
     }
   }
 }
 
 /** Binds a root element to a Node. */
 class Binder(
+    browser: BrowserDrawer,
     state: Ref[ModelValues],
+    previousState: Ref[ModelValues],
     tree: Ref[TreeNode],
     rootElement: ScalaJsElement,
     main: Component,
@@ -69,7 +72,6 @@ class Binder(
     mainLock: Semaphore
 ) {
 
-  private val viewer                         = new Viewer(rootElement)
   private val serviceRepo: ServiceRepository = new SimpleServiceRepository
 
   def run(): Task[Unit] = {
@@ -85,26 +87,26 @@ class Binder(
   private def firstDraw(): Task[Unit] = {
     mainLock.withPermit {
       for {
-        _       <- Logger.debugZio("Starting redraw")
-        context <- buildContext()
-        newTree  = Assembler.tree(main)(using context)
-        _       <- viewer.drawRoot(newTree)
-        _       <- tree.set(newTree)
-        _       <- Logger.debugZio("Activating Events")
-        _       <- eventManager.activateEvents(newTree)
-        _       <- Logger.debugZio("Activated Events")
-        _       <- state.update(state => garbageCollect(newTree, state)._1)
-        _       <- Logger.debugZio("End Redraw")
+        _            <- Logger.debugZio("Starting redraw")
+        currentState <- state.get
+        newTree       = Assembler.tree(main)(using buildContext(currentState))
+        _            <- previousState.set(currentState)
+        _            <- ZIO.attempt(browser.drawRoot(newTree))
+        _            <- tree.set(newTree)
+        _            <- Logger.debugZio("Activating Events")
+        _            <- eventManager.activateEvents(newTree)
+        _            <- Logger.debugZio("Activated Events")
+        _            <- state.update(state => garbageCollect(newTree, state)._1)
+        _            <- Logger.debugZio("End Redraw")
       } yield ()
     }
   }
 
-  private def buildContext(): Task[AssemblerContext] = {
-    state.get.map { state =>
-      new AssemblerContext:
-        override def value[M](model: Model[M]): M = state.readValue(model)
+  private def buildContext(modelValues: ModelValues): AssemblerContext = {
+    new AssemblerContext {
+      override def value[M](model: Subscribeable[M]): M = modelValues.value(model)
 
-        override def service[S](using provider: Provider[S]): S = serviceRepo.service
+      override def service[S](using provider: Provider[S]): S = serviceRepo.service
     }
   }
 
@@ -127,17 +129,20 @@ class Binder(
     }
     mainLock.withPermit {
       for {
-        _          <- Logger.debugZio(s"Changed Model Ids: ${changedModelIds}/ Components ${changedComponentIds}")
-        context    <- buildContext()
-        _          <- updateTree(changedComponentIds)(using context)
-        treeNow    <- tree.get
-        _          <- drawChangedEvents(treeNow, changedComponentIds)
-        _          <- activateChangedEvents(treeNow, changedComponentIds)
-        referenced <- state.modify { state =>
-                        val (updatedState, components, models) = garbageCollect(treeNow, state)
-                        (components, models) -> updatedState
-                      }
-        _          <- eventManager.garbageCollect(referenced._1, referenced._2)
+        _            <- Logger.debugZio(s"Changed Model Ids: ${changedModelIds}/ Components ${changedComponentIds}")
+        currentState <- state.get
+        currentTree  <- tree.get
+        beforeState  <- previousState.get
+        path          = updateTree(currentTree, changedModelIds, beforeState)(using buildContext(currentState))
+        _            <- previousState.set(currentState)
+        _            <- tree.set(path.tree)
+        _            <- ZIO.attempt(browser.drawUpdatePath(path))
+        _            <- ZIO.foreachDiscard(path.changes.flatMap(_.nodes)) {
+                          eventManager.activateEvents
+                        }
+        cleanupResult = garbageCollect(path.tree, currentState)
+        _            <- state.set(cleanupResult._1)
+        _            <- eventManager.garbageCollect(cleanupResult._2, cleanupResult._3)
       } yield {
         ()
       }
@@ -145,24 +150,10 @@ class Binder(
   }
 
   /** Rebuild tree of changed components. */
-  private def updateTree(changed: Set[Identifier])(using AssemblerContext): Task[Unit] = {
-    tree.update(_.rebuildChanged(changed))
-  }
-
-  private def drawChangedEvents(node: TreeNode, changed: Set[Identifier]): Task[Unit] = {
-    if (changed.contains(node.id)) {
-      viewer.updateNode(node)
-    } else {
-      ZIO.foreachDiscard(node.children)(drawChangedEvents(_, changed))
-    }
-  }
-
-  private def activateChangedEvents(node: TreeNode, changed: Set[Identifier]): Task[Unit] = {
-    if (changed.contains(node.id)) {
-      eventManager.activateEvents(node)
-    } else {
-      ZIO.foreachDiscard(node.children)(activateChangedEvents(_, changed))
-    }
+  private def updateTree(currentTree: TreeNode, changedModels: Set[Identifier], before: ModelValueProvider)(
+      using AssemblerContext
+  ): UpdatePath = {
+    UpdatePath.build(currentTree, changedModels, before)
   }
 
   /** Garbage collects the models, returns referenced New state, and referenced Components and Models */
@@ -177,10 +168,10 @@ class Binder(
       modelValues = modelValues.modelValues.view.filterKeys(referencedModels.contains).toMap
     )
 
-    Logger.debug(
+    Logger.trace(
       s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models"
     )
-    Logger.debug(s"  Values:   ${modelValues.modelValues.size} -> ${modelFiltered.modelValues.size}")
+    Logger.trace(s"  Values:   ${modelValues.modelValues.size} -> ${modelFiltered.modelValues.size}")
 
     (modelFiltered, referencedComponents, referencedModels)
   }
