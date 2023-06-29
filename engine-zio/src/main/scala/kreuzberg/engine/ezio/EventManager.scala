@@ -121,6 +121,12 @@ class EventManager(
         } yield {
           left.merge(right)
         }
+      case o: EventSource.TapSource[_]         =>
+        sourceToStream(owner, o.inner).map { stream =>
+          stream.tap { element =>
+            ZIO.attempt(o.fn(element)).ignoreLogged
+          }
+        }
   }
 
   private def convertSink[E](node: TreeNode, sink: EventSink[E]): E => Task[Unit] = {

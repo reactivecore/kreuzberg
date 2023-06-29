@@ -217,6 +217,20 @@ class EventManager(delegate: EventManagerDelegate) {
       case o: EventSource.OrSource[_]          =>
         bindEventSource(ownNode, o.left, sink)
         bindEventSource(ownNode, o.right, sink)
+      case t: EventSource.TapSource[_]         =>
+        bindEventSource(
+          ownNode,
+          t.inner,
+          { value =>
+            try {
+              t.fn(value)
+            } catch {
+              case NonFatal(e) =>
+                Logger.warn(s"Error in tap: ${e.getMessage}")
+            }
+            sink(value)
+          }
+        )
   }
 
   private def bindWithState[E, S](

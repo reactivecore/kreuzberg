@@ -114,6 +114,9 @@ sealed trait EventSource[+E] {
 
   /** Combine with some other event source. */
   def or[T >: E](source: EventSource[T]): EventSource[T] = EventSource.OrSource(this, source)
+
+  /** Execute code while traversing the source. */
+  def tap[T >: E](fn: T => Unit): EventSource[T] = EventSource.TapSource(this, fn)
 }
 
 object EventSource {
@@ -167,6 +170,11 @@ object EventSource {
   case class OrSource[E](
       left: EventSource[E],
       right: EventSource[E]
+  ) extends EventSource[E]
+
+  case class TapSource[E](
+      inner: EventSource[E],
+      fn: E => Unit
   ) extends EventSource[E]
 }
 
