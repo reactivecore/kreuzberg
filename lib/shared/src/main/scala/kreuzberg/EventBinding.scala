@@ -6,6 +6,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
 
+import scala.concurrent.duration.FiniteDuration
 import scala.ref.WeakReference
 import scala.util.Failure
 import scala.util.Success
@@ -176,6 +177,12 @@ object EventSource {
       inner: EventSource[E],
       fn: E => Unit
   ) extends EventSource[E]
+
+  /** A Timer. */
+  case class Timer(
+      duration: FiniteDuration,
+      periodic: Boolean = false
+  ) extends EventSource[Unit]
 }
 
 /** Sink of an [[EventBinding]] */

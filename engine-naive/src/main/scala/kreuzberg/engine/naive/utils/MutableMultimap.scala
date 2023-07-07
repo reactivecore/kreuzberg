@@ -60,6 +60,23 @@ class MutableMultimap[K, V] {
     backend.subtractAll(isEmptyCollector)
   }
 
+  /** Remove every element where keyPredicate is true. Before doing so, call f on the value. */
+  def deregisterKeys(keyPredicate: K => Boolean)(f: V => Unit): Unit = {
+    val collector = mutable.ArrayBuffer[K]()
+    backend.foreach { case (key, value) =>
+      if (keyPredicate(key)) {
+        collector += key
+        value.foreach(f)
+      }
+    }
+    backend.subtractAll(collector)
+  }
+
+  /** Remove the key, after doing so, call f on every value. */
+  def deregisterKey(key: K)(f: V => Unit): Unit = {
+    backend.remove(key).foreach(_.foreach(f))
+  }
+
   def filterKeysInPlace(f: K => Boolean): Unit = {
     backend.filterInPlace((p, _) => f(p))
   }

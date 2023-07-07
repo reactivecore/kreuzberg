@@ -6,6 +6,8 @@ import kreuzberg.engine.ezio.JsEventRegistry.Canceller
 import kreuzberg.engine.ezio.utils.MultiListMap
 import zio.stream.ZStream
 import zio.{Chunk, Ref, Task, UIO, ZIO}
+
+import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
 /** Manages JS DOM Events and brings them on ZIO Level and make it also possible for them to disappear. */
@@ -20,7 +22,6 @@ class JsEventRegistry[K](
       event: JsEvent[E]
   ): ZStream[Any, Throwable, E] = {
     ZStream.asyncZIO { callback =>
-//      Logger.debug(s"Registering event ${event.name} on ${key}, target: ${target}")
       val eventListener: scalajs.js.Function1[ScalaJsEvent, Unit] = { e =>
         try {
           val transformed = event.fn(e)
@@ -47,13 +48,35 @@ class JsEventRegistry[K](
     }
   }
 
+  /** Lift a timer. */
+  def timer(key: K, duration: FiniteDuration, periodic: Boolean): ZStream[Any, Throwable, Unit] = {
+    ZStream.asyncZIO { callback =>
+      if (periodic) {
+        for {
+          handle <- ZIO.attempt(scalajs.js.timers.setInterval(duration) { callback.single(()) })
+          remover = ZIO.attempt(scalajs.js.timers.clearInterval(handle)).ignoreLogged
+          _      <- subscriptions.update(_.add(key, remover))
+        } yield {
+          ()
+        }
+      } else {
+        for {
+          handle <- ZIO.attempt(scalajs.js.timers.setTimeout(duration) {
+                      callback.single(())
+                    })
+          remover = ZIO.attempt(scalajs.js.timers.clearTimeout(handle)).ignoreLogged
+          _      <- subscriptions.update(_.add(key, remover))
+        } yield {
+          ()
+        }
+      }
+    }
+  }
+
   /** Cancels all associated Streams with this key. */
   def cancel(key: K): UIO[Unit] = {
     for {
       cancellers <- subscriptions.modify(_.remove(key))
-//      _           = if (cancellers.nonEmpty) {
-//                      Logger.debug(s"Cancelling ${key}")
-//                    }
       _          <- ZIO.collectAllDiscard(cancellers)
     } yield {
       ()

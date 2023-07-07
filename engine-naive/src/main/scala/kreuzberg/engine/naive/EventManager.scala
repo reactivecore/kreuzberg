@@ -37,7 +37,7 @@ class EventManager(delegate: EventManagerDelegate) {
 
   /**
    * Bindings to Window-Events. We cannot directly move them to the inner handler, as we need a simple way to deconnect
-   * garbage collected / dereferenced components from it.
+   * age collected / dereferenced components from it.
    */
   private case class WindowEventBinding(
       handler: ScalaJsEvent => Unit,
@@ -56,6 +56,10 @@ class EventManager(delegate: EventManagerDelegate) {
       owner: Identifier
   )
 
+  private case class RegisteredTimer(
+      stopper: () => Unit
+  )
+
   /** Pending Changes. */
   private val _pending = new mutable.Queue[PendingChange]()
 
@@ -64,6 +68,9 @@ class EventManager(delegate: EventManagerDelegate) {
 
   /** Bindings to channels. */
   private val _channelBindings = new MutableMultimap[Identifier, ChannelBinding[_]]()
+
+  /** Timers with owners. */
+  private val _registeredTimers = new MutableMultimap[Identifier, RegisteredTimer]()
 
   // Keeping track of registered window events (we do not yet remove them)
   private val _registeredWindowEvents = mutable.Set[String]()
@@ -75,6 +82,7 @@ class EventManager(delegate: EventManagerDelegate) {
     // Drop Existing model bindings
     _windowEventBindings.filterValuesInPlace(_.owner != node.id)
     _channelBindings.filterValuesInPlace(_.owner != node.id)
+    _registeredTimers.deregisterKey(node.id)(_.stopper())
 
     node.children.foreach { case child: ComponentNode[_] =>
       activateEvents(child)
@@ -90,6 +98,7 @@ class EventManager(delegate: EventManagerDelegate) {
   def garbageCollect(referencedComponents: Set[Identifier], referencedModels: Set[Identifier]): Unit = {
     _windowEventBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _channelBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
+    _registeredTimers.deregisterKeys(c => !referencedComponents.contains(c))(_.stopper())
   }
 
   private def activateEvent(node: TreeNode, eventBinding: EventBinding): Unit = {
@@ -231,6 +240,19 @@ class EventManager(delegate: EventManagerDelegate) {
             sink(value)
           }
         )
+      case t: EventSource.Timer                =>
+        val timer = if (t.periodic) {
+          val handle = scalajs.js.timers.setInterval(t.duration) { sink(()) }
+          RegisteredTimer(
+            stopper = () => scalajs.js.timers.clearInterval(handle)
+          )
+        } else {
+          val handle = scalajs.js.timers.setTimeout(t.duration) { sink(()) }
+          RegisteredTimer(
+            stopper = () => scalajs.js.timers.clearTimeout(handle)
+          )
+        }
+        _registeredTimers.add(ownNode.id, timer)
   }
 
   private def bindWithState[E, S](
