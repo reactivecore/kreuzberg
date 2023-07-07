@@ -4,7 +4,7 @@ import kreuzberg.Identifier
 import kreuzberg.dom.ScalaJsEvent
 
 /**
- * A JavaScript DOM Event (not yet ready)
+ * A JavaScript DOM Event
  *
  * @param componentId
  *   the component ID, if not given, it's a window event.
