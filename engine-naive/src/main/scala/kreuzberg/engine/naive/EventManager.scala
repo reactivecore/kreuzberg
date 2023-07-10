@@ -37,7 +37,7 @@ class EventManager(delegate: EventManagerDelegate) {
 
   /**
    * Bindings to Window-Events. We cannot directly move them to the inner handler, as we need a simple way to deconnect
-   * age collected / dereferenced components from it.
+   * garbage collected / dereferenced components from it.
    */
   private case class WindowEventBinding(
       handler: ScalaJsEvent => Unit,
