@@ -36,7 +36,7 @@ val scalaTagsVersion             = "0.12.0"
 def publishSettings = Seq(
   publishTo           := sonatypePublishTo.value,
   licenses            := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-  homepage            := Some(url("https://github.com/reactivecore/rc-circe-json-schema")),
+  homepage            := Some(url("https://github.com/reactivecore/kreuzberg")),
   developers          := List(
     Developer(
       id = "nob13",
