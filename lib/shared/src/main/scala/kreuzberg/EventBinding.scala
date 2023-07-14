@@ -6,6 +6,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
 
+import scala.concurrent.duration.FiniteDuration
 import scala.ref.WeakReference
 import scala.util.Failure
 import scala.util.Success
@@ -114,6 +115,9 @@ sealed trait EventSource[+E] {
 
   /** Combine with some other event source. */
   def or[T >: E](source: EventSource[T]): EventSource[T] = EventSource.OrSource(this, source)
+
+  /** Execute code while traversing the source. */
+  def tap[T >: E](fn: T => Unit): EventSource[T] = EventSource.TapSource(this, fn)
 }
 
 object EventSource {
@@ -168,6 +172,17 @@ object EventSource {
       left: EventSource[E],
       right: EventSource[E]
   ) extends EventSource[E]
+
+  case class TapSource[E](
+      inner: EventSource[E],
+      fn: E => Unit
+  ) extends EventSource[E]
+
+  /** A Timer. */
+  case class Timer(
+      duration: FiniteDuration,
+      periodic: Boolean = false
+  ) extends EventSource[Unit]
 }
 
 /** Sink of an [[EventBinding]] */

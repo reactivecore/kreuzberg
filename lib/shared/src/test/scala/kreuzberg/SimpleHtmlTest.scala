@@ -54,4 +54,11 @@ class SimpleHtmlTest extends TestBase {
       .appendChild(SimpleHtml("bar"))
       .toString shouldBe "<div><foo></foo><bar></bar></div>"
   }
+
+  it should "support raw elements" in {
+    SimpleHtml("div")
+      .addChild(SimpleHtmlNode.Raw("raw < text"))
+      .addChild(SimpleHtmlNode.Raw("!!"))
+      .toString shouldBe "<div>raw < text!!</div>"
+  }
 }

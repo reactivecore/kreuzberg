@@ -121,6 +121,14 @@ class EventManager(
         } yield {
           left.merge(right)
         }
+      case o: EventSource.TapSource[_]         =>
+        sourceToStream(owner, o.inner).map { stream =>
+          stream.tap { element =>
+            ZIO.attempt(o.fn(element)).ignoreLogged
+          }
+        }
+      case t: EventSource.Timer                =>
+        ZIO.succeed(timeEvent(owner, t))
   }
 
   private def convertSink[E](node: TreeNode, sink: EventSink[E]): E => Task[Unit] = {
@@ -261,6 +269,15 @@ class EventManager(
     } yield {
       hubSource
     }
+  }
+
+  private def timeEvent(
+      owner: TreeNode,
+      timer: EventSource.Timer
+  ): XStream[Unit] = {
+    eventRegistry.timer(owner.id, timer.duration, periodic = timer.periodic).tapError { e =>
+      Logger.warnZio(e.getMessage)
+    }.orDie
   }
 
   private def convertWithState[E, S](

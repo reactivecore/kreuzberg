@@ -17,8 +17,18 @@ case class SimpleHtml(
     withAttribute("data-id", Some(id.toString))
   }
 
-  def addComment(c: String): Html = {
+  def addComment(c: String): SimpleHtml = {
     copy(comment = comment + c)
+  }
+
+  def addText(text: String): SimpleHtml = {
+    addChild(SimpleHtmlNode.Text(text))
+  }
+
+  def addChild(child: SimpleHtmlNode): SimpleHtml = {
+    copy(
+      children = children :+ child
+    )
   }
 
   def withAttribute(name: String, value: Option[String]): Html = {
@@ -98,6 +108,15 @@ object SimpleHtmlNode {
     def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = flatHtmlBuilder.addPlaceholder(component.id)
 
     def embeddedComponents: Iterable[Component] = List(component)
+  }
+
+  /** Emits content directly into HTML, without further escaping. */
+  case class Raw(content: String) extends SimpleHtmlNode {
+    override def embeddedComponents: Iterable[Component] = Iterable.empty
+
+    override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {
+      flatHtmlBuilder ++= content
+    }
   }
 
   def maybeWrap(html: Html): SimpleHtmlNode = {
