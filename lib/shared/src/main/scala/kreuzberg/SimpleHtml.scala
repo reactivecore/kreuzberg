@@ -17,8 +17,14 @@ case class SimpleHtml(
     withAttribute("data-id", Some(id.toString))
   }
 
-  def addComment(c: String): Html = {
+  def addComment(c: String): SimpleHtml = {
     copy(comment = comment + c)
+  }
+
+  def addText(text: String): SimpleHtml = {
+    copy(
+      children = children :+ SimpleHtmlNode.Text(text)
+    )
   }
 
   def withAttribute(name: String, value: Option[String]): Html = {
