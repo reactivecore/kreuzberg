@@ -30,9 +30,11 @@ case class SimpleRouter(
 
     val routeValue = routingState.currentRoute.getOrElse(BrowserRouting.getCurrentPath())
     val route      = decideRoute(routeValue)
+    subscribe(SimpleRouter.currentTarget)
+
     val target     = route match {
       case e: EagerRoute => e.eagerTarget(routeValue)
-      case _             => subscribe(SimpleRouter.currentTarget)
+      case _             => read(SimpleRouter.currentTarget)
     }
 
     def handlePath(in: EventSource[String], pushState: Boolean): EventBinding = {
@@ -68,7 +70,6 @@ case class SimpleRouter(
           model.copy(currentRoute = Some(path))
         }
         .and
-        .tap { foo => println(s"${foo}") }
         .intoModel(SimpleRouter.currentTarget)(_._2)
     }
 
