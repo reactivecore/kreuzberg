@@ -43,7 +43,7 @@ object Stub {
     val methods  = analyze.methods
     val implName = analyze.name + "_impl"
 
-    val effect = Expr.summon[Effect[F]].getOrElse {
+    val effect = Expr.summon[EffectSupport[F]].getOrElse {
       throw new IllegalArgumentException(
         "Could not find Effect for F (if you are using Future, there must be an ExecutionContext present)"
       )

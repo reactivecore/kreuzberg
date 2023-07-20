@@ -1,11 +1,14 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg.*
-import kreuzberg.examples.showcase.pages.{FormPage, IndexPage, NotFoundPage, XmlPage, WizzardPage}
+import kreuzberg.examples.showcase.pages.{FormPage, IndexPage, LazyPage, NotFoundPage, WizzardPage, XmlPage}
 import kreuzberg.examples.showcase.todo.{TodoList, TodoPage, TodoPageWithApi}
-import kreuzberg.extras.{Route, SimpleRouter}
+import kreuzberg.extras.{PathCodec, Route, RoutingTarget, SimpleRouter}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
+import scala.concurrent.duration.*
+
+import scala.concurrent.Future
 
 /** Sample Application. */
 object App extends SimpleComponentBase {
@@ -13,12 +16,33 @@ object App extends SimpleComponentBase {
   def assemble(using context: SimpleContext): Html = {
     div(
       Menu.wrap,
+      LoadingIndicator,
       SimpleRouter(
         routes,
-        Route.DependentRoute({ case s => NotFoundPage(s) }, _ => "Not Found")
+        Route.DependentRoute[String](
+          PathCodec.all,
+          s => NotFoundPage(s),
+          s => "Not Found"
+        )
       )
     )
   }
+
+  val lazyPage = Route.LazyRoute(
+    PathCodec.prefix("/lazy/"),
+    eagerTitle = path => s"Lazy...",
+    routingTarget = path => {
+      Effect.future { _ =>
+        SlowApiMock.timer(
+          1.second,
+          RoutingTarget(
+            s"Lazy ${path}",
+            LazyPage(path)
+          )
+        )
+      }
+    }
+  )
 
   private def routes = Vector(
     Route.SimpleRoute("/", "Welcome", IndexPage),
@@ -26,6 +50,7 @@ object App extends SimpleComponentBase {
     Route.SimpleRoute("/todoapi", "Todo App (API)", TodoPageWithApi),
     Route.SimpleRoute("/form", "Form", FormPage),
     Route.SimpleRoute("/wizzard", "Wizzard", WizzardPage),
-    Route.SimpleRoute("/xml", "XML", XmlPage)
+    Route.SimpleRoute("/xml", "XML", XmlPage),
+    lazyPage
   )
 }

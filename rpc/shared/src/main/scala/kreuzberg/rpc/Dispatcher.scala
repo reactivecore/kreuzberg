@@ -31,7 +31,7 @@ object Dispatcher {
     ${ makeDispatcherMacro[F, T, A]('handler) }
   }
 
-  def empty[F[_], T](implicit effect: Effect[F]): Dispatcher[F, T] = new Dispatcher[F, T] {
+  def empty[F[_], T](implicit effect: EffectSupport[F]): Dispatcher[F, T] = new Dispatcher[F, T] {
     override def handles(serviceName: String): Boolean = false
 
     override def call(serviceName: String, name: String, input: T): F[T] = effect.failure(
@@ -40,7 +40,7 @@ object Dispatcher {
   }
 
   /** Comboine multiple Dispatchers into one. */
-  def combine[F[_], T](dispatchers: Dispatcher[F, T]*)(implicit effect: Effect[F]): Dispatcher[F, T] = Dispatchers(
+  def combine[F[_], T](dispatchers: Dispatcher[F, T]*)(implicit effect: EffectSupport[F]): Dispatcher[F, T] = Dispatchers(
     dispatchers
   )
 
@@ -53,7 +53,7 @@ object Dispatcher {
 
     import analyzer.quotes.reflect.*
 
-    val effect = Expr.summon[Effect[F]].getOrElse {
+    val effect = Expr.summon[EffectSupport[F]].getOrElse {
       throw new IllegalArgumentException(
         "Could not find Effect for F (if you are using Future, there must be an ExecutionContext present)"
       )

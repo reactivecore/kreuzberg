@@ -3,10 +3,10 @@ package kreuzberg.engine.naive
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
 import kreuzberg.dom.*
-import kreuzberg.engine.common.{ModelValues, ComponentNode, TreeNode}
+import kreuzberg.engine.common.{ComponentNode, ModelValues, TreeNode}
 
 import scala.collection.mutable
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.ref.WeakReference
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -158,7 +158,7 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
     eventSource match
-      case j: EventSource.Js[_]                =>
+      case j: EventSource.Js[_]               =>
         j.jsEvent.componentId match {
           case None              =>
             val handler: ScalaJsEvent => Unit = { in =>
@@ -190,13 +190,13 @@ class EventManager(delegate: EventManagerDelegate) {
             val source = delegate.locate(componentId)
             bindJsEvent(source, j.jsEvent, sink)
         }
-      case EventSource.Assembled               =>
+      case EventSource.Assembled              =>
         scalajs.js.timers.setTimeout(0) {
           sink(())
         }
-      case ws: EventSource.WithState[_, _]     =>
+      case ws: EventSource.WithState[_, _]    =>
         bindWithState(ownNode, ws, (a, b) => sink((a, b)))
-      case EventSource.MapSource(from, fn)     =>
+      case EventSource.MapSource(from, fn)    =>
         bindEventSource(
           ownNode,
           from,
@@ -205,7 +205,7 @@ class EventManager(delegate: EventManagerDelegate) {
             sink(mapped)
           }
         )
-      case EventSource.CollectEvent(from, fn)  =>
+      case EventSource.CollectEvent(from, fn) =>
         bindEventSource(
           ownNode,
           from,
@@ -217,16 +217,16 @@ class EventManager(delegate: EventManagerDelegate) {
             }
           }
         )
-      case e: EventSource.EffectEvent[_, _, _] =>
+      case e: EventSource.EffectEvent[_, _]   =>
         bindEffect(ownNode, e, sink)
-      case a: EventSource.AndSource[_]         =>
+      case a: EventSource.AndSource[_]        =>
         bindAnd(ownNode, a, sink)
-      case c: EventSource.ChannelSource[_]     =>
+      case c: EventSource.ChannelSource[_]    =>
         bindChannel(ownNode, c, sink)
-      case o: EventSource.OrSource[_]          =>
+      case o: EventSource.OrSource[_]         =>
         bindEventSource(ownNode, o.left, sink)
         bindEventSource(ownNode, o.right, sink)
-      case t: EventSource.TapSource[_]         =>
+      case t: EventSource.TapSource[_]        =>
         bindEventSource(
           ownNode,
           t.inner,
@@ -240,7 +240,7 @@ class EventManager(delegate: EventManagerDelegate) {
             sink(value)
           }
         )
-      case t: EventSource.Timer                =>
+      case t: EventSource.Timer               =>
         val timer = if (t.periodic) {
           val handle = scalajs.js.timers.setInterval(t.duration) { sink(()) }
           RegisteredTimer(
@@ -298,22 +298,25 @@ class EventManager(delegate: EventManagerDelegate) {
 
   private def bindEffect[E, F[_], R](
       own: TreeNode,
-      event: EventSource.EffectEvent[E, F, R],
-      sink: Try[R] => Unit
+      event: EventSource.EffectEvent[E, R],
+      sink: ((E, Try[R])) => Unit
   ): Unit = {
-    val decoder: F[R] => Future[R] = event.effectOperation.support.name match {
-      case EffectSupport.FutureName => in => in.asInstanceOf[Future[R]]
-      case unknown                  =>
-        throw new NotImplementedError(s"Unsupported effect type ${unknown}")
-    }
     bindEventSource(
       own,
       event.trigger,
       v =>
-        decoder(event.effectOperation.fn(v)).andThen { case result =>
-          sink(result)
+        runEffect(event.effectOperation(v)).andThen { case result =>
+          sink((v, result))
         }
     )
+  }
+
+  private def runEffect[T](in: Effect[T]): Future[T] = {
+    in match {
+      case Effect.LazyFuture(fn) => fn(implicitly[ExecutionContext])
+      case Effect.Const(value)   => Future.successful(value)
+      case other                 => throw new NotImplementedError(s"Effect type ${other.getClass.getSimpleName} not supported")
+    }
   }
 
   private def bindAnd[T](ownNode: TreeNode, event: EventSource.AndSource[T], sink1: T => Unit): Unit = {

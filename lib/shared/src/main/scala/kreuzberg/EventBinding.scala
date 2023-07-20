@@ -12,113 +12,7 @@ import scala.util.Failure
 import scala.util.Success
 
 /** A Source of an [[EventBinding]]. */
-sealed trait EventSource[+E] {
-
-  /** Extend runtime state to event. */
-  def addState[S](from: RuntimeState[S]): EventSource[(E, S)] = {
-    EventSource.WithState(this, from)
-  }
-
-  /** Replaces event state with runtime state. */
-  def withState[S](from: RuntimeState[S]): EventSource[S] = {
-    addState(from).map(_._2)
-  }
-
-  def map[F](f: E => F): EventSource[F] = EventSource.MapSource(this, f)
-
-  def collect[F](f: PartialFunction[E, F]): EventSource[F] = EventSource.CollectEvent(this, f)
-
-  def filter(f: E => Boolean): EventSource[E] = collect {
-    case x if f(x) => x
-  }
-
-  /** Throw away any data. */
-  inline def mapUnit: EventSource[Unit] = map(_ => ())
-
-  def effect[T >: E, F[_], R](op: EffectOperation[T, F, R]): EventSource.EffectEvent[T, F, R] =
-    EventSource.EffectEvent(this, op)
-
-  def effect[T >: E, F[_], R](f: T => F[R])(
-      implicit effectSupport: EffectSupport[F]
-  ): EventSource.EffectEvent[T, F, R] =
-    EventSource.EffectEvent(this, EffectOperation(e => f(e)))
-
-  /** Execute custom Code. */
-  def executeCode[T >: E](f: T => Unit): EventBinding.SourceSink[T] = {
-    EventBinding.SourceSink(this, EventSink.ExecuteCode(f))
-  }
-
-  /**
-   * Do nothing (e.g. some events already have an effect just because they are registered, e.g. Drag and Drop events
-   * with preventDefault)
-   */
-  def doNothing[T >: E]: EventBinding.SourceSink[T] = {
-    executeCode(_ => ())
-  }
-
-  /** Shortcut for building event bindings */
-  def changeModel[T >: E, M](model: Model[M])(f: (T, M) => M): EventBinding.SourceSink[T] = {
-    val sink = EventSink.ModelChange(model, f)
-    EventBinding(this, sink)
-  }
-
-  /** Change model without caring about the value of the event. */
-  def changeModelDirect[T >: E, M](model: Model[M])(f: M => M): EventBinding.SourceSink[T] = {
-    val sink = EventSink.ModelChange[T, M](model, (_, m) => f(m))
-    EventBinding(this, sink)
-  }
-
-  /** Set the model to a value without caring about the value of the event or model before */
-  def setModel[T >: E, M](model: Model[M], value: M): EventBinding.SourceSink[T] = {
-    val sink = EventSink.ModelChange(model, (_, _) => value)
-    EventBinding(this, sink)
-  }
-
-  /** Change model without caring about the previous value of the model. */
-  def intoModel[T >: E, M](model: Model[M])(f: T => M): EventBinding.SourceSink[T] = {
-    changeModel(model)((e, _) => f(e))
-  }
-
-  /** Change model without caring about the previous value of the model. */
-  def intoModel[T >: E](model: Model[T]): EventBinding.SourceSink[T] = {
-    changeModel(model)((e, _) => e)
-  }
-
-  /** Write a value into a property */
-  def intoProperty[T >: E, D <: ScalaJsElement](prop: JsProperty[D, T]): EventBinding.SourceSink[T] = {
-    EventBinding(this, EventSink.SetProperty(prop))
-  }
-
-  /** Trigger some channel. */
-  def trigger[T >: E](channel: Channel[T]): EventBinding.SourceSink[T] = {
-    EventBinding(
-      this,
-      EventSink.ChannelSink(channel)
-    )
-  }
-
-  /** Transform via function. */
-  def transform[F](f: EventSource[E] => EventSource[F]): EventSource[F] = f(this)
-
-  /** If e is a Try[T], handle errors using another sink. */
-  def handleErrors[F](sink: EventSink[Throwable])(implicit ev: E => Try[F]): EventSource[F] = {
-    val errorHandler = sink.contraCollect[Try[F]] { case Failure(exception) =>
-      exception
-    }
-    map(ev).to(errorHandler).and.collect { case Success(value) =>
-      value
-    }
-  }
-
-  /** Connect this source to a sink */
-  def to[T >: E](sink: EventSink[T]): EventBinding.SourceSink[T] = EventBinding.SourceSink(this, sink)
-
-  /** Combine with some other event source. */
-  def or[T >: E](source: EventSource[T]): EventSource[T] = EventSource.OrSource(this, source)
-
-  /** Execute code while traversing the source. */
-  def tap[T >: E](fn: T => Unit): EventSource[T] = EventSource.TapSource(this, fn)
-}
+sealed trait EventSource[+E] extends EventSourceDsl[E]
 
 object EventSource {
 
@@ -141,10 +35,10 @@ object EventSource {
   }
 
   /** Some side effect operation (e.g. API Call) */
-  case class EffectEvent[E, F[_], R](
+  case class EffectEvent[E, R](
       trigger: EventSource[E],
-      effectOperation: EffectOperation[E, F, R]
-  ) extends EventSource[Try[R]]
+      effectOperation: E => Effect[R]
+  ) extends EventSource[(E, Try[R])]
 
   /** Add some component state to the Event. */
   case class WithState[E, S](

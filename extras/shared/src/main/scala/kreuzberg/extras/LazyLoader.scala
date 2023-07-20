@@ -1,6 +1,16 @@
 package kreuzberg.extras
 
-import kreuzberg.{EffectOperation, EventSource, Html, Model, SimpleComponentBase, SimpleContext, SimpleHtml}
+import kreuzberg.{
+  Effect,
+  EventSink,
+  EventSource,
+  Html,
+  Model,
+  ServiceRepository,
+  SimpleComponentBase,
+  SimpleContext,
+  SimpleHtml
+}
 
 /** A Base class for components which lazy load stuff from an external service. */
 abstract class LazyLoader[T] extends SimpleComponentBase {
@@ -8,13 +18,16 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
 
   val model = Model.create[LazyState[T]](LazyState.Init)
 
+  /** Event sink for refreshing the loader. */
+  def refresh: EventSink[Any] = EventSink.ModelChange(model, (_, _) => LazyState.Init)
+
   override def assemble(using c: SimpleContext): Html = {
     val data = subscribe(model)
     data match {
       case LazyState.Init            =>
         add(
           EventSource.Assembled
-            .effect(load())
+            .withEffect(_ => load())
             .map {
               _.fold(err => LazyState.Failed(err), ok => LazyState.Ok(ok))
             }
@@ -32,7 +45,7 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
   }
 
   /** Load from external service. */
-  def load()(using c: SimpleContext): EffectOperation[Unit, _, T]
+  def load()(using c: ServiceRepository): Effect[T]
 
   /** Html which is rendered during loading. */
   def waiting()(using c: SimpleContext): Html = {
