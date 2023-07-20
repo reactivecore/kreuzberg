@@ -1,9 +1,12 @@
 package kreuzberg.extras
 
 import kreuzberg.*
+import kreuzberg.extras.Route.EagerRoute
 import kreuzberg.extras.SimpleRouter.RoutingState
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
+
+import scala.util.{Failure, Success}
 
 /**
  * A Simple router implementation.
@@ -16,67 +19,81 @@ import kreuzberg.scalatags.all.*
  */
 case class SimpleRouter(
     routes: Vector[Route],
-    notFoundRoute: Route,
-    titlePrefix: String = ""
-) extends ComponentBase {
+    notFoundRoute: EagerRoute,
+    titlePrefix: String = "",
+    errorHandler: Throwable => EagerRoute = SimpleRouter.DefaultErrorHandler
+) extends SimpleComponentBase {
 
-  override def assemble(using context: AssemblerContext): Assembly = {
-    val routingState = read(SimpleRouter.routingStateModel)
-    Logger.debug(s"Rendering SimpleRouter with value ${routingState} on model ${SimpleRouter.routingStateModel.id}")
+  override def assemble(using context: SimpleContext): Html = {
+    val routingState = subscribe(SimpleRouter.routingStateModel)
+    Logger.debug(s"Assembling SimpleRouter with value ${routingState} on model ${SimpleRouter.routingStateModel.id}")
 
     val routeValue = routingState.currentRoute.getOrElse(BrowserRouting.getCurrentPath())
     val route      = decideRoute(routeValue)
-    val component  = route.component(routeValue)
+    val target     = route match {
+      case e: EagerRoute => e.eagerTarget(routeValue)
+      case _             => subscribe(SimpleRouter.currentTarget)
+    }
 
-    val gotoBinding =
-      EventSource
-        .ChannelSource(SimpleRouter.gotoChannel)
-        .executeCode { target =>
-          val title = decideRoute(target).title(target)
-          Logger.debug(s"Model change ${routingState.currentRoute} -> ${target}")
-          val path  = BrowserRouting.getCurrentPath()
-          if (target != path) { // Otherwise we would also push a state change on a pop change
-            Logger.debug(s"Push state ${title}/${target}")
-            BrowserRouting.pushState(title, target)
+    def handlePath(in: EventSource[String], pushState: Boolean): EventBinding = {
+      in.map { path => path -> decideRoute(path) }
+        .executeCode { case (path, nextRoute) =>
+          val currentPath = BrowserRouting.getCurrentPath()
+          val title       = nextRoute.preTitle(path)
+          if (pushState && path != currentPath) {
+            Logger.debug(s"Push state ${title}/${path}")
+            BrowserRouting.pushState(title, path)
           }
           BrowserRouting.setDocumentTitle(titlePrefix + title)
         }
         .and
-        .changeModel(SimpleRouter.routingStateModel) { (path, model) =>
+        .setModel(SimpleRouter.loading, true)
+        .and
+        .effect { case (path, route) =>
+          route.target(path)
+        }
+        .setModel(SimpleRouter.loading, false)
+        .and
+        .map {
+          case ((path, _), Success(target)) => (path, target)
+          case ((path, _), Failure(error))  => (path, errorHandler(error).eagerTarget(path))
+        }
+        .executeCode { case (path, target) =>
+          val title = target.title
+          BrowserRouting.replaceState(title, path)
+          BrowserRouting.setDocumentTitle(titlePrefix + title)
+        }
+        .and
+        .changeModel(SimpleRouter.routingStateModel) { case ((path, target), model) =>
           model.copy(currentRoute = Some(path))
         }
+        .and
+        .tap { foo => println(s"${foo}") }
+        .intoModel(SimpleRouter.currentTarget)(_._2)
+    }
 
-    val onLoadBinding = EventSource.Js
-      .window("load")
-      .changeModel(SimpleRouter.routingStateModel) { (_, m) =>
-        val path = BrowserRouting.getCurrentPath()
-        Logger.debug(s"Load Event: ${path}")
-        RoutingState(Some(path))
-      }
-      .and
-      .executeCode { _ =>
-        val path  = BrowserRouting.getCurrentPath()
-        val title = decideRoute(path).title(path)
-        BrowserRouting.setDocumentTitle(titlePrefix + title)
-      }
-
-    val popStateBinding = EventSource.Js
-      .window("popstate")
-      .changeModel(SimpleRouter.routingStateModel) { (_, current) =>
-        val path = BrowserRouting.getCurrentPath()
-        Logger.debug(s"Popstate event ${path}")
-        RoutingState(Some(path))
-      }
-
-    Assembly(
-      div(component.wrap),
-      handlers = Vector(
-        gotoBinding,
-        onLoadBinding,
-        popStateBinding
-      ),
-      subscriptions = Vector(SimpleRouter.routingStateModel)
+    add(
+      SimpleRouter.gotoChannel.transform(handlePath(_, true))
     )
+
+    add(
+      EventSource.Js
+        .window("load")
+        .map { _ => BrowserRouting.getCurrentPath() }
+        .transform(handlePath(_, false))
+    )
+
+    add(
+      EventSource.Js
+        .window("popstate")
+        .changeModel(SimpleRouter.routingStateModel) { (_, current) =>
+          val path = BrowserRouting.getCurrentPath()
+          Logger.debug(s"Popstate event ${path}")
+          RoutingState(Some(path))
+        }
+    )
+
+    div(target.component.wrap)
   }
 
   private def decideRoute(path: String): Route = {
@@ -91,11 +108,43 @@ object SimpleRouter {
       currentRoute: Option[String] = None
   )
 
+  /** Current routing state. */
   val routingStateModel = Model.create(RoutingState())
+
+  /** Current shown target. */
+  val currentTarget = Model.create[RoutingTarget](RoutingTarget("", EmptyComponent))
+
+  /** If we are currently loading data. */
+  val loading = Model.create[Boolean](false)
 
   /** Event Sink for going to a specific route. */
   def goto: EventSink[String] = EventSink.ChannelSink(gotoChannel)
 
   /** Event Sink for going to a specific fixed route. */
   def gotoTarget(target: String): EventSink[Any] = goto.contraMap(_ => target)
+
+  case object EmptyComponent extends SimpleComponentBase {
+    override def assemble(using c: SimpleContext): Html = {
+      div("Loading...")
+    }
+  }
+
+  val DefaultErrorHandler: Throwable => EagerRoute = error => {
+    new EagerRoute {
+      override type State = String
+
+      override val pathCodec: PathCodec[String] = PathCodec.all
+
+      override def title(path: String): String = "Error"
+
+      override def component(path: String): Component = new SimpleComponentBase {
+        override def assemble(using c: SimpleContext): Html = {
+          h2("Error")
+          div(s"An unrecoverable error handled on loading route ${path}: ${error.getMessage}")
+        }
+      }
+
+      override def canHandle(path: String): Boolean = true
+    }
+  }
 }

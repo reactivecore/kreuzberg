@@ -3,7 +3,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import zio.{Task, ZIO}
 
 /** Defines necessary properties of the used effect */
-trait Effect[F[_]] {
+trait EffectSupport[F[_]] {
 
   /** Wraps a codec error into an Effect. */
   def failure[A](failure: Failure): F[A]
@@ -48,8 +48,8 @@ trait Effect[F[_]] {
   }
 }
 
-object Effect {
-  implicit def futureSupport(implicit ec: ExecutionContext): Effect[Future] = new Effect[Future] {
+object EffectSupport {
+  implicit def futureSupport(implicit ec: ExecutionContext): EffectSupport[Future] = new EffectSupport[Future] {
 
     override def success[A](value: A): Future[A] = {
       Future.successful(value)
@@ -63,7 +63,7 @@ object Effect {
   }
 
   // Note: Only available for clients which do have ZIO Imported
-  implicit def zioEffect: Effect[Task] = new Effect[Task] {
+  implicit def zioEffect: EffectSupport[Task] = new EffectSupport[Task] {
     override def failure[A](failure: Failure): Task[A] = {
       ZIO.fail(failure)
     }

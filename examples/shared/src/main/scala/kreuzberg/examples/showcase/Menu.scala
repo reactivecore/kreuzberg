@@ -1,7 +1,7 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg.*
-import kreuzberg.extras.RouterLink
+import kreuzberg.extras.{RouterLink, SimpleRouter}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -14,7 +14,8 @@ case object Menu extends SimpleComponentBase {
     "/form"     -> "Form",
     "/wizzard"  -> "Wizzard",
     "/xml"      -> "XML",
-    "/notfound" -> "Not Found"
+    "/notfound" -> "Not Found",
+    "/lazy/123" -> "Lazy"
   )
 
   override def assemble(implicit c: SimpleContext): Html = {
@@ -22,3 +23,4 @@ case object Menu extends SimpleComponentBase {
     div(items: _*)
   }
 }
+

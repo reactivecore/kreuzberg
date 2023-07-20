@@ -89,7 +89,7 @@ class EventManager(
 
   private def sourceToStream[E](owner: TreeNode, source: EventSource[E]): Task[XStream[E]] = {
     source match
-      case j: EventSource.Js[_]                =>
+      case j: EventSource.Js[_]               =>
         j.jsEvent.componentId match {
           case None              => registeredJsEvent(owner.id, org.scalajs.dom.window, j.jsEvent)
           case Some(componentId) =>
@@ -97,37 +97,37 @@ class EventManager(
               registeredJsEvent(componentId, js, j.jsEvent)
             }
         }
-      case EventSource.Assembled               =>
+      case EventSource.Assembled              =>
         ZIO.succeed(
           ZStream.succeed(())
         )
-      case e: EventSource.WithState[_, _]      => {
+      case e: EventSource.WithState[_, _]     => {
         convertWithState(owner, e)
       }
-      case e: EventSource.EffectEvent[_, _, _] =>
+      case e: EventSource.EffectEvent[_, _]   =>
         effectEvent(owner, e)
-      case EventSource.MapSource(from, fn)     =>
+      case EventSource.MapSource(from, fn)    =>
         sourceToStream(owner, from).map(_.map(fn))
-      case EventSource.CollectEvent(from, fn)  =>
+      case EventSource.CollectEvent(from, fn) =>
         sourceToStream(owner, from).map(_.collect(fn))
-      case a: EventSource.AndSource[_]         =>
+      case a: EventSource.AndSource[_]        =>
         andEvent(owner, a)
-      case c: EventSource.ChannelSource[_]     =>
+      case c: EventSource.ChannelSource[_]    =>
         convertChannelSource(owner, c)
-      case o: EventSource.OrSource[_]          =>
+      case o: EventSource.OrSource[_]         =>
         for {
           left  <- sourceToStream(owner, o.left)
           right <- sourceToStream(owner, o.right)
         } yield {
           left.merge(right)
         }
-      case o: EventSource.TapSource[_]         =>
+      case o: EventSource.TapSource[_]        =>
         sourceToStream(owner, o.inner).map { stream =>
           stream.tap { element =>
             ZIO.attempt(o.fn(element)).ignoreLogged
           }
         }
-      case t: EventSource.Timer                =>
+      case t: EventSource.Timer               =>
         ZIO.succeed(timeEvent(owner, t))
   }
 
@@ -234,23 +234,25 @@ class EventManager(
     )
   }
 
-  private def effectEvent[E, F[_], R](
+  private def effectEvent[E, R](
       node: TreeNode,
-      event: EventSource.EffectEvent[E, F, R]
-  ): Task[XStream[scala.util.Try[R]]] = {
-    val decoder: F[R] => Task[R] = event.effectOperation.support.name match {
-      case EffectSupport.FutureName => in => ZIO.fromFuture(_ => in.asInstanceOf[Future[R]])
-      case EffectSupport.TaskName   => in => in.asInstanceOf[Task[R]]
-      case other                    =>
-        return ZIO.fail(new UnsupportedOperationException(s"Unexpected Effect Type ${other}"))
-    }
+      event: EventSource.EffectEvent[E, R]
+  ): Task[XStream[(E, scala.util.Try[R])]] = {
     for {
       underlying <- sourceToStream(node, event.trigger)
     } yield {
       underlying.mapZIO { in =>
-        val zio = decoder(event.effectOperation.fn(in))
-        zio.fold(f => scala.util.Failure(f), x => scala.util.Success(x))
+        val zio = decode(event.effectOperation(in))
+        zio.fold(f => in -> scala.util.Failure(f), x => in -> scala.util.Success(x))
       }
+    }
+  }
+
+  private def decode[T](eo: Effect[T]): Task[T] = {
+    eo match {
+      case Effect.LazyFuture(fn) => ZIO.fromFuture(fn)
+      case Effect.ZioTask(task)  => task
+      case Effect.Const(value)   => ZIO.succeed(value)
     }
   }
 
@@ -275,9 +277,12 @@ class EventManager(
       owner: TreeNode,
       timer: EventSource.Timer
   ): XStream[Unit] = {
-    eventRegistry.timer(owner.id, timer.duration, periodic = timer.periodic).tapError { e =>
-      Logger.warnZio(e.getMessage)
-    }.orDie
+    eventRegistry
+      .timer(owner.id, timer.duration, periodic = timer.periodic)
+      .tapError { e =>
+        Logger.warnZio(e.getMessage)
+      }
+      .orDie
   }
 
   private def convertWithState[E, S](

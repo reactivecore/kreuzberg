@@ -45,7 +45,7 @@ object UserServiceDummy extends UserService[Future] {
   }
 }
 
-class UserMock(backend: CallingBackend[Future, String])(implicit mc: MessageCodec[String], e: Effect[Future])
+class UserMock(backend: CallingBackend[Future, String])(implicit mc: MessageCodec[String], e: EffectSupport[Future])
     extends UserService[Future] {
   override def authenticate(credentials: Credentials): Future[AuthenticateResult] = {
     // Die aufrufe müssen alle irgendwie gleich aussehen.
@@ -65,7 +65,7 @@ class UserMock(backend: CallingBackend[Future, String])(implicit mc: MessageCode
   }
 }
 
-class UserServiceDispatcher(backend: UserService[Future])(implicit mc: MessageCodec[String], effect: Effect[Future])
+class UserServiceDispatcher(backend: UserService[Future])(implicit mc: MessageCodec[String], effect: EffectSupport[Future])
     extends Dispatcher[Future, String] {
   override def handles(serviceName: String): Boolean = {
     serviceName == "UserService"

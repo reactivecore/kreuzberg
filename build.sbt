@@ -4,7 +4,7 @@ val versionTag = sys.env
   .filter(_.startsWith("v"))
   .map(_.stripPrefix("v"))
 
-val snapshotVersion = "0.6-SNAPSHOT"
+val snapshotVersion = "0.7-SNAPSHOT"
 val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion

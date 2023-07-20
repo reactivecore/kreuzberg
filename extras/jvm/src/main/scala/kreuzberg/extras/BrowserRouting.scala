@@ -13,4 +13,8 @@ object BrowserRouting {
   def pushState(title: String, target: String): Unit = {
     // Empty
   }
+
+  def replaceState(title: String, target: String): Unit = {
+    // Empty
+  }
 }

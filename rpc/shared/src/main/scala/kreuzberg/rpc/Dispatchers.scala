@@ -3,7 +3,7 @@ package kreuzberg.rpc
 /** Combines multiple dispatchers into one. */
 case class Dispatchers[F[_], T](
     dispatchers: Seq[Dispatcher[F, T]]
-)(using effect: Effect[F])
+)(using effect: EffectSupport[F])
     extends Dispatcher[F, T] {
 
   def handles(serviceName: String): Boolean = {
