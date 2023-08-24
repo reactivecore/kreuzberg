@@ -10,6 +10,12 @@ trait SimpleContextDsl extends ComponentDsl {
     c.value(model)
   }
 
+  /** Add a child service. */
+  protected def addService(service: HeadlessComponent, other: HeadlessComponent*)(using c: SimpleContext): Unit = {
+    c.addService(service)
+    other.foreach(c.addService)
+  }
+
   /** Add an event binding. */
   protected def add(binding0: EventBinding, others: EventBinding*)(using c: SimpleContext): Unit = {
     c.addEventBinding(binding0)

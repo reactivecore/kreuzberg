@@ -1,10 +1,11 @@
 package kreuzberg.engine.common
-import kreuzberg.{Identifier, Model, ModelValueProvider, Subscribeable}
+import kreuzberg.{Identifier, Model, ModelValueProvider, ServiceRepository, Subscribeable}
 
 /** Simple holder for model values. */
 case class ModelValues(
     modelValues: Map[Identifier, Any] = Map.empty
-) extends ModelValueProvider {
+) {
+  self =>
 
   def withModelValue[M](id: Identifier, value: M): ModelValues = {
     copy(
@@ -12,11 +13,25 @@ case class ModelValues(
     )
   }
 
-  /** Read a value without subscribing it (doesn't make component dependent from it) */
-  override def value[M](model: Subscribeable[M]): M = {
+  /** Returns the value of a model. */
+  def value[M](model: Subscribeable[M])(using ServiceRepository): M = {
     model match {
-      case model: Model[_]              => modelValues.getOrElse(model.id, model.initialValue()).asInstanceOf[M]
+      case model: Model[M]              =>
+        modelValues.get(model.id) match {
+          case Some(ok) => ok.asInstanceOf[M]
+          case None     =>
+            model.initial
+        }
       case Model.Mapped(underlying, fn) => fn(value(underlying))
+    }
+  }
+
+  /** Convert to a ModelValueProvider. */
+  def toModelValueProvider(using ServiceRepository): ModelValueProvider = {
+    new ModelValueProvider {
+      override def value[M](model: Subscribeable[M]): M = {
+        self.value(model)
+      }
     }
   }
 }

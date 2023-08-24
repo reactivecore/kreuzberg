@@ -2,7 +2,7 @@ package kreuzberg.engine.ezio
 
 import kreuzberg.*
 import kreuzberg.dom.*
-import kreuzberg.engine.common.{Assembler, UpdatePath, BrowserDrawer, ModelValues, SimpleServiceRepository, TreeNode}
+import kreuzberg.engine.common.{Assembler, UpdatePath, BrowserDrawer, ModelValues, TreeNode}
 import zio.stream.{ZChannel, ZSink, ZStream}
 import zio.*
 
@@ -12,7 +12,7 @@ import scala.util.control.NonFatal
 object Binder {
 
   /** Activate a Node on a root element, starting the whole magic. */
-  def runOnLoaded(component: Component, rootId: String): Unit = {
+  def runOnLoaded(component: Component, rootId: String)(using ServiceRepository): Unit = {
     org.scalajs.dom.document.addEventListener(
       "DOMContentLoaded",
       { (e: ScalaJsEvent) =>
@@ -43,7 +43,7 @@ object Binder {
   }
 
   /** Create a Binder. */
-  def create(rootElement: ScalaJsElement, main: Component): Task[Binder] = {
+  def create(rootElement: ScalaJsElement, main: Component)(using ServiceRepository): Task[Binder] = {
     val browser = new BrowserDrawer(rootElement)
     for {
       modelValues   <- Ref.make(ModelValues())
@@ -70,9 +70,7 @@ class Binder(
     main: Component,
     eventManager: EventManager,
     mainLock: Semaphore
-) {
-
-  private val serviceRepo: ServiceRepository = new SimpleServiceRepository
+)(using serviceRepo: ServiceRepository) {
 
   def run(): Task[Unit] = {
     for {
@@ -104,9 +102,10 @@ class Binder(
 
   private def buildContext(modelValues: ModelValues): AssemblerContext = {
     new AssemblerContext {
+
       override def value[M](model: Subscribeable[M]): M = modelValues.value(model)
 
-      override def service[S](using provider: Provider[S]): S = serviceRepo.service
+      override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = serviceRepo.serviceOption
     }
   }
 
@@ -133,7 +132,8 @@ class Binder(
         currentState <- state.get
         currentTree  <- tree.get
         beforeState  <- previousState.get
-        path          = updateTree(currentTree, changedModelIds, beforeState)(using buildContext(currentState))
+        path          =
+          updateTree(currentTree, changedModelIds, beforeState.toModelValueProvider)(using buildContext(currentState))
         _            <- previousState.set(currentState)
         _            <- tree.set(path.tree)
         _            <- ZIO.attempt(browser.drawUpdatePath(path))

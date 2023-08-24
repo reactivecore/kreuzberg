@@ -4,6 +4,16 @@ import kreuzberg.IdentifierFactory.instance
 
 import java.util.concurrent.atomic.AtomicInteger
 
+/** Some object which has an identifier. */
+trait Identified {
+
+  /** Id of this thing. */
+  def id: Identifier
+
+  /** Comment, which will probably built into into a tree. Can be disabled by returning "" */
+  def comment: String = getClass.getSimpleName.stripSuffix("$")
+}
+
 /** Identifier for identifying things. */
 opaque type Identifier = Int
 

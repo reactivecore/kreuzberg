@@ -4,15 +4,7 @@ import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
 import kreuzberg.dom.*
 import kreuzberg.engine.common.UpdatePath.Change
-import kreuzberg.engine.common.{
-  Assembler,
-  UpdatePath,
-  BrowserDrawer,
-  ComponentNode,
-  ModelValues,
-  SimpleServiceRepository,
-  TreeNode
-}
+import kreuzberg.engine.common.{Assembler, UpdatePath, BrowserDrawer, TreeNode, ModelValues}
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -20,7 +12,7 @@ import scala.util.control.NonFatal
 object Binder {
 
   /** Activate a Node on a root element, starting the whole magic. */
-  def runOnLoaded(component: Component, rootId: String): Unit = {
+  def runOnLoaded(component: Component, rootId: String)(using ServiceRepository): Unit = {
     org.scalajs.dom.document.addEventListener(
       "DOMContentLoaded",
       { (e: ScalaJsEvent) =>
@@ -34,17 +26,17 @@ object Binder {
 }
 
 /** Binds a root element to a Node. */
-class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerDelegate {
-  private var _modelValues: ModelValues       = ModelValues()
-  private val _serviceRepo: ServiceRepository = new SimpleServiceRepository()
-  private var _tree: TreeNode                 = TreeNode.empty
+class Binder(rootElement: ScalaJsElement, main: Component)(using serviceRepo: ServiceRepository)
+    extends EventManagerDelegate {
+  private var _modelValues: ModelValues = ModelValues()
+  private var _tree: TreeNode           = TreeNode.empty
 
   override def modelValues: ModelValues = _modelValues
 
   override def onIterationEnd(modelValues: ModelValues, changedModels: Set[Identifier]): Unit = {
     val before = _modelValues
     _modelValues = modelValues
-    redrawChanged(changedModels, before)
+    redrawChanged(changedModels, before.toModelValueProvider)
   }
 
   override def locate(componentId: Identifier): ScalaJsElement = {
@@ -72,7 +64,7 @@ class Binder(rootElement: ScalaJsElement, main: Component) extends EventManagerD
   private given assemblerContext: AssemblerContext = new AssemblerContext {
     override def value[M](model: Subscribeable[M]): M = _modelValues.value(model)
 
-    override def service[S](using provider: Provider[S]): S = _serviceRepo.service
+    override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = serviceRepo.serviceOption
   }
 
   private def redrawChanged(changedModels: Set[Identifier], before: ModelValueProvider): Unit = {

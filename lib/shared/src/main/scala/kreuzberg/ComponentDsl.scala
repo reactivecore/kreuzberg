@@ -5,7 +5,22 @@ import kreuzberg.dom.ScalaJsEvent
 import scala.language.implicitConversions
 
 import kreuzberg.dom.ScalaJsElement
-trait ComponentDsl {
+
+/** Common Methods for building [[Component]]-Implementations */
+trait ContextDsl {
+
+  /** Retrieves something from a [[ServiceRepository]] (usually an [[AssemblerContext]]) */
+  protected def provide[T: ServiceNameProvider](using c: ServiceRepository): T = {
+    c.service[T]
+  }
+
+  /** Read the value of a model from an [[AssemblerContext]] */
+  protected def read[M](model: Subscribeable[M])(using c: AssemblerContext): M = {
+    c.value(model)
+  }
+}
+
+trait ComponentDsl extends ContextDsl {
   self: Component =>
 
   protected implicit def htmlToAssemblyResult(in: Html): Assembly = {
@@ -45,13 +60,5 @@ trait ComponentDsl {
       setter: (DomElement, T) => Unit
   ): RuntimeState.JsProperty[DomElement, T] = {
     RuntimeState.JsProperty(id, getter, setter)
-  }
-
-  protected def provide[T: Provider](using c: ServiceRepository): T = {
-    c.service[T]
-  }
-
-  protected def read[M](model: Subscribeable[M])(using c: AssemblerContext): M = {
-    c.value(model)
   }
 }

@@ -1,10 +1,12 @@
 package kreuzberg
 
 /** Something which can be subscribed. */
-sealed trait Subscribeable[+T] {
-  def id: Identifier
+sealed trait Subscribeable[+T] extends Identified {
 
-  def initial(): T
+  def initial(using ServiceRepository): T
+
+  /** Read the current value. */
+  def read(using mvp: ModelValueProvider): T = mvp.value(this)
 }
 
 /**
@@ -12,7 +14,7 @@ sealed trait Subscribeable[+T] {
  * value and are subscribed by components. They are allowed to be singletons. They are identified using their ID. There
  * is only one model of the same id allowed within an Engine.
  */
-final class Model[+T] private (val initialValue: () => T) extends Subscribeable[T] {
+final class Model[+T] private (initialValue: ServiceRepository ?=> T) extends Subscribeable[T] {
   val id: Identifier = Identifier.next()
 
   override def hashCode(): Int = id.value
@@ -33,7 +35,7 @@ final class Model[+T] private (val initialValue: () => T) extends Subscribeable[
     Model.Mapped(this, fn)
   }
 
-  override def initial(): T = initialValue()
+  override def initial(using ServiceRepository): T = initialValue
 }
 
 object Model {
@@ -44,9 +46,9 @@ object Model {
   ) extends Subscribeable[U] {
     override def id: Identifier = underlying.id
 
-    override def initial(): U = fn(underlying.initial())
+    override def initial(using ServiceRepository): U = fn(underlying.initial)
   }
 
   /** Create a model. */
-  def create[T](initialValue: => T): Model[T] = Model(() => initialValue)
+  def create[T](initialValue: ServiceRepository ?=> T): Model[T] = Model(initialValue)
 }

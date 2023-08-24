@@ -20,7 +20,7 @@ class EventManager(
     modelValues: Ref[ModelValues],
     eventRegistry: JsEventRegistry[Identifier],
     channelSubscribers: Ref[MultiListMap[Identifier, ChannelSubscriber[_]]]
-) {
+)(using ServiceRepository) {
 
   /** Tracked changes for models. */
   def iterationStream: ZStream[Any, Nothing, Chunk[Identifier]] = ZStream
@@ -396,7 +396,7 @@ object EventManager {
     }
   }
 
-  def create(state: Ref[ModelValues], locator: Locator): Task[EventManager] = {
+  def create(state: Ref[ModelValues], locator: Locator)(using ServiceRepository): Task[EventManager] = {
     for {
       hub                <- Hub.bounded[Identifier](256)
       eventRegistry      <- JsEventRegistry.create[Identifier]

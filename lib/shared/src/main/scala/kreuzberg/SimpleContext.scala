@@ -4,10 +4,13 @@ package kreuzberg
 class SimpleContext(underlying: AssemblerContext) extends AssemblerContext {
   private val _eventBindings = Vector.newBuilder[EventBinding]
   private val _subscriptions = Vector.newBuilder[Subscribeable[_]]
+  private val _services      = Vector.newBuilder[HeadlessComponent]
 
-  override def value[M](model: Subscribeable[M]): M = underlying.value(model)
+  override def value[M](model: Subscribeable[M]): M = {
+    underlying.value(model)
+  }
 
-  override def service[S](using provider: Provider[S]): S = underlying.service[S]
+  override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = underlying.serviceOption[S]
 
   def addEventBinding(binding: EventBinding): Unit = {
     _eventBindings += binding
@@ -17,6 +20,11 @@ class SimpleContext(underlying: AssemblerContext) extends AssemblerContext {
     _subscriptions += model
   }
 
+  def addService(service: HeadlessComponent): Unit = {
+    _services += service
+  }
+
   def eventBindings(): Vector[EventBinding]     = _eventBindings.result()
   def subscriptions(): Vector[Subscribeable[_]] = _subscriptions.result()
+  def services(): Vector[HeadlessComponent]     = _services.result()
 }

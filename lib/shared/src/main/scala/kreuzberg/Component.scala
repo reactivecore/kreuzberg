@@ -3,11 +3,11 @@ package kreuzberg
 import kreuzberg.dom.ScalaJsElement
 
 /**
- * The base for all components.
+ * The base for all UI components.
  *
  * In practice you should use [[ComponentBase]] or [[SimpleComponentBase]]
  */
-trait Component {
+trait Component extends Identified {
 
   /** Identifier of the component. */
   final val id = Identifier.next()
@@ -27,7 +27,4 @@ trait Component {
   def update(before: ModelValueProvider)(using context: AssemblerContext): UpdateResult = {
     UpdateResult.Build(assemble)
   }
-
-  /** Comment, which will be built into the node. Can be disabled by returning "" */
-  def comment: String = getClass.getSimpleName.stripSuffix("$")
 }

@@ -3,7 +3,7 @@ package kreuzberg.engine.naive
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
 import kreuzberg.dom.*
-import kreuzberg.engine.common.{ComponentNode, ModelValues, TreeNode}
+import kreuzberg.engine.common.{TreeNode, ModelValues}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -13,7 +13,7 @@ import scala.util.control.NonFatal
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Encapsulate the highly stateful event handling. */
-class EventManager(delegate: EventManagerDelegate) {
+class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
 
   /** A Pending change. */
   private sealed trait PendingChange
@@ -84,8 +84,8 @@ class EventManager(delegate: EventManagerDelegate) {
     _channelBindings.filterValuesInPlace(_.owner != node.id)
     _registeredTimers.deregisterKey(node.id)(_.stopper())
 
-    node.children.foreach { case child: ComponentNode[_] =>
-      activateEvents(child)
+    node.children.foreach {
+      activateEvents
     }
     node.handlers.foreach(activateEvent(node, _))
   }
