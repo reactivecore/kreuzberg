@@ -5,12 +5,11 @@ import kreuzberg.{
   AssemblerContext,
   Assembly,
   Component,
-  EventBinding,
-  FlatHtml,
   Html,
   Identifier,
   Logger,
   ModelValueProvider,
+  HeadlessComponent,
   UpdateResult
 }
 
@@ -39,6 +38,9 @@ object UpdatePath {
     }
     case class PrependHtml(id: Identifier, node: Vector[TreeNode], html: String) extends Change {
       override def nodes: Iterable[TreeNode] = node
+    }
+    case class RebuildHeadless(node: TreeNode)                                   extends Change {
+      override def nodes: Iterable[TreeNode] = List(node)
     }
   }
 
@@ -92,12 +94,22 @@ object UpdatePath {
       }
     }
 
-    private def collectNode(
-        componentNode: TreeNode
+    private def collectNode(treeNode: TreeNode): TreeNode = {
+      treeNode.component match {
+        case c: Component         =>
+          collectComponentNode(treeNode, c)
+        case s: HeadlessComponent =>
+          collectService(treeNode, s)
+      }
+    }
+
+    private def collectComponentNode(
+        componentNode: TreeNode,
+        component: Component
     ): TreeNode = {
-      componentNode.component.update(before) match
+      component.update(before) match
         case UpdateResult.Build(assembly)   => {
-          rebuildNode(componentNode.component, assembly)
+          rebuildNode(component, assembly)
         }
         case UpdateResult.Prepend(assembly) => {
           prependNode(componentNode, assembly)
@@ -105,6 +117,15 @@ object UpdatePath {
         case UpdateResult.Append(assembly)  => {
           appendNode(componentNode, assembly)
         }
+    }
+
+    private def collectService(
+        treeNode: TreeNode,
+        service: HeadlessComponent
+    ): TreeNode = {
+      val treeNode = Assembler.treeFromHeadless(service)
+      changeBuilder += Change.RebuildHeadless(treeNode)
+      treeNode
     }
 
     private def rebuildNode(

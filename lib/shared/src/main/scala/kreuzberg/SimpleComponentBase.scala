@@ -16,7 +16,8 @@ abstract class SimpleComponentBase extends SimpleContextDsl with Component {
     Assembly(
       html = html,
       handlers = sc.eventBindings(),
-      subscriptions = sc.subscriptions()
+      subscriptions = sc.subscriptions(),
+      headless = sc.services()
     )
   }
 }

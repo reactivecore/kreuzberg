@@ -1,16 +1,9 @@
 package kreuzberg.rpc
 
-import kreuzberg.{Logger, Provider, ServiceRepository}
+import kreuzberg.Logger
+import org.scalajs.dom.*
 
 import scala.concurrent.{ExecutionContext, Future}
-import org.scalajs.dom.Fetch
-import org.scalajs.dom.Request
-import org.scalajs.dom.RequestInit
-import org.scalajs.dom.HttpMethod
-import org.scalajs.dom.Headers
-
-import scala.scalajs.js.Thenable.Implicits.*
-import org.scalajs.dom.Response
 
 /** Rest client for API Calls. */
 class ApiRestClient(baseUrl: String)(implicit ec: ExecutionContext) extends CallingBackend[Future, String] {
@@ -42,20 +35,6 @@ class ApiRestClient(baseUrl: String)(implicit ec: ExecutionContext) extends Call
         val decode = Failure.decodeFromJson(message)
         Future.failed(decode)
       }
-    }
-  }
-}
-
-object ApiRestClient {
-  import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-
-  given provider: Provider[CallingBackend[Future, String]] with {
-
-    override def name: String = "apirestclient"
-
-    override def create(using serviceRepository: ServiceRepository): CallingBackend[Future, String] = {
-      val url = "/api/"
-      new ApiRestClient(url)
     }
   }
 }

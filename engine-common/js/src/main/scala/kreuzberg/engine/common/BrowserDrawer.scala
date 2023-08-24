@@ -40,6 +40,8 @@ class BrowserDrawer(rootElement: ScalaJsElement) {
       case Change.PrependHtml(id, node, html) =>
         Logger.trace(s"Prependiung node ${id} with html ${html}")
         prependNode(id, html)
+      case _: Change.RebuildHeadless =>
+        // Nothing to do
   }
 
   /** Append some node without destroying listeners. */

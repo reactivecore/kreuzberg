@@ -52,3 +52,21 @@ trait Html {
   /** Prepend a child Node. */
   def prependChild(html: Html): Html
 }
+
+object Html {
+
+  /** Empty HTML (used as placeholder for Services) */
+  private[kreuzberg] object Empty extends Html {
+    override def withId(id: Identifier): Html = this
+
+    override def addComment(c: String): Html = this
+
+    override def embeddedComponents: Iterable[Component] = Nil
+
+    override def flatToBuilder(flatHtmlBuilder: FlatHtmlBuilder): Unit = {}
+
+    override def appendChild(html: Html): Html = this
+
+    override def prependChild(html: Html): Html = this
+  }
+}

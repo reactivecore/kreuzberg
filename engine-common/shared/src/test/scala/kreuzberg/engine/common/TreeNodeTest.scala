@@ -2,7 +2,7 @@ package kreuzberg.engine.common
 
 import kreuzberg.*
 
-class ComponentNodeTest extends TestBase {
+class TreeNodeTest extends TestBase {
 
   case class Inner(title: Model[String]) extends SimpleComponentBase {
     def assemble(implicit c: SimpleContext): Html = {

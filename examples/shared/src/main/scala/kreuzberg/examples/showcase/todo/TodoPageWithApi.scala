@@ -2,16 +2,12 @@ package kreuzberg.examples.showcase.todo
 
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.{Button, TextInput}
-import kreuzberg.examples.showcase.todo.TodoList
 import kreuzberg.examples.showcase.*
 import kreuzberg.examples.showcase.todo.TodoPageWithApi.provide
 import kreuzberg.extras.LazyLoader
-import kreuzberg.rpc.*
-import kreuzberg.rpc.StubProvider.stubProvider
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Try
 
@@ -48,8 +44,8 @@ object TodoAdderForm extends SimpleComponentBase {
 
 object LazyTodoViewer extends LazyLoader[TodoList] {
   override def load()(using c: ServiceRepository): Effect[TodoList] = {
-    val lister = provide[TodoApi[Future]]
-    Effect.future { _ => lister.listItems() }.map(TodoList.apply)
+    val api = provide[Api]
+    Effect.future { _ => api.todoApi.listItems() }.map(TodoList.apply)
   }
 
   override def ok(data: TodoList)(using c: SimpleContext): Html = {
@@ -62,7 +58,7 @@ object LazyTodoViewer extends LazyLoader[TodoList] {
 object TodoPageWithApi extends SimpleComponentBase {
 
   def assemble(implicit c: SimpleContext): Html = {
-    val lister = provide[TodoApi[Future]]
+    val lister = provide[Api].todoApi
     val form   = TodoAdderForm
 
     add(

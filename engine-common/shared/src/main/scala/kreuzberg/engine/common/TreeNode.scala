@@ -1,34 +1,12 @@
 package kreuzberg.engine.common
 import kreuzberg.*
 
-/** Represents an assembled node in a tree. */
-type TreeNode = ComponentNode[Component]
-
-object TreeNode {
-
-  object emptyComponent extends Component {
-    type Runtime = Unit
-    def assemble(using c: AssemblerContext): Assembly = {
-      Assembly(emptyRootHtml)
-    }
-  }
-
-  val empty = ComponentNode[emptyComponent.type](
-    component = emptyComponent,
-    html = emptyRootHtml,
-    children = Vector.empty,
-    handlers = Vector.empty,
-    subscriptions = Vector.empty
-  )
-
-  private def emptyRootHtml: Html =
-    SimpleHtml("div", children = Vector(SimpleHtmlNode.Text("Empty Root"))).withId(Identifier.RootComponent)
-}
+type HeadlessOrComponent = Component | HeadlessComponent
 
 /**
  * A Tree Representation of a component.
  * @param component
- *   Kreuzberg Component
+ *   Kreuzberg Service / Component
  * @param html
  *   HTML representation
  * @param children
@@ -37,11 +15,9 @@ object TreeNode {
  *   Event bindings
  * @param subscriptions
  *   subscribed models
- * @tparam T
- *   value of the component
  */
-case class ComponentNode[+T <: Component](
-    component: T,
+case class TreeNode(
+    component: HeadlessOrComponent,
     html: Html,
     children: Vector[TreeNode],
     handlers: Vector[EventBinding],
@@ -95,4 +71,25 @@ case class ComponentNode[+T <: Component](
 
   /** Returns the event identifier. */
   def id: Identifier = component.id
+}
+
+object TreeNode {
+
+  object emptyComponent extends Component {
+    type Runtime = Unit
+    def assemble(using c: AssemblerContext): Assembly = {
+      Assembly(emptyRootHtml)
+    }
+  }
+
+  val empty = TreeNode(
+    component = emptyComponent,
+    html = emptyRootHtml,
+    children = Vector.empty,
+    handlers = Vector.empty,
+    subscriptions = Vector.empty
+  )
+
+  private def emptyRootHtml: Html =
+    SimpleHtml("div", children = Vector(SimpleHtmlNode.Text("Empty Root"))).withId(Identifier.RootComponent)
 }

@@ -8,9 +8,12 @@ package kreuzberg
  *   Event Handlers
  * @param subscriptions
  *   Component Subscriptions
+ * @param headless
+ *   Headless children
  */
 case class Assembly(
     html: Html,
     handlers: Vector[EventBinding] = Vector.empty,
-    subscriptions: Vector[Subscribeable[_]] = Vector.empty
+    subscriptions: Vector[Subscribeable[_]] = Vector.empty,
+    headless: Vector[HeadlessComponent] = Vector.empty
 )
