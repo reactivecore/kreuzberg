@@ -20,10 +20,10 @@ ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
 
-val zioVersion                   = "2.0.15"
-val zioLoggingVersion            = "2.1.13"
+val zioVersion                   = "2.0.16"
+val zioLoggingVersion            = "2.1.14"
 val scalatagsVersion             = "0.12.0"
-val zioServerVersion             = "3.0.0-RC2"
+val zioHttpVersion               = "3.0.0-RC2"
 val scalatestVersion             = "3.2.16"
 val logbackVersion               = "1.4.7"
 val scalaJsDomVersion            = "2.6.0"
@@ -161,7 +161,7 @@ lazy val miniserver = (project in file("miniserver"))
   .settings(
     name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-http"           % zioServerVersion,
+      "dev.zio" %% "zio-http"           % zioHttpVersion,
       "dev.zio" %% "zio-logging-slf4j2" % zioLoggingVersion
     ),
     testSettings,
