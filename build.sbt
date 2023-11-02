@@ -34,10 +34,11 @@ val upickleVersion               = "3.1.0"
 val scalaTagsVersion             = "0.12.0"
 
 def publishSettings = Seq(
-  publishTo           := sonatypePublishTo.value,
-  licenses            := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-  homepage            := Some(url("https://github.com/reactivecore/kreuzberg")),
-  developers          := List(
+  publishTo               := sonatypePublishToBundle.value,
+  sonatypeBundleDirectory := (ThisBuild / baseDirectory).value / "target" / "sonatype-staging" / s"${version.value}",
+  licenses                := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
+  homepage                := Some(url("https://github.com/reactivecore/kreuzberg")),
+  developers              := List(
     Developer(
       id = "nob13",
       name = "Norbert Schultz",
@@ -45,8 +46,8 @@ def publishSettings = Seq(
       url = url("https://www.reactivecore.de")
     )
   ),
-  publish / test      := {},
-  publishLocal / test := {}
+  publish / test          := {},
+  publishLocal / test     := {}
 )
 
 usePgpKeyHex("77D0E9E04837F8CBBCD56429897A43978251C225")
@@ -232,11 +233,9 @@ lazy val runnerZio = (project in file("runner-zio"))
 
 lazy val root = (project in file("."))
   .settings(
-    name            := "kreuzberg-root",
-    publishLocal    := {},
-    publishArtifact := false,
-    publish / skip  := true,
-    test            := {}
+    name           := "kreuzberg-root",
+    publish / skip := true,
+    test           := {}
   )
   .aggregate(
     lib.js,
