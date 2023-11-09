@@ -14,18 +14,24 @@ type ZioDispatcher = Dispatcher[Task, String]
 case class ApiDispatcher(backend: ZioDispatcher) {
 
   def app(): HttpApp[Any, Throwable] = Http.collectZIO[Request] {
-    case Method.GET -> "" /: "api" /: path                      =>
+    case Method.GET -> "" /: "api" /: path                        =>
       ZIO.succeed(Response.text("API Requests requires POST").withStatus(Status.MethodNotAllowed))
     case r @ Method.POST -> Root / "api" / serviceName / callName =>
       encodeErrors(serviceName, callName) {
         for {
           body     <- r.body.asString
-          response <- backend.call(serviceName, callName, body)
+          response <- {
+            // Also attempt call, otherwise we get hard to debug HTTP 500 errors
+            // When the backend.call itself throws an exception.
+            ZIO.attempt {
+              backend.call(serviceName, callName, body)
+            }.flatten
+          }
         } yield {
           Response.json(response)
         }
       }
-    case Method.POST -> "" /: "api" /: path                     =>
+    case Method.POST -> "" /: "api" /: path                       =>
       ZIO.succeed(Response.text("Invalid API Request").withStatus(Status.BadRequest))
   }
 
