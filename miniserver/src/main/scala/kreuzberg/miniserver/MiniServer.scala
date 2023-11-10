@@ -1,12 +1,11 @@
 package kreuzberg.miniserver
 
-import zio.http.*
+import kreuzberg.rpc.Dispatcher
 import zio.*
-import zio.http.HttpAppMiddleware
-import java.io.File
-import java.nio.file.{Files, Paths}
-import kreuzberg.rpc.{Dispatcher, Dispatchers}
+import zio.http.*
 import zio.logging.backend.SLF4J
+
+import java.nio.file.Paths
 
 class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
   val preflightCheck: Task[Location] = {
@@ -52,7 +51,7 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
     apiEffect     = config.api.getOrElse(ZIO.succeed(Dispatcher.empty: ZioDispatcher))
     dispatcher   <- apiEffect
     apiDispatcher = ApiDispatcher(dispatcher)
-    all           = (apiDispatcher.app() ++ assetProvider).withDefaultErrorResponse
+    all           = (apiDispatcher.app() ++ config.extraApp ++ assetProvider).withDefaultErrorResponse
     port         <- Server.install(all)
     _            <- ZIO.logInfo(s"Started server on port: ${port}")
     _            <- ZIO.never
