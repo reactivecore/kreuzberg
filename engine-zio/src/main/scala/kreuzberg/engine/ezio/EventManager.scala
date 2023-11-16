@@ -3,12 +3,11 @@ package kreuzberg.engine.ezio
 import kreuzberg.*
 import kreuzberg.dom.*
 import kreuzberg.engine.common.{ModelValues, TreeNode}
-import kreuzberg.engine.ezio.EventManager.{ChannelSubscriber, ComponentSubscriber, Iteration, Locator, create}
+import kreuzberg.engine.ezio.EventManager.{ChannelSubscriber, ForeignBinding, Iteration, Locator, create}
 import kreuzberg.engine.ezio.utils.MultiListMap
 import zio.stream.{ZSink, ZStream}
 import zio.*
 
-import scala.concurrent.Future
 import scala.ref.WeakReference
 
 type XStream[T] = ZStream[Any, Nothing, T]
@@ -19,7 +18,9 @@ class EventManager(
     hub: Hub[Identifier],
     modelValues: Ref[ModelValues],
     eventRegistry: JsEventRegistry[Identifier],
-    channelSubscribers: Ref[MultiListMap[Identifier, ChannelSubscriber[_]]]
+    channelSubscribers: Ref[MultiListMap[Identifier, ChannelSubscriber[_]]],
+    // Maps affected component to forein binding
+    foreigns: Ref[MultiListMap[Identifier, ForeignBinding[_]]]
 )(using ServiceRepository) {
 
   /** Tracked changes for models. */
@@ -31,13 +32,17 @@ class EventManager(
   def activateEvents(node: TreeNode): Task[Unit] = {
     Logger.trace(s"Activating events on ${node.id}/${node.component.comment}")
     for {
-      _ <- disableOldEventsOnComponent(node.id)
-      _ <- ZIO.collectAllDiscard {
-             node.children.map(activateEvents)
-           }
-      _ <- ZIO.collectAllDiscard(
-             node.handlers.map(activateBinding(node, _))
-           )
+      _        <- disableOldEventsOnComponent(node.id)
+      _        <- ZIO.collectAllDiscard {
+                    node.children.map(activateEvents)
+                  }
+      _        <- ZIO.collectAllDiscard(
+                    node.handlers.map(activateBinding(node, _))
+                  )
+      foreigns <- foreigns.get.map(_.get(node.id))
+      _        <- ZIO.foreach(foreigns) { foreign =>
+                    activateForeign(node.id, foreign)
+                  }
     } yield {
       ()
     }
@@ -90,13 +95,7 @@ class EventManager(
   private def sourceToStream[E](owner: TreeNode, source: EventSource[E]): Task[XStream[E]] = {
     source match
       case j: EventSource.Js[_]               =>
-        j.jsEvent.componentId match {
-          case None              => registeredJsEvent(owner.id, org.scalajs.dom.window, j.jsEvent)
-          case Some(componentId) =>
-            locator.locate(componentId).flatMap { js =>
-              registeredJsEvent(componentId, js, j.jsEvent)
-            }
-        }
+        componentEventSource(owner.id, j.jsEvent)
       case EventSource.Assembled              =>
         ZIO.succeed(
           ZStream.succeed(())
@@ -113,7 +112,7 @@ class EventManager(
       case a: EventSource.AndSource[_]        =>
         andEvent(owner, a)
       case c: EventSource.ChannelSource[_]    =>
-        convertChannelSource(owner, c)
+        convertChannelSource(owner.id, c)
       case o: EventSource.OrSource[_]         =>
         for {
           left  <- sourceToStream(owner, o.left)
@@ -159,7 +158,7 @@ class EventManager(
           converted(f(input))
         }
       case c: EventSink.ChannelSink[_]             =>
-        convertChannelSink(node, c)
+        convertChannelSink(c)
       case s: EventSink.SetProperty[_, _]          =>
         convertSetProperty(node, s)
     }
@@ -184,7 +183,6 @@ class EventManager(
   }
 
   private def convertChannelSink[E](
-      node: TreeNode,
       sink: EventSink.ChannelSink[E]
   ): E => Task[Unit] = { input =>
     callChannelSink(sink.channel, input)
@@ -216,6 +214,53 @@ class EventManager(
     ZIO.attempt {
       val node = locator.unsafeLocate(sink.property.componentId).asInstanceOf[R]
       sink.property.setter(node, input)
+    }
+  }
+
+  private def componentEventSource[E](
+      owner: Identifier,
+      jsEvent: JsEvent[E]
+  ): Task[XStream[E]] = {
+    jsEvent.componentId match {
+      case None              => registeredJsEvent(owner, org.scalajs.dom.window, jsEvent)
+      case Some(componentId) =>
+        if (owner == componentId) {
+          locator.locate(componentId).flatMap { js =>
+            registeredJsEvent(componentId, js, jsEvent)
+          }
+        } else {
+          // Wrapping it via channel
+          val binding = ForeignBinding(
+            owner = owner,
+            channel = Channel.create[E](),
+            jsEvent = jsEvent
+          )
+
+          for {
+            stream <- convertChannelSource(owner, EventSource.ChannelSource(binding.channel))
+            _      <- foreigns.update(_.add(componentId, binding))
+            _      <- activateForeign(componentId, binding)
+          } yield {
+            stream
+          }
+        }
+    }
+  }
+
+  private def activateForeign[E](componentId: Identifier, foreign: ForeignBinding[E]): Task[Unit] = {
+    for {
+      target <- locator.locate(componentId)
+      stream <- registeredJsEvent(componentId, target, foreign.jsEvent)
+      sink    = convertChannelSink(EventSink.ChannelSink(foreign.channel))
+      _      <- stream
+                  .runForeach { element =>
+                    sink(element)
+                  }
+                  .forkZioLogged(s"Foreign binding from ${componentId} (owner: ${foreign.owner})")
+                  .ignoreLogged
+
+    } yield {
+      ()
     }
   }
 
@@ -326,20 +371,23 @@ class EventManager(
   }
 
   private def convertChannelSource[E](
-      node: TreeNode,
+      owner: Identifier,
       channelSource: EventSource.ChannelSource[E]
   ): Task[XStream[E]] = {
+    val o = owner
     ZIO.succeed {
       channelSource.channel.get match {
         case None    => ZStream.empty
         case Some(c) =>
           ZStream.asyncZIO { callback =>
             object handler extends ChannelSubscriber[E] {
-              override def owner: Identifier = node.id
+              override def owner: Identifier = o
 
               override def cancel(): UIO[Unit] = ZIO.succeed(callback.end)
 
-              override def onEmit(data: E): UIO[Unit] = ZIO.succeed(callback.single(data))
+              override def onEmit(data: E): UIO[Unit] = {
+                ZIO.succeed(callback.single(data))
+              }
             }
             channelSubscribers.update(_.add(c.id, handler))
           }
@@ -356,6 +404,7 @@ class EventManager(
           s"Garbage collect, referenced components: ${referencedComponentIds.toSeq.map(_.value).sorted} / models: ${referencedModelIds.toSeq.map(_.value).sorted}"
         )
       _ <- eventRegistry.cancelUnreferenced(referencedComponentIds)
+      _ <- foreigns.update(_.filterKeys(referencedComponentIds.contains))
     } yield {
       ()
     }
@@ -371,21 +420,14 @@ object EventManager {
     def owner: Identifier
   }
 
-  trait ComponentSubscriber[E] {
-    def owner: Identifier
-    def cancel(): UIO[Unit]
-    def onEmit(data: E): UIO[Unit]
-
-    override def toString: String = {
-      s"ComponentSubscriber(${owner})"
-    }
-  }
-
   trait ChannelSubscriber[E] {
     def owner: Identifier
     def cancel(): UIO[Unit]
     def onEmit(data: E): UIO[Unit]
   }
+
+  /** A Binding managed by some other component. Will be mapped via Channels. */
+  case class ForeignBinding[E](owner: Identifier, channel: Channel[E], jsEvent: JsEvent[E])
 
   /** Helper for locating elements and providing runtime contexts. */
   trait Locator {
@@ -401,8 +443,9 @@ object EventManager {
       hub                <- Hub.bounded[Identifier](256)
       eventRegistry      <- JsEventRegistry.create[Identifier]
       channelSubscribers <- Ref.make(MultiListMap.empty[Identifier, ChannelSubscriber[_]])
+      foreigns           <- Ref.make(MultiListMap.empty[Identifier, ForeignBinding[_]])
     } yield {
-      new EventManager(locator, hub, state, eventRegistry, channelSubscribers)
+      new EventManager(locator, hub, state, eventRegistry, channelSubscribers, foreigns)
     }
   }
 

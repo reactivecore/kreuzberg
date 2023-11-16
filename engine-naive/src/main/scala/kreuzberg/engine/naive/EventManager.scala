@@ -60,8 +60,20 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
       stopper: () => Unit
   )
 
+  /** Binding to not own object. */
+  private case class ForeignBinding[T](
+      jsEvent: JsEvent[T],
+      sink: T => Unit,
+      owner: Identifier
+  )
+
   /** Pending Changes. */
   private val _pending = new mutable.Queue[PendingChange]()
+
+  /**
+   * Bindings for foreign components Key = affected component
+   */
+  private val _foreignBindings = new MutableMultimap[Identifier, ForeignBinding[_]]()
 
   /** Bindings to Window Events. */
   private val _windowEventBindings = new MutableMultimap[String, WindowEventBinding]()
@@ -83,11 +95,17 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
     _windowEventBindings.filterValuesInPlace(_.owner != node.id)
     _channelBindings.filterValuesInPlace(_.owner != node.id)
     _registeredTimers.deregisterKey(node.id)(_.stopper())
+    _foreignBindings.filterValuesInPlace(_.owner != node.id)
 
     node.children.foreach {
       activateEvents
     }
     node.handlers.foreach(activateEvent(node, _))
+
+    _foreignBindings.foreachKey(node.id) { foreign =>
+      val source = delegate.locate(node.id)
+      bindJsEvent(source, foreign.jsEvent, foreign.sink)
+    }
   }
 
   def clear(): Unit = {
@@ -98,6 +116,7 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
   def garbageCollect(referencedComponents: Set[Identifier], referencedModels: Set[Identifier]): Unit = {
     _windowEventBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _channelBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
+    _foreignBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _registeredTimers.deregisterKeys(c => !referencedComponents.contains(c))(_.stopper())
   }
 
@@ -188,6 +207,16 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
             }
           case Some(componentId) =>
             val source = delegate.locate(componentId)
+            if (ownNode.id != componentId) {
+              _foreignBindings.add(
+                componentId,
+                ForeignBinding(
+                  jsEvent = j.jsEvent,
+                  sink = sink,
+                  owner = ownNode.id
+                )
+              )
+            }
             bindJsEvent(source, j.jsEvent, sink)
         }
       case EventSource.Assembled              =>
