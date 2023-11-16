@@ -7,6 +7,11 @@ sealed trait Subscribeable[+T] extends Identified {
 
   /** Read the current value. */
   def read(using mvp: ModelValueProvider): T = mvp.value(this)
+
+  def subscribe()(using sc: SimpleContext): T = {
+    sc.addSubscription(this)
+    sc.value(this)
+  }
 }
 
 /**
