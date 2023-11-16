@@ -27,7 +27,7 @@ object Assembler {
       htmlToUse,
       children,
       assembly.handlers,
-      assembly.subscriptions.map(_.id)
+      assembly.subscriptions.flatMap(_.dependencies)
     )
   }
 
@@ -36,8 +36,8 @@ object Assembler {
   }
 
   def treeFromHeadlessAssembly(
-                                headless: HeadlessComponent,
-                                assembly: HeadlessAssembly
+      headless: HeadlessComponent,
+      assembly: HeadlessAssembly
   )(using ctx: AssemblerContext): TreeNode = {
     val children = assembly.children.map(treeFromHeadless)
     TreeNode(
@@ -45,7 +45,7 @@ object Assembler {
       html = Html.Empty,
       children = children,
       handlers = assembly.handlers,
-      subscriptions = assembly.subscriptions.map(_.id)
+      assembly.subscriptions.flatMap(_.dependencies)
     )
   }
 

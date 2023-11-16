@@ -22,6 +22,7 @@ case class ModelValues(
           case None     =>
             model.initial
         }
+      case Model.Constant(value) => value
       case Model.Mapped(underlying, fn) => fn(value(underlying))
     }
   }
