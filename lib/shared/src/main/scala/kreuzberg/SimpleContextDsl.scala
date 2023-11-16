@@ -6,8 +6,12 @@ trait SimpleContextDsl extends ComponentDsl {
 
   /** Subscribe some model and read at the same time. */
   protected def subscribe[M](model: Subscribeable[M])(using c: SimpleContext): M = {
-    c.addSubscription(model)
-    c.value(model)
+    model match {
+      case Model.Constant(value) => value
+      case _                     =>
+        c.addSubscription(model)
+        c.value(model)
+    }
   }
 
   /** Add a child service. */

@@ -147,7 +147,7 @@ object UpdatePath {
       val updatedChildren      = newChildren ++ treeNode.children
       val updatedHtml          = treeNode.html.prependChild(assembly.html)
       val updatedEventHandlers = assembly.handlers ++ treeNode.handlers
-      val updatedSubscriptions = assembly.subscriptions.map(_.id) ++ treeNode.subscriptions
+      val updatedSubscriptions = assembly.subscriptions.flatMap(_.dependencies) ++ treeNode.subscriptions
       val rendered             = renderSubHtml(assembly.html, newChildren)
       val change               = Change.PrependHtml(treeNode.id, newChildren, rendered)
       changeBuilder += change
@@ -169,7 +169,7 @@ object UpdatePath {
       val updatedChildren      = treeNode.children ++ newChildren
       val updatedHtml          = treeNode.html.appendChild(assembly.html)
       val updatedEventHandlers = treeNode.handlers ++ assembly.handlers
-      val updatedSubscriptions = treeNode.subscriptions ++ assembly.subscriptions.map(_.id)
+      val updatedSubscriptions = assembly.subscriptions.flatMap(_.dependencies) ++ treeNode.subscriptions
       val rendered             = renderSubHtml(assembly.html, newChildren)
       val change               = Change.AppendHtml(treeNode.id, newChildren, rendered)
       changeBuilder += change

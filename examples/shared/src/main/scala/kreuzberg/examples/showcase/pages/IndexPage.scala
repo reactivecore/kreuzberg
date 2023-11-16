@@ -1,7 +1,7 @@
 package kreuzberg.examples.showcase.pages
 
 import kreuzberg.*
-import kreuzberg.examples.showcase.components.ReactiveButton
+import kreuzberg.examples.showcase.components.Button
 import kreuzberg.extras.LocalStorage
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
@@ -27,7 +27,7 @@ object IndexPage extends SimpleComponentBase {
   val secondCounter = LocalStorage[Int](1, "local_storage_counter", _.toString, _.toInt)
   val count         = Model.create(0)
 
-  val countIncrementer = ReactiveButton(count.map { i => s"Clicked ${i} times" })
+  val countIncrementer = Button(count.map { i => s"Clicked ${i} times" })
 
   def assemble(using context: SimpleContext): Html = {
     add(
