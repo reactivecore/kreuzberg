@@ -16,7 +16,7 @@ case class MiniServerConfig(
     ),
     api: Option[Task[ZioDispatcher]] = None,
     noScriptText: Option[String] = None, // if not given, use default.
-    extraApp: HttpApp[Any, Throwable] = Http.collectHttp[Request].apply(PartialFunction.empty)
+    extraApp: Option[Task[HttpApp[Any, Throwable]]] = None
 ) {
   def hashedUrl(name: String): String = assetPaths.hashedUrl(name, deploymentType)
 

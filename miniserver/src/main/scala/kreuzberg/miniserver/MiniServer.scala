@@ -51,7 +51,9 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
     apiEffect     = config.api.getOrElse(ZIO.succeed(Dispatcher.empty: ZioDispatcher))
     dispatcher   <- apiEffect
     apiDispatcher = ApiDispatcher(dispatcher)
-    all           = (apiDispatcher.app() ++ config.extraApp ++ assetProvider).withDefaultErrorResponse
+    extraAppTask  = config.extraApp.getOrElse(ZIO.succeed(Http.collectHttp[Request].apply(PartialFunction.empty)))
+    extraApp     <- extraAppTask
+    all           = (apiDispatcher.app() ++ extraApp ++ assetProvider).withDefaultErrorResponse
     port         <- Server.install(all)
     _            <- ZIO.logInfo(s"Started server on port: ${port}")
     _            <- ZIO.never
