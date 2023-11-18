@@ -1,3 +1,5 @@
+import xerial.sbt.Sonatype.GitHubHosting
+
 // If there is a Tag starting with v, e.g. v0.3.0 use it as the build artefact version (e.g. 0.3.0)
 val versionTag = sys.env
   .get("CI_COMMIT_TAG")
@@ -38,6 +40,7 @@ def publishSettings = Seq(
   sonatypeBundleDirectory := (ThisBuild / baseDirectory).value / "target" / "sonatype-staging" / s"${version.value}",
   licenses                := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
   homepage                := Some(url("https://github.com/reactivecore/kreuzberg")),
+  sonatypeProjectHosting  := Some(GitHubHosting("reactivecore", "kreuzberg", "contact@reactivecore.de")),
   developers              := List(
     Developer(
       id = "nob13",
