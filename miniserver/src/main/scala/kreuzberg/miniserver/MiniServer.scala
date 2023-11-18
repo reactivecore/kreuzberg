@@ -8,13 +8,17 @@ import zio.logging.backend.SLF4J
 import java.nio.file.Paths
 
 class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
-  def preflightCheck: Task[Location] = {
-    ZIO.fromOption(config.locateAsset("main.js")).mapError { _ =>
-      val cwd = Paths.get("").toAbsolutePath
-      new IllegalStateException(
-        s"Could not find client javascript code, searched in ${config.assetPaths}, working directory=$cwd"
-      )
-    }
+  /** Hook before startup. */
+  def preflightCheck: Task[Unit] = {
+    ZIO
+      .fromOption(config.locateAsset("main.js"))
+      .mapError { _ =>
+        val cwd = Paths.get("").toAbsolutePath
+        new IllegalStateException(
+          s"Could not find client javascript code, searched in ${config.assetPaths}, working directory=$cwd"
+        )
+      }
+      .unit
   }
 
   val indexHtml: String = Index(config).index.toString
