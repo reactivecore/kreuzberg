@@ -8,7 +8,7 @@ import zio.logging.backend.SLF4J
 import java.nio.file.Paths
 
 class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
-  val preflightCheck: Task[Location] = {
+  def preflightCheck: Task[Location] = {
     ZIO.fromOption(config.locateAsset("main.js")).mapError { _ =>
       val cwd = Paths.get("").toAbsolutePath
       new IllegalStateException(
@@ -17,7 +17,7 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
     }
   }
 
-  val indexHtml = Index(config).index.toString
+  val indexHtml: String = Index(config).index.toString
 
   val assetProvider: HttpApp[Any, Throwable] = Http.collectHttp[Request] {
     case Method.GET -> "" /: "assets" /: path =>
