@@ -31,14 +31,14 @@ object Subscribeable {
  * value and are subscribed by components. They are allowed to be singletons. They are identified using their ID. There
  * is only one model of the same id allowed within an Engine.
  */
-final class Model[+T] private (initialValue: ServiceRepository ?=> T) extends Subscribeable[T] with Identified {
+final class Model[T] private (initialValue: ServiceRepository ?=> T) extends Subscribeable[T] with Identified {
   val id: Identifier = Identifier.next()
 
   override def hashCode(): Int = id.value
 
   override def equals(obj: Any): Boolean = {
     obj match {
-      case c: Channel[_] => id == c.id
+      case c: Model[_] => id == c.id
       case _             => false
     }
   }
