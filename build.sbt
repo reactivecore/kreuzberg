@@ -159,7 +159,7 @@ lazy val extras = (crossProject(JSPlatform, JVMPlatform) in file("extras"))
     testSettings,
     publishSettings
   )
-  .dependsOn(lib, scalatags)
+  .dependsOn(lib % "compile->compile;test->test", scalatags)
 
 lazy val miniserver = (project in file("miniserver"))
   .settings(

@@ -55,4 +55,10 @@ object RuntimeState {
       from: RuntimeState[S1],
       mapFn: S1 => S2
   ) extends RuntimeState[S2]
+
+  /** A constant pseudo state. */
+  case class Const[S](value: S) extends RuntimeState[S]
+
+  /** Collect multiple states */
+  case class Collect[S](from: Seq[RuntimeState[S]]) extends RuntimeState[Seq[S]]
 }
