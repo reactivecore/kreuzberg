@@ -16,13 +16,13 @@ case class ModelValues(
   /** Returns the value of a model. */
   def value[M](model: Subscribeable[M])(using ServiceRepository): M = {
     model match {
-      case model: Model[M]              =>
+      case model: Model[_]              =>
         modelValues.get(model.id) match {
           case Some(ok) => ok.asInstanceOf[M]
           case None     =>
             model.initial
         }
-      case Model.Constant(value) => value
+      case Model.Constant(value)        => value
       case Model.Mapped(underlying, fn) => fn(value(underlying))
     }
   }

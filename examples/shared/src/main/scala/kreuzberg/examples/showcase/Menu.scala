@@ -12,6 +12,7 @@ case object Menu extends SimpleComponentBase {
     "/todo"     -> "Todo App",
     "/todoapi"  -> "Todo App API",
     "/form"     -> "Form",
+    "/form2"    -> "Extended Form",
     "/wizzard"  -> "Wizzard",
     "/xml"      -> "XML",
     "/notfound" -> "Not Found",
@@ -23,4 +24,3 @@ case object Menu extends SimpleComponentBase {
     div(items: _*)
   }
 }
-

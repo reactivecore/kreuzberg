@@ -315,6 +315,12 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
       case RuntimeState.Mapping(from, mapFn)         => {
         mapFn(fetchStateUnsafe(from))
       }
+      case RuntimeState.Const(value)                 => {
+        value
+      }
+      case RuntimeState.Collect(from)                => {
+        from.map(fetchStateUnsafe)
+      }
   }
 
   private def updateJsProperty[R <: ScalaJsElement, S](value: S, p: RuntimeState.JsProperty[R, S]): Unit = {

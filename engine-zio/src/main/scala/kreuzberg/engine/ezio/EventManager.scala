@@ -364,6 +364,10 @@ class EventManager(
       case RuntimeState.Mapping(from, mapFn)         => {
         mapFn(fetchStateUnsafe(from))
       }
+      case RuntimeState.Const(value)                 => value
+      case RuntimeState.Collect(from)                => {
+        from.map(fetchStateUnsafe)
+      }
   }
 
   private def fetchJsRuntimeStateUnsafe[R <: ScalaJsElement, S](s: RuntimeState.JsRuntimeStateBase[R, S]): S = {
