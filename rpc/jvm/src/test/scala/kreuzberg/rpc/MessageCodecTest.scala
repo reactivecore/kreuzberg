@@ -3,7 +3,7 @@ package kreuzberg.rpc
 class MessageCodecTest extends TestBase {
 
   trait Env {
-    val mc = MessageCodec.jsonArrayCodec
+    val mc = MessageCodec.jsonObjectCodec
   }
 
   it should "handle multiple messages" in new Env {

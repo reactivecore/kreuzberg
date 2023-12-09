@@ -25,9 +25,9 @@ trait MessageCodec[T] {
 }
 
 object MessageCodec {
-  implicit val jsonArrayCodec: MessageCodec[String] = new MessageCodec[String] {
+  implicit val jsonObjectCodec: MessageCodec[String] = new MessageCodec[String] {
     import upickle.default._
-    override def combine(args: Seq[(String, String)]): String = {
+    override def combine(args: (String, String)*): String = {
       args
         .map { case (key, value) =>
           (write(key) + ":" + value)
