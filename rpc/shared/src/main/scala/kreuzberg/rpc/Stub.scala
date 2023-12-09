@@ -14,7 +14,7 @@ object Stub {
   }
 
   def serviceNameMacro[T](using Type[T], Quotes): Expr[String] = {
-    val analyzer = new TraitAnalyzer(quotes)
+    val analyzer = new TraitAnalyzer()
     val analyzed = analyzer.analyze[T]
     Expr(analyzed.name)
   }
@@ -34,7 +34,7 @@ object Stub {
       backend: Expr[CallingBackend[F, T]]
   )(using Type[A], Type[F], Type[T], Quotes): Expr[A] = {
 
-    val analyzer = new TraitAnalyzer(quotes)
+    val analyzer = new TraitAnalyzer()
     import analyzer.quotes.reflect.*
 
     val parents = List(TypeTree.of[Object], TypeTree.of[A])
@@ -104,7 +104,7 @@ object Stub {
     def multiArgImplementation(method: analyzer.Method, args: List[List[Tree]]): Term = {
       val encodedArgs = encodeNamedArgs(method.paramNames, method.paramTypes, args.head)
       makeDecode(method) {
-        '{ $backend.call(${ Expr(analyze.name) }, ${ Expr(method.name) }, $encodedArgs) }
+        '{ $backend.call(${ Expr(analyze.apiName) }, ${ Expr(method.name) }, $encodedArgs) }
       }
     }
 

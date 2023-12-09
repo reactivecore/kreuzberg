@@ -40,15 +40,16 @@ object Dispatcher {
   }
 
   /** Comboine multiple Dispatchers into one. */
-  def combine[F[_], T](dispatchers: Dispatcher[F, T]*)(implicit effect: EffectSupport[F]): Dispatcher[F, T] = Dispatchers(
-    dispatchers
-  )
+  def combine[F[_], T](dispatchers: Dispatcher[F, T]*)(implicit effect: EffectSupport[F]): Dispatcher[F, T] =
+    Dispatchers(
+      dispatchers
+    )
 
   @experimental
   def makeDispatcherMacro[F[_], T, A](
       handler: Expr[A]
   )(using Quotes, Type[T], Type[F], Type[A]): Expr[Dispatcher[F, T]] = {
-    val analyzer = new TraitAnalyzer(quotes)
+    val analyzer = new TraitAnalyzer()
     val analyzed = analyzer.analyze[A]
 
     import analyzer.quotes.reflect.*
@@ -172,7 +173,7 @@ object Dispatcher {
         decl,
         argss =>
           Some('{
-            ${ argss.head.head.asExprOf[String] } == ${ Expr(analyzed.name) }
+            ${ argss.head.head.asExprOf[String] } == ${ Expr(analyzed.apiName) }
           }.asTerm)
       )
     } :: {
@@ -183,7 +184,7 @@ object Dispatcher {
           given Quotes = decl.asQuotes
           val clauses  = callClauses(decl, argss)
           Some('{
-            if (${ argss.head.head.asExprOf[String] } != ${ Expr(analyzed.name) }) {
+            if (${ argss.head.head.asExprOf[String] } != ${ Expr(analyzed.apiName) }) {
               ${ effect }.failure[T](UnknownServiceError(${ argss.head.head.asExprOf[String] }))
             } else {
               ${ clauses.asExpr }

@@ -6,21 +6,11 @@ class MessageCodecTest extends TestBase {
     val mc = MessageCodec.jsonArrayCodec
   }
 
-  "Default JSON" should "encode/decode" in new Env {
-    val sample  = Credentials("foo", "bar")
-    val encoded = mc.encode(sample)
-    encoded shouldBe """{"name":"foo","password":"bar"}"""
-    val decoded = mc.decode[Credentials](encoded)
-    decoded shouldBe Right(sample)
-  }
-
   it should "handle multiple messages" in new Env {
     val encoded = mc.combine("foo" -> "\"a\"", "bar" -> "true")
-    encoded shouldBe """["a",true]"""
+    encoded shouldBe """{"foo":"a","bar":true}"""
     val decoded = mc.split(encoded, Seq("foo", "bar"))
     decoded shouldBe Right(Seq("\"a\"", "true"))
   }
-
-
 
 }

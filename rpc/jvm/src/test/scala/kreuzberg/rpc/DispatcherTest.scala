@@ -7,6 +7,7 @@ import scala.concurrent.duration.Duration
 
 class DispatcherTest extends TestBase {
 
+  @ApiName("myService")
   trait Service {
     def hello(): Future[Int]
 
@@ -36,20 +37,20 @@ class DispatcherTest extends TestBase {
   }
 
   it should "decode requests" in new Env {
-    await(dispatcher.call("Service", "hello", "[]")) shouldBe "5"
-    await(dispatcher.call("Service", "world", """["a",3]""")) shouldBe "false"
+    await(dispatcher.call("myService", "hello", "{}")) shouldBe "5"
+    await(dispatcher.call("myService", "world", """{"a": "a", "b": 3}""")) shouldBe "false"
     dummy.gotA shouldBe "a"
     dummy.gotB shouldBe 3
   }
 
   it should "handle errors" in new Env {
-    awaitError[UnknownServiceError](dispatcher.call("Boom", "hello", "[]")).serviceName shouldBe "Boom"
-    val c = awaitError[UnknownCallError](dispatcher.call("Service", "boom", "[]"))
-    c.serviceName shouldBe "Service"
+    awaitError[UnknownServiceError](dispatcher.call("Boom", "hello", "{}")).serviceName shouldBe "Boom"
+    val c = awaitError[UnknownCallError](dispatcher.call("myService", "boom", "{}"))
+    c.serviceName shouldBe "myService"
     c.call shouldBe "boom"
 
-    awaitError[CodecError](dispatcher.call("Service", "hello", "illegal"))
-    awaitError[CodecError](dispatcher.call("Service", "world", "[\"a\",true]"))
+    awaitError[CodecError](dispatcher.call("myService", "hello", "illegal"))
+    awaitError[CodecError](dispatcher.call("myService", "world", """{"a": "a", "b": true}"""))
   }
 
 }
