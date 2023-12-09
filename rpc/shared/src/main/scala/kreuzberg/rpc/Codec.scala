@@ -15,6 +15,8 @@ trait Codec[U, T] {
 }
 
 object Codec {
+  def codec[U: ReadWriter]: Codec[U, String] = upickleCodec
+
   implicit def upickleCodec[U](implicit r: ReadWriter[U]): Codec[U, String] = new Codec[U, String] {
     override def encode(value: U): String = write(value)
 

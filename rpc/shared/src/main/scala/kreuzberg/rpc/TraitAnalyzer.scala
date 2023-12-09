@@ -1,14 +1,18 @@
 package kreuzberg.rpc
-import scala.quoted.Quotes
-import scala.quoted.Type
+import quoted.*
 
 /** Helper analyzing a trait within a Macro */
-private[rpc] class TraitAnalyzer[Q <: Quotes](val quotes: Q) {
+private[rpc] class TraitAnalyzer[Q <: Quotes](using val quotes: Q) {
   import quotes.reflect.*
   case class Analyze(
       name: String,
+      apiNameOverride: Option[String],
       methods: List[Method]
-  )
+  ) {
+
+    /** Expression for the API Name. */
+    def apiName: String = apiNameOverride.getOrElse(name)
+  }
 
   case class Method(
       name: String,
@@ -31,20 +35,27 @@ private[rpc] class TraitAnalyzer[Q <: Quotes](val quotes: Q) {
   )
 
   def analyze[T](using Type[T]): Analyze = {
-    // import quotes.reflect.*
     val tree = TypeRepr.of[T]
-    // println(s"Tree: ${tree}")
 
     val toUse  = tree match {
       case a: AppliedType =>
-        // println("- Is Applied ")
         a.tycon
       case _              =>
-        // println("- Not applied")
         tree
     }
     val symbol = toUse.typeSymbol
     val name   = symbol.name
+
+    val apiName = symbol.annotations.collectFirst {
+      case term if (term.tpe <:< TypeRepr.of[ApiName]) =>
+        term match {
+          case Apply(_, List(Literal(value))) =>
+            value.value.asInstanceOf[String]
+          case _                              =>
+            println(s"Could not decompose ApiName annotation: ${term.show}")
+            ???
+        }
+    }
 
     val methods = for {
       member <- symbol.methodMembers
@@ -78,6 +89,7 @@ private[rpc] class TraitAnalyzer[Q <: Quotes](val quotes: Q) {
 
     Analyze(
       name,
+      apiNameOverride = apiName,
       methods
     )
   }

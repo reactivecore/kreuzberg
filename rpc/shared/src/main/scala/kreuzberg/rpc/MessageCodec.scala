@@ -1,12 +1,9 @@
 package kreuzberg.rpc
 
-import scala.util.Try
+import scala.util.control.NonFatal
 
+/** Responsible for encoding/decoding multiple named arguments into one value. */
 trait MessageCodec[T] {
-
-  def encode[A](value: A)(implicit c: Codec[A, T]): T = c.encode(value)
-
-  def decode[A](value: T)(implicit c: Codec[A, T]): Either[CodecError, A] = c.decode(value)
 
   /**
    * Merge multiple attributes into one message.
@@ -31,16 +28,24 @@ object MessageCodec {
   implicit val jsonArrayCodec: MessageCodec[String] = new MessageCodec[String] {
     import upickle.default._
     override def combine(args: Seq[(String, String)]): String = {
-      args.map(_._2).mkString("[", ",", "]")
+      args
+        .map { case (key, value) =>
+          (write(key) + ":" + value)
+        }
+        .mkString("{", ",", "}")
     }
 
     override def split(combined: String, argNames: Seq[String]): Either[CodecError, Seq[String]] = {
-      Try { read[ujson.Arr](combined).value }.toEither.left.map(x => CodecError(x.toString, x)).flatMap { array =>
-        if (array.length < argNames.length) {
-          Left(CodecError(s"Expected ${argNames.length}, got ${array.length}"))
-        } else {
-          Right(array.map(_.toString).toSeq)
+      try {
+        val asMap  = read[ujson.Obj](combined).value
+        val fields = argNames.map { name =>
+          asMap.getOrElse(name, throw new CodecError(s"Missing field ${name}"))
         }
+        Right(fields.map(_.toString))
+      } catch {
+        case c: CodecError => throw c
+        case NonFatal(e)   =>
+          Left(CodecError(s"Could not decode ${combined}"))
       }
     }
   }

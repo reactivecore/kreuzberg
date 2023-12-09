@@ -33,7 +33,7 @@ class StubTest extends TestBase {
     backend.response = "10"
 
     await(service.hello()) shouldBe 10
-    backend.calls.result() shouldBe Seq(("SampleService", "hello", "[]"))
+    backend.calls.result() shouldBe Seq(("SampleService", "hello", "{}"))
     backend.calls.clear()
   }
 
@@ -42,7 +42,7 @@ class StubTest extends TestBase {
 
     await(service.twoArgs(Credentials("a", "b"), Credentials("c", "d"))) shouldBe "ok"
     backend.calls.result() shouldBe Seq(
-      ("SampleService", "twoArgs", """[{"name":"a","password":"b"},{"name":"c","password":"d"}]""")
+      ("SampleService", "twoArgs", """{"a1":{"name":"a","password":"b"},"a2":{"name":"c","password":"d"}}""")
     )
   }
 
