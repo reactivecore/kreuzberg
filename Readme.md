@@ -78,3 +78,7 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
 
   - ScalaJS Only: `~examplesJS/fastOptJS`
   - Full: `~runner/reStart`
+
+# Notes
+
+- Scala Native is not tested
