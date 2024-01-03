@@ -21,6 +21,9 @@ The aim of Kreuzberg is to simplify the use of Scala in web applications. Its ke
 - Declarative components
 - Separation of the runtime engine from the component implementation. Each component declares how it functions, while the act of combining and running components is performed by an engine.
 - Automatically generated API calls between client and server. One trait is defined and implemented on the server. Stubs (on the client side) and dispatchers (on the server side) are macro-generated.
+ 
+  **Note:** This depends on experimental Scala features.
+- Deriving HTML Forms from Case-Classes, including Validation.  
 - HTML technique agnosticism. There is support for Scalatags and Scala XML, and more implementations can be added.
 - Theoretically, it should be possible to implement a server-side engine, but this has not yet been done.
 
@@ -75,3 +78,7 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
 
   - ScalaJS Only: `~examplesJS/fastOptJS`
   - Full: `~runner/reStart`
+
+# Notes
+
+- Scala Native is not tested

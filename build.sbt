@@ -65,7 +65,7 @@ val logsettings = libraryDependencies ++= Seq(
 )
 
 /** Defines a component. */
-lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
+lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("lib"))
   .settings(
     name         := "kreuzberg",
     testSettings,
@@ -82,7 +82,7 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform) in file("lib"))
   )
 
 /** Common codes for Engine */
-lazy val engineCommon = (crossProject(JSPlatform, JVMPlatform) in file("engine-common"))
+lazy val engineCommon = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("engine-common"))
   .settings(
     name := "kreuzberg-engine-common",
     testSettings,
@@ -117,7 +117,7 @@ lazy val engineZio = (project in file("engine-zio"))
     publishSettings
   )
 
-lazy val xml = (crossProject(JSPlatform, JVMPlatform) in file("xml"))
+lazy val xml = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("xml"))
   .settings(
     name := "kreuzberg-xml",
     libraryDependencies ++= Seq(
@@ -129,7 +129,7 @@ lazy val xml = (crossProject(JSPlatform, JVMPlatform) in file("xml"))
   )
   .dependsOn(lib, engineCommon % Test)
 
-lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags"))
+lazy val scalatags = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("scalatags"))
   .settings(
     name := "kreuzberg-scalatags",
     libraryDependencies ++= Seq(
@@ -140,7 +140,7 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform) in file("scalatags")
   )
   .dependsOn(lib, engineCommon % Test)
 
-lazy val rpc = (crossProject(JSPlatform, JVMPlatform) in file("rpc"))
+lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("rpc"))
   .settings(
     name               := "kreuzberg-rpc",
     libraryDependencies ++= Seq(
@@ -153,7 +153,7 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform) in file("rpc"))
   )
   .dependsOn(lib)
 
-lazy val extras = (crossProject(JSPlatform, JVMPlatform) in file("extras"))
+lazy val extras = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("extras"))
   .settings(
     name := "kreuzberg-extras",
     testSettings,
@@ -243,21 +243,27 @@ lazy val root = (project in file("."))
   .aggregate(
     lib.js,
     lib.jvm,
+    lib.native,
     engineNaive,
     engineZio,
     engineCommon.js,
     engineCommon.jvm,
+    engineCommon.native,
     xml.js,
     xml.jvm,
+    xml.native,
     scalatags.js,
     scalatags.jvm,
+    scalatags.native,
     extras.js,
     extras.jvm,
+    extras.native,
     miniserver,
     examples.js,
     examples.jvm,
     examplesZio.js,
     examplesZio.jvm,
     rpc.js,
-    rpc.jvm
+    rpc.jvm,
+    rpc.native
   )
