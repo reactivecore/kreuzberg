@@ -1,4 +1,4 @@
-image: gitlabdocker.rcxt.de/builder/scala:v2-11
+image: gitlabdocker.rcxt.de/builder/scala:v3-11
 
 variables:
   SBT_OPTS: "-Dsbt.ivy.home=$PWD/cache/ivy -Divy.home=$PWD/cache/ivy -Dsbt.global.base=$PWD/cache/sbt -Dsbt.boot.directory=$PWD/cache/sbt_boot  -Dsbt.coursier.home=$PWD/cache/coursier"
