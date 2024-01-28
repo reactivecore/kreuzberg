@@ -8,6 +8,7 @@ import zio.logging.backend.SLF4J
 import java.nio.file.Paths
 
 class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
+
   /** Hook before startup. */
   def preflightCheck: Task[Unit] = {
     ZIO
@@ -67,5 +68,7 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
 
   val switchToSlf4j = Runtime.removeDefaultLoggers >>> SLF4J.slf4j
 
-  val run = myApp.provide(switchToSlf4j, configLayer)
+  override val bootstrap: ZLayer[ZIOAppArgs, Any, Any] = switchToSlf4j
+
+  def run = myApp.provide(configLayer)
 }
