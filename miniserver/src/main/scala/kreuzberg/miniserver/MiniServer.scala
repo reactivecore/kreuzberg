@@ -22,9 +22,9 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
       .unit
   }
 
-  val indexHtml: String = Index(config).index.toString
+  private val indexHtml: String = Index(config).index.toString
 
-  val assetProvider: HttpApp[Any, Throwable] = Http.collectHttp[Request] {
+  def assetProvider: HttpApp[Any, Throwable] = Http.collectHttp[Request] {
     case Method.GET -> "" /: "assets" /: path =>
       config.locateAsset(path.encode) match {
         case None                              =>
@@ -46,11 +46,11 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
           Index(config).index.toString
         )
       )
-  } @@ HttpAppMiddleware.requestLogging()
+  }
 
-  val configLayer = Server.defaultWithPort(config.port)
+  def serverConfigLayer: TaskLayer[Server] = Server.defaultWithPort(config.port)
 
-  val myApp = for {
+  def app: RIO[Server, Unit] = for {
     _            <- preflightCheck
     _            <- ZIO.logInfo(s"Going to listen on ${config.port}")
     apiEffect     = config.api.getOrElse(ZIO.succeed(Dispatcher.empty: ZioDispatcher))
@@ -58,7 +58,8 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
     apiDispatcher = ApiDispatcher(dispatcher)
     extraAppTask  = config.extraApp.getOrElse(ZIO.succeed(Http.collectHttp[Request].apply(PartialFunction.empty)))
     extraApp     <- extraAppTask
-    all           = (apiDispatcher.app() ++ extraApp ++ assetProvider).withDefaultErrorResponse
+    all           =
+      (apiDispatcher.app() ++ extraApp ++ assetProvider).withDefaultErrorResponse @@ HttpAppMiddleware.requestLogging()
     port         <- Server.install(all)
     _            <- ZIO.logInfo(s"Started server on port: ${port}")
     _            <- ZIO.never
@@ -66,9 +67,9 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
     ()
   }
 
-  val switchToSlf4j = Runtime.removeDefaultLoggers >>> SLF4J.slf4j
+  private val switchToSlf4j = Runtime.removeDefaultLoggers >>> SLF4J.slf4j
 
   override val bootstrap: ZLayer[ZIOAppArgs, Any, Any] = switchToSlf4j
 
-  def run = myApp.provide(configLayer)
+  def run: ZIO[Environment with ZIOAppArgs with Scope, Any, Any] = app.provide(serverConfigLayer)
 }
