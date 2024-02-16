@@ -5,6 +5,9 @@ import kreuzberg.miniserver.*
 import kreuzberg.rpc.Dispatcher
 import zio.ZIO
 
+import scala.annotation.experimental
+
+@experimental
 object ServerMain
     extends Bootstrapper(
       MiniServerConfig(

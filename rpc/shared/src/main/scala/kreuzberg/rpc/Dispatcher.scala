@@ -18,15 +18,18 @@ trait Dispatcher[F[_], T] {
 object Dispatcher {
 
   /** Create a dispatcher for an Interface A */
+  @experimental
   inline def makeDispatcher[A](handler: A): Dispatcher[Future, String] = {
     ${ makeDispatcherMacro[Future, String, A]('handler) }
   }
 
+  @experimental
   inline def makeZioDispatcher[A](handler: A): Dispatcher[Task, String] = {
     ${ makeDispatcherMacro[Task, String, A]('handler) }
   }
 
   /** Create a dispatcher for an Interface A with custom Effect and Transport type. */
+  @experimental
   inline def makeCustomDispatcher[F[_], T, A](handler: A): Dispatcher[F, T] = {
     ${ makeDispatcherMacro[F, T, A]('handler) }
   }

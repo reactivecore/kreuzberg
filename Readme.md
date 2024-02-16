@@ -49,7 +49,7 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
 - `scalatags`: Support for ScalaTags.
 - `xml`: Support for Scala XML. Adds at least 50kb (13kb compressed).
 - `extras`: Contains various components, including a simple router.
-- `rpc`: An experimental RPC library for making calls between JavaScript and JVM.
+- `rpc`: An experimental RPC library for making calls between JavaScript and JVM. Needs `@experimental`-Annotation
 - `examples`: Sample applications.
 - `miniserver`: A simple ZIO-ZHTTP-based server for starting the example application.
 - `engine-common`: Contains common engine code.

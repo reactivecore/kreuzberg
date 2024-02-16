@@ -11,11 +11,10 @@ val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
 
-ThisBuild / scalaVersion := "3.3.0"
+ThisBuild / scalaVersion := "3.3.2"
 
 ThisBuild / scalacOptions += "-Xcheck-macros"
 ThisBuild / scalacOptions += "-feature"
-// ThisBuild / scalacOptions += "-explain"
 
 ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true

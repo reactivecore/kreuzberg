@@ -1,10 +1,12 @@
 package kreuzberg.rpc
 
+import scala.annotation.experimental
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
+@experimental
 class DispatcherTest extends TestBase {
 
   @ApiName("myService")

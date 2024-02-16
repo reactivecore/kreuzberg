@@ -20,10 +20,12 @@ object Stub {
   }
 
   /** Generates a Stub for T */
+  @experimental
   inline def makeStub[T](backend: CallingBackend[Future, String]): T = ${
     makeStubMacro[Future, String, T]('backend)
   }
 
+  @experimental
   inline def makeZioStub[T](backend: CallingBackend[Task, String]): T = ${
     makeStubMacro[Task, String, T]('backend)
   }
