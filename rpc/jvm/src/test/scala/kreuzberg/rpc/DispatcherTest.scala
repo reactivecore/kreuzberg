@@ -1,10 +1,8 @@
 package kreuzberg.rpc
 
 import scala.annotation.experimental
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.concurrent.Future
 
 @experimental
 class DispatcherTest extends TestBase {
@@ -34,25 +32,27 @@ class DispatcherTest extends TestBase {
   }
 
   trait Env {
-    val dummy      = new Dummy
-    val dispatcher = Dispatcher.makeDispatcher[Service](dummy)
+    val dummy                          = new Dummy
+    val dispatcher: Dispatcher[Future] = Dispatcher.makeDispatcher[Service](dummy)
   }
 
   it should "decode requests" in new Env {
-    await(dispatcher.call("myService", "hello", "{}")) shouldBe "5"
-    await(dispatcher.call("myService", "world", """{"a": "a", "b": 3}""")) shouldBe "false"
+    await(dispatcher.call("myService", "hello", Request.forceJsonString("{}"))) shouldBe Response.forceJsonString("5")
+    await(dispatcher.call("myService", "world", Request.forceJsonString("""{"a": "a", "b": 3}"""))) shouldBe Response
+      .forceJsonString("false")
     dummy.gotA shouldBe "a"
     dummy.gotB shouldBe 3
   }
 
   it should "handle errors" in new Env {
-    awaitError[UnknownServiceError](dispatcher.call("Boom", "hello", "{}")).serviceName shouldBe "Boom"
-    val c = awaitError[UnknownCallError](dispatcher.call("myService", "boom", "{}"))
+    awaitError[UnknownServiceError](
+      dispatcher.call("Boom", "hello", Request.forceJsonString("{}"))
+    ).serviceName shouldBe "Boom"
+    val c = awaitError[UnknownCallError](dispatcher.call("myService", "boom", Request.forceJsonString("{}")))
     c.serviceName shouldBe "myService"
     c.call shouldBe "boom"
 
-    awaitError[CodecError](dispatcher.call("myService", "hello", "illegal"))
-    awaitError[CodecError](dispatcher.call("myService", "world", """{"a": "a", "b": true}"""))
+    awaitError[CodecError](dispatcher.call("myService", "world", Request.forceJsonString("""{"a": "a", "b": true}""")))
   }
 
 }

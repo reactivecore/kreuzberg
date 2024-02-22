@@ -350,7 +350,6 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
     in match {
       case Effect.LazyFuture(fn) => fn(implicitly[ExecutionContext])
       case Effect.Const(value)   => Future.successful(value)
-      case other                 => throw new NotImplementedError(s"Effect type ${other.getClass.getSimpleName} not supported")
     }
   }
 

@@ -1,52 +1,24 @@
 package kreuzberg.rpc
 
+import io.circe.{Decoder, DecodingFailure, Json}
+
 import scala.util.control.NonFatal
 
-/** Responsible for encoding/decoding multiple named arguments into one value. */
-trait MessageCodec[T] {
-
-  /**
-   * Merge multiple attributes into one message.
-   *
-   * @param args
-   *   mapping from argument name to value
-   */
-  def combine(args: (String, T)*): T
-
-  /**
-   * Splite multiple attributes from one message.
-   *
-   * @param combined
-   *   combined message
-   * @param argNames
-   *   expected argument name
-   */
-  def split(combined: T, argNames: Seq[String]): Either[CodecError, Seq[T]]
-}
-
+/** Code for encoding full messages in a JSON object. */
 object MessageCodec {
-  implicit val jsonObjectCodec: MessageCodec[String] = new MessageCodec[String] {
-    import upickle.default._
-    override def combine(args: (String, String)*): String = {
-      args
-        .map { case (key, value) =>
-          (write(key) + ":" + value)
-        }
-        .mkString("{", ",", "}")
-    }
+  def combine(args: (String, Json)*): Json = {
+    Json.obj(args: _*)
+  }
 
-    override def split(combined: String, argNames: Seq[String]): Either[CodecError, Seq[String]] = {
-      try {
-        val asMap  = read[ujson.Obj](combined).value
-        val fields = argNames.map { name =>
-          asMap.getOrElse(name, throw new CodecError(s"Missing field ${name}"))
-        }
-        Right(fields.map(_.toString))
-      } catch {
-        case c: CodecError => throw c
-        case NonFatal(e)   =>
-          Left(CodecError(s"Could not decode ${combined}"))
-      }
+  def split(from: Json, argNames: Seq[String]): Decoder.Result[Seq[Json]] = {
+    import cats.implicits.*
+    for {
+      asObject <- from.as[Map[String, Json]]
+      fields   <- argNames.map { argName =>
+                    asObject.get(argName).toRight(DecodingFailure(s"Missing field ${argName}", Nil))
+                  }.sequence
+    } yield {
+      fields
     }
   }
 }

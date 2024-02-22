@@ -1,57 +1,73 @@
 package kreuzberg.rpc
 
+import io.circe.{Decoder, Encoder, Json}
+
 import scala.annotation.experimental
 import scala.quoted.*
 import scala.concurrent.Future
 import zio.Task
 
 /** A wrapped service. */
-trait Dispatcher[F[_], T] {
+trait Dispatcher[F[_]] {
 
   /** Returns true if a given service is handled. */
   def handles(serviceName: String): Boolean
 
   /** Issue a call. */
-  def call(serviceName: String, name: String, input: T): F[T]
+  def call(serviceName: String, name: String, request: Request): F[Response]
+
+  /** Intercept into the request. This way it's possible to e.g. delegate generic security handling. */
+  def preRequestFlatMap(f: Request => F[Request])(using effect: EffectSupport[F]): Dispatcher[F] = {
+    val outer = this
+    new Dispatcher[F] {
+      override def handles(serviceName: String): Boolean = outer.handles(serviceName)
+
+      override def call(serviceName: String, name: String, request: Request): F[Response] = {
+        effect.flatMap(f(request)) { request =>
+          outer.call(serviceName, name, request)
+        }
+      }
+    }
+  }
 }
 
 object Dispatcher {
 
   /** Create a dispatcher for an Interface A */
   @experimental
-  inline def makeDispatcher[A](handler: A): Dispatcher[Future, String] = {
-    ${ makeDispatcherMacro[Future, String, A]('handler) }
+  inline def makeDispatcher[A](handler: A): Dispatcher[Future] = {
+    ${ makeDispatcherMacro[Future, A]('handler) }
   }
 
   @experimental
-  inline def makeZioDispatcher[A](handler: A): Dispatcher[Task, String] = {
-    ${ makeDispatcherMacro[Task, String, A]('handler) }
+  inline def makeZioDispatcher[A](handler: A): Dispatcher[Task] = {
+    ${ makeDispatcherMacro[Task, A]('handler) }
   }
 
   /** Create a dispatcher for an Interface A with custom Effect and Transport type. */
   @experimental
-  inline def makeCustomDispatcher[F[_], T, A](handler: A): Dispatcher[F, T] = {
-    ${ makeDispatcherMacro[F, T, A]('handler) }
+  inline def makeCustomDispatcher[F[_], A](handler: A): Dispatcher[F] = {
+    ${ makeDispatcherMacro[F, A]('handler) }
   }
 
-  def empty[F[_], T](implicit effect: EffectSupport[F]): Dispatcher[F, T] = new Dispatcher[F, T] {
+  def empty[F[_], T](implicit effect: EffectSupport[F]): Dispatcher[F] = new Dispatcher[F] {
     override def handles(serviceName: String): Boolean = false
 
-    override def call(serviceName: String, name: String, input: T): F[T] = effect.failure(
+    override def call(serviceName: String, name: String, input: Request): F[Response] = effect.failure(
       UnknownServiceError("Empty Dispatcher")
     )
   }
 
   /** Comboine multiple Dispatchers into one. */
-  def combine[F[_], T](dispatchers: Dispatcher[F, T]*)(implicit effect: EffectSupport[F]): Dispatcher[F, T] =
+  def combine[F[_], T](dispatchers: Dispatcher[F]*)(implicit effect: EffectSupport[F]): Dispatcher[F] =
     Dispatchers(
       dispatchers
     )
 
   @experimental
-  def makeDispatcherMacro[F[_], T, A](
+  def makeDispatcherMacro[F[_], A](
       handler: Expr[A]
-  )(using Quotes, Type[T], Type[F], Type[A]): Expr[Dispatcher[F, T]] = {
+  )(using Quotes, Type[F], Type[A]): Expr[Dispatcher[F]] = {
     val analyzer = new TraitAnalyzer()
     val analyzed = analyzer.analyze[A]
 
@@ -61,9 +77,6 @@ object Dispatcher {
       throw new IllegalArgumentException(
         "Could not find Effect for F (if you are using Future, there must be an ExecutionContext present)"
       )
-    }
-    val mc     = Expr.summon[MessageCodec[T]].getOrElse {
-      throw new IllegalArgumentException("Could not find MessageCodec for T")
     }
 
     def decls(cls: Symbol): List[Symbol] = {
@@ -76,20 +89,20 @@ object Dispatcher {
           parent = cls,
           name = "call",
           tpe = MethodType(List("serviceName", "name", "input"))(
-            _ => List(TypeRepr.of[String], TypeRepr.of[String], TypeRepr.of[T]),
-            _ => TypeRepr.of[F[T]]
+            _ => List(TypeRepr.of[String], TypeRepr.of[String], TypeRepr.of[Request]),
+            _ => TypeRepr.of[F[Response]]
           )
         ) ::
         analyzed.methods.map { method =>
           Symbol.newMethod(
             parent = cls,
             name = "call_" + method.name,
-            tpe = MethodType(List("input"))(_ => List(TypeRepr.of[T]), _ => TypeRepr.of[F[T]])
+            tpe = MethodType(List("input"))(_ => List(TypeRepr.of[Request]), _ => TypeRepr.of[F[Response]])
           )
         }
     }
 
-    val parents  = List(TypeTree.of[Object], TypeTree.of[Dispatcher[F, T]])
+    val parents  = List(TypeTree.of[Object], TypeTree.of[Dispatcher[F]])
     val implName = analyzed.name + "_dispatcher"
     val cls      = Symbol.newClass(Symbol.spliceOwner, implName, parents = parents.map(_.tpe), decls, selfType = None)
 
@@ -99,9 +112,9 @@ object Dispatcher {
       val ref            = Ref(declaredMethod)
 
       val callName = args.head.apply(1).asExprOf[String]
-      val argument = args.head.apply(2).asExprOf[T]
+      val argument = args.head.apply(2).asExprOf[Request]
 
-      val full = Apply(ref, List(argument.asTerm)).asExprOf[F[T]]
+      val full = Apply(ref, List(argument.asTerm)).asExprOf[F[Response]]
 
       If(
         '{ $callName == ${ Expr(method.name) } }.asTerm,
@@ -115,7 +128,7 @@ object Dispatcher {
       val callName    = args.head.apply(1).asExprOf[String]
 
       val lastElse = '{
-        ${ effect }.failure[T](UnknownCallError($serviceName, $callName))
+        ${ effect }.failure[Response](UnknownCallError($serviceName, $callName))
       }.asTerm
 
       val inner = analyzed.methods.foldRight(lastElse) { (method, right) =>
@@ -126,23 +139,23 @@ object Dispatcher {
     }
 
     def callMethod(parent: Symbol, argss: List[List[Tree]], method: analyzer.Method): Term = {
-      val args = argss.head.head.asExprOf[T]
+      val args = argss.head.head.asExprOf[Request]
 
       val inner = ValDef.let(
         parent,
-        '{ $mc.split($args, ${ Expr(method.paramNames) }).toTry.get }.asTerm
+        '{ MessageCodec.split(${ args }.payload, ${ Expr(method.paramNames) }).toTry.get }.asTerm
       ) { params =>
-        val paramsExp = params.asExprOf[Seq[T]]
+        val paramsExp = params.asExprOf[Seq[Json]]
 
         val decodingTerms = method.paramTypes.zipWithIndex.map { case (dtype, idx) =>
           type X
           given Type[X]     = dtype.asType.asInstanceOf[Type[X]]
-          val codec         = Expr.summon[Codec[X, T]].getOrElse {
-            throw new IllegalArgumentException("Could not find codec for type X" + dtype)
+          val decoder       = Expr.summon[Decoder[X]].getOrElse {
+            throw new IllegalArgumentException("Could not find decoder for type X" + dtype)
           }
           val idxExpression = Expr(idx)
           val getExpression = '{ $paramsExp.apply($idxExpression) }
-          val decodeTerm    = '{ $codec.decode($getExpression).toTry.get }.asTerm
+          val decodeTerm    = '{ $decoder.decodeJson($getExpression).toTry.get }.asTerm
           decodeTerm
         }
 
@@ -151,21 +164,25 @@ object Dispatcher {
 
         ValDef.let(parent, decodingTerms) { values =>
           type R
-          given Type[R]   = method.returnType.typeArgs.head.asType.asInstanceOf[Type[R]]
-          val returnCodec = Expr.summon[Codec[R, T]].getOrElse {
+          given Type[R]     = method.returnType.typeArgs.head.asType.asInstanceOf[Type[R]]
+          val returnEncoder = Expr.summon[Encoder[R]].getOrElse {
             throw new IllegalArgumentException("Could not find codec for type R" + method.returnType)
           }
-          val called      = Apply(ref, values).asExprOf[F[R]]
-          '{ $effect.encodeResult($called)($returnCodec) }.asTerm
+          val called        = Apply(ref, values).asExprOf[F[R]]
+          '{
+            $effect.encodeResponse($called)(using $returnEncoder)
+          }.asTerm
         }
       }
 
       '{
         try {
-          ${ inner.asExprOf[F[T]] }
+          ${ inner.asExprOf[F[Response]] }
         } catch {
-          case e: Failure =>
-            $effect.failure(e)
+          case e: Failure        =>
+            $effect.failure[Response](e)
+          case c: io.circe.Error =>
+            $effect.failure[Response](Failure.fromCirceError(c))
         }
       }.asTerm.changeOwner(parent)
     }
@@ -188,7 +205,7 @@ object Dispatcher {
           val clauses  = callClauses(decl, argss)
           Some('{
             if (${ argss.head.head.asExprOf[String] } != ${ Expr(analyzed.apiName) }) {
-              ${ effect }.failure[T](UnknownServiceError(${ argss.head.head.asExprOf[String] }))
+              ${ effect }.failure[Response](UnknownServiceError(${ argss.head.head.asExprOf[String] }))
             } else {
               ${ clauses.asExpr }
             }
@@ -208,8 +225,8 @@ object Dispatcher {
 
     val clsDef = ClassDef(cls, parents, body = methodDefinitions)
     val newCls =
-      Typed(Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil), TypeTree.of[Dispatcher[F, T]])
-    val result = Block(List(clsDef), newCls).asExprOf[Dispatcher[F, T]]
+      Typed(Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil), TypeTree.of[Dispatcher[F]])
+    val result = Block(List(clsDef), newCls).asExprOf[Dispatcher[F]]
     // println(s"RESULT: ${result.show}")
     result
   }
