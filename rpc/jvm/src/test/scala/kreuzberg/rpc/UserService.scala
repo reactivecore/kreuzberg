@@ -1,27 +1,17 @@
 package kreuzberg.rpc
 
+import io.circe.syntax.*
+import io.circe.{Codec, Encoder}
 import kreuzberg.rpc
-import upickle.default.*
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
+import scala.concurrent.Future
 
-case class Credentials(name: String, password: String)
-
-// Sample Objects
-object Credentials {
-  given writer: ReadWriter[Credentials] = macroRW
-
-}
+case class Credentials(name: String, password: String) derives Codec.AsObject
 
 case class AuthenticateResult(
     token: String,
     roles: Seq[String]
-)
-
-object AuthenticateResult {
-  given writer: ReadWriter[AuthenticateResult] = macroRW
-}
+) derives Codec.AsObject
 
 // Sample Service
 trait UserService[F[_]] {
@@ -46,42 +36,40 @@ object UserServiceDummy extends UserService[Future] {
   }
 }
 
-class UserMock(backend: CallingBackend[Future, String])(implicit mc: MessageCodec[String], e: EffectSupport[Future])
-    extends UserService[Future] {
+class UserMock(backend: CallingBackend[Future])(implicit e: EffectSupport[Future]) extends UserService[Future] {
   override def authenticate(credentials: Credentials): Future[AuthenticateResult] = {
     // Die aufrufe müssen alle irgendwie gleich aussehen.
     // Wie werden multiple argumente kodiert?
-    val encoded  = mc.combine(
-      "credentials" -> Codec.codec[rpc.Credentials].encode(credentials)
+    val encoded  = MessageCodec.combine(
+      "credentials" -> credentials.asJson
     )
-    val response = backend.call("UserService", "authenticate", encoded)
-    e.decodeResult(response)
+    val response = backend.call("UserService", "authenticate", Request(encoded))
+    e.decodeResponse(response)
   }
 
   override def logout(token: String, reason: String): Future[Boolean] = {
-    val encoded  = mc.combine(
-      "token"  -> Codec.codec[String].encode(token),
-      "reason" -> Codec.codec[String].encode(reason)
+    val encoded  = MessageCodec.combine(
+      "token"  -> token.asJson,
+      "reason" -> reason.asJson
     )
-    val response = backend.call("UserService", "logout", encoded)
-    e.decodeResult(response)
+    val response = backend.call("UserService", "logout", Request(encoded))
+    e.decodeResponse(response)
   }
 }
 
 class UserServiceDispatcher(backend: UserService[Future])(
-    implicit mc: MessageCodec[String],
-    effect: EffectSupport[Future]
-) extends Dispatcher[Future, String] {
+    implicit effect: EffectSupport[Future]
+) extends Dispatcher[Future] {
   override def handles(serviceName: String): Boolean = {
     serviceName == "UserService"
   }
 
-  override def call(serviceName: String, name: String, input: String): Future[String] = {
+  override def call(serviceName: String, name: String, request: Request): Future[Response] = {
     serviceName match {
       case "UserService" =>
         name match {
           case "authenticate" =>
-            callAuthenticate(input)
+            callAuthenticate(request)
           case "logout"       =>
             ???
           case other          =>
@@ -92,16 +80,16 @@ class UserServiceDispatcher(backend: UserService[Future])(
     }
   }
 
-  private def callAuthenticate(input: String): Future[String] = {
-    val args = for {
-      decode <- mc.split(input, Seq("credentials"))
-      arg0   <- Codec.codec[Credentials].decode(decode.head)
+  private def callAuthenticate(input: Request): Future[Response] = {
+    val args         = for {
+      decode <- MessageCodec.split(input.payload, Seq("credentials"))
+      arg0   <- decode.head.as[Credentials]
     } yield {
       arg0
     }
-    effect.flatMap(effect.wrap(args)) { args =>
+    effect.flatMap(effect.wrap(args.left.map(Failure.fromCirceError))) { args =>
       effect.flatMap(backend.authenticate(args)) { result =>
-        effect.success(Codec.codec[AuthenticateResult].encode(result))
+        effect.success(Response(result.asJson))
       }
     }
   }

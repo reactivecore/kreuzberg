@@ -1,5 +1,6 @@
 package kreuzberg.examples.showcase.todo
 
+import io.circe.Codec
 import kreuzberg.rpc.ApiName
 
 /**
@@ -9,9 +10,14 @@ import kreuzberg.rpc.ApiName
 trait TodoApi[F[_]] {
 
   /** List current items. */
-  def listItems(): F[Seq[String]]
+  def listItems(): F[ListItemResponse]
 
   /** Add one item. */
   def addItem(item: String): F[Unit]
 
 }
+
+case class ListItemResponse(
+    items: Seq[String],
+    statusCode: Int
+) derives Codec.AsObject

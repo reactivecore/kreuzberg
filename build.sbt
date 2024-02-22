@@ -31,8 +31,8 @@ val scalaJsDomVersion            = "2.6.0"
 val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.1.0"
-val upickleVersion               = "3.1.0"
 val scalaTagsVersion             = "0.12.0"
+val circeVersion                 = "0.14.6"
 
 def publishSettings = Seq(
   publishTo               := sonatypePublishToBundle.value,
@@ -126,8 +126,9 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("r
   .settings(
     name               := "kreuzberg-rpc",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "upickle" % upickleVersion,
-      "dev.zio"     %%% "zio"     % zioVersion % Provided
+      "io.circe"    %%% "circe-core"   % circeVersion,
+      "io.circe"    %%% "circe-parser" % circeVersion,
+      "dev.zio"     %%% "zio"          % zioVersion   % Provided
     ),
     evictionErrorLevel := Level.Warn,
     testSettings,
@@ -160,7 +161,8 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     name            := "examples",
     publishArtifact := false,
     publish / skip  := true,
-    publishLocal    := {}
+    publishLocal    := {},
+    testSettings
   )
   .jsSettings(
     // Moving JavaScript to a place, where we can easily find it by the server
@@ -180,7 +182,8 @@ lazy val runner = (project in file("runner"))
     reStartArgs               := Seq("serve"),
     publishArtifact           := false,
     publish / skip            := true,
-    publishLocal              := {}
+    publishLocal              := {},
+    testSettings
   )
   .dependsOn(examples.jvm)
 

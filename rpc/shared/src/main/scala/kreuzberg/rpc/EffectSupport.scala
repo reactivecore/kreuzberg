@@ -1,4 +1,6 @@
 package kreuzberg.rpc
+import io.circe.{Decoder, Encoder, Json}
+
 import scala.concurrent.{ExecutionContext, Future}
 import zio.{Task, ZIO}
 
@@ -22,7 +24,7 @@ trait EffectSupport[F[_]] {
   /** Defines a flatMap expression. */
   def flatMap[A, B](in: F[A])(f: A => F[B]): F[B]
 
-  def wrapFlatMap[A, B](in: Either[Failure, A])(f: A => F[B]): F[B] = {
+  def wrapFlatMap[A](in: Either[Failure, A])(f: A => F[Json]): F[Json] = {
     in match {
       case Left(f)   => failure(f)
       case Right(ok) => f(ok)
@@ -32,18 +34,20 @@ trait EffectSupport[F[_]] {
   /** Defines a map expression. */
   def map[A, B](in: F[A])(f: A => B): F[B]
 
-  def decodeResult[A, T](in: F[T])(implicit codec: Codec[A, T]): F[A] = {
+  // Helpers to make implementation of Macros easier.
+
+  def decodeResponse[A](in: F[Response])(implicit decoder: Decoder[A]): F[A] = {
     flatMap(in) { transport =>
-      codec.decode(transport) match {
-        case Left(bad) => failure(bad)
+      decoder.decodeJson(transport.json) match {
+        case Left(bad) => failure(Failure.fromDecodingFailure(bad))
         case Right(ok) => success(ok)
       }
     }
   }
 
-  def encodeResult[R, T](in: F[R])(implicit codec: Codec[R, T]): F[T] = {
+  def encodeResponse[R](in: F[R])(using encoder: Encoder[R]): F[Response] = {
     map(in) { resultValue =>
-      codec.encode(resultValue)
+      Response.build(resultValue)
     }
   }
 }

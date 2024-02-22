@@ -7,7 +7,7 @@ It is built upon:
 - [Scala JS](https://www.scala-js.org/)
 - [Scala DOM](https://scala-js.github.io/scala-js-dom/)
 - [ScalaTags](https://github.com/com-lihaoyi/scalatags) (optional)
-- [UPickle](https://github.com/com-lihaoyi/upickle) (optional)
+- [Circe](https://circe.github.io/circe/) (optional)
 - [ZIO](https://zio.dev/) (optional, example server)
 
 Please note, this is beta software and some parts may have been hastily written.

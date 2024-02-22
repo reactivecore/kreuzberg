@@ -7,7 +7,7 @@ import scala.concurrent.Future
 
 /** API, which gets injected as a service. */
 case class Api(
-    callingBackend: CallingBackend[Future, String],
+    callingBackend: CallingBackend[Future],
     todoApi: TodoApi[Future]
 )
 

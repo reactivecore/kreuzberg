@@ -1,16 +1,22 @@
 package kreuzberg.rpc
 
+import io.circe.Json
+
 class MessageCodecTest extends TestBase {
 
-  trait Env {
-    val mc = MessageCodec.jsonObjectCodec
-  }
+  it should "handle multiple messages" in {
+    val encoded = Json.obj(
+      "foo" -> Json.fromInt(2),
+      "bar" -> Json.fromBoolean(true)
+    )
 
-  it should "handle multiple messages" in new Env {
-    val encoded = mc.combine("foo" -> "\"a\"", "bar" -> "true")
-    encoded shouldBe """{"foo":"a","bar":true}"""
-    val decoded = mc.split(encoded, Seq("foo", "bar"))
-    decoded shouldBe Right(Seq("\"a\"", "true"))
+    MessageCodec.combine("foo" -> Json.fromInt(2), "bar" -> Json.fromBoolean(true)) shouldBe encoded
+    MessageCodec.split(encoded, Seq("foo", "bar")) shouldBe Right(
+      Seq(
+        Json.fromInt(2),
+        Json.fromBoolean(true)
+      )
+    )
   }
 
 }

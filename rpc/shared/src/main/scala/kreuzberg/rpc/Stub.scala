@@ -1,4 +1,5 @@
 package kreuzberg.rpc
+import io.circe.{Decoder, Encoder, Json}
 import zio.Task
 
 import scala.annotation.experimental
@@ -21,20 +22,20 @@ object Stub {
 
   /** Generates a Stub for T */
   @experimental
-  inline def makeStub[T](backend: CallingBackend[Future, String]): T = ${
-    makeStubMacro[Future, String, T]('backend)
+  inline def makeStub[T](backend: CallingBackend[Future]): T = ${
+    makeStubMacro[Future, T]('backend)
   }
 
   @experimental
-  inline def makeZioStub[T](backend: CallingBackend[Task, String]): T = ${
-    makeStubMacro[Task, String, T]('backend)
+  inline def makeZioStub[T](backend: CallingBackend[Task]): T = ${
+    makeStubMacro[Task, T]('backend)
   }
 
   // Note: Can't be private, see  https://github.com/lampepfl/dotty/issues/16091
   @experimental
-  def makeStubMacro[F[_], T, A](
-      backend: Expr[CallingBackend[F, T]]
-  )(using Type[A], Type[F], Type[T], Quotes): Expr[A] = {
+  def makeStubMacro[F[_], A](
+      backend: Expr[CallingBackend[F]]
+  )(using Type[A], Type[F], Quotes): Expr[A] = {
 
     val analyzer = new TraitAnalyzer()
     import analyzer.quotes.reflect.*
@@ -49,10 +50,6 @@ object Stub {
       throw new IllegalArgumentException(
         "Could not find Effect for F (if you are using Future, there must be an ExecutionContext present)"
       )
-    }
-
-    val mc = Expr.summon[MessageCodec[T]].getOrElse {
-      throw new IllegalArgumentException("Could not find MessageCodec for T")
     }
 
     def decls(cls: Symbol): List[Symbol] = {
@@ -74,39 +71,39 @@ object Stub {
 
     val cls = Symbol.newClass(Symbol.spliceOwner, implName, parents = parents.map(_.tpe), decls, selfType = None)
 
-    def makeDecode(method: analyzer.Method)(inner: Expr[F[T]]): Term = {
+    def makeDecode(method: analyzer.Method)(inner: Expr[F[Response]]): Term = {
       type R
-      given Type[R]   = method.returnType.typeArgs.head.asType.asInstanceOf[Type[R]]
-      val returnCodec = Expr.summon[Codec[R, T]].getOrElse {
+      given Type[R]     = method.returnType.typeArgs.head.asType.asInstanceOf[Type[R]]
+      val returnDecoder = Expr.summon[Decoder[R]].getOrElse {
         throw new IllegalArgumentException("Could not find codec for type R" + method.returnType)
       }
-      val x           = '{ ${ effect }.decodeResult[R, T](${ inner })(${ returnCodec }) }
+      val x             = '{ ${ effect }.decodeResponse[R](${ inner })(${ returnDecoder }) }
       x.asTerm
     }
 
-    def encodeArg(dtype: TypeRepr, arg: Tree): Expr[T] = {
+    def encodeArg(dtype: TypeRepr, arg: Tree): Expr[Json] = {
       type X
-      given Type[X] = dtype.asType.asInstanceOf[Type[X]]
-      val codec     = Expr.summon[Codec[X, T]].getOrElse {
-        throw new IllegalArgumentException("Could not find codec for type X" + dtype)
+      given Type[X]  = dtype.asType.asInstanceOf[Type[X]]
+      val argEncoder = Expr.summon[Encoder[X]].getOrElse {
+        throw new IllegalArgumentException("Could not find encoder for type X" + dtype)
       }
-      '{ ${ codec }.encode(${ arg.asExprOf[X] }) }
+      '{ ${ argEncoder }.apply(${ arg.asExprOf[X] }) }
     }
 
-    def encodeNamedArgs(names: List[String], dtypes: List[TypeRepr], args: List[Tree]): Expr[T] = {
-      val argExpressions: List[Expr[(String, T)]] = names.zip(dtypes).zip(args).map { case ((name, dtype), arg) =>
+    def encodeNamedArgs(names: List[String], dtypes: List[TypeRepr], args: List[Tree]): Expr[Json] = {
+      val argExpressions: List[Expr[(String, Json)]] = names.zip(dtypes).zip(args).map { case ((name, dtype), arg) =>
         '{ ${ Expr(name) } -> ${ encodeArg(dtype, arg) } }
       }
 
       val varArgs = scala.quoted.Varargs(argExpressions)
 
-      '{ $mc.combine($varArgs: _*) }
+      '{ MessageCodec.combine($varArgs: _*) }
     }
 
     def multiArgImplementation(method: analyzer.Method, args: List[List[Tree]]): Term = {
       val encodedArgs = encodeNamedArgs(method.paramNames, method.paramTypes, args.head)
       makeDecode(method) {
-        '{ $backend.call(${ Expr(analyze.apiName) }, ${ Expr(method.name) }, $encodedArgs) }
+        '{ $backend.call(${ Expr(analyze.apiName) }, ${ Expr(method.name) }, Request($encodedArgs)) }
       }
     }
 

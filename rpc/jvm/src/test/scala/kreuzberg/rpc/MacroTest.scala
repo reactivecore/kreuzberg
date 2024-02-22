@@ -12,8 +12,9 @@ class MacroTest extends TestBase {
   it should "work around" in {
     val dispatcher = Dispatcher.makeDispatcher(UserServiceDummy: UserService[Future])
 
-    object Forwarder extends CallingBackend[Future, String] {
-      def call(service: String, name: String, input: String): Future[String] = {
+    object Forwarder extends CallingBackend[Future] {
+
+      override def call(service: String, name: String, input: Request): Future[Response] = {
         dispatcher.call(service, name, input)
       }
     }
