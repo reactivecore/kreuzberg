@@ -34,6 +34,14 @@ val scalaXmlVersion              = "2.1.0"
 val scalaTagsVersion             = "0.12.0"
 val circeVersion                 = "0.14.6"
 
+val isIntelliJ = {
+  val isIdea = sys.props.get("idea.managed").contains("true")
+  if (isIdea) {
+    println("Using IntelliJ workarounds. Do not publish")
+  }
+  isIdea
+}
+
 def publishSettings = Seq(
   publishTo               := sonatypePublishToBundle.value,
   sonatypeBundleDirectory := (ThisBuild / baseDirectory).value / "target" / "sonatype-staging" / s"${version.value}",
@@ -70,7 +78,7 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("l
     testSettings,
     publishSettings,
     libraryDependencies += (
-      "dev.zio" %%% "zio" % zioVersion % Provided
+      "dev.zio" %%% "zio" % zioVersion % (if (isIntelliJ) Compile else Provided)
     )
   )
   .jsSettings(
@@ -126,9 +134,9 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("r
   .settings(
     name               := "kreuzberg-rpc",
     libraryDependencies ++= Seq(
-      "io.circe"    %%% "circe-core"   % circeVersion,
-      "io.circe"    %%% "circe-parser" % circeVersion,
-      "dev.zio"     %%% "zio"          % zioVersion   % Provided
+      "io.circe" %%% "circe-core"   % circeVersion,
+      "io.circe" %%% "circe-parser" % circeVersion,
+      "dev.zio"  %%% "zio"          % zioVersion % (if (isIntelliJ) Compile else Provided)
     ),
     evictionErrorLevel := Level.Warn,
     testSettings,

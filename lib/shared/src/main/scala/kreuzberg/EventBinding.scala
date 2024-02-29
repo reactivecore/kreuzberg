@@ -40,23 +40,6 @@ object EventSource {
       effectOperation: E => Effect[R]
   ) extends EventSource[(E, Try[R])]
 
-  /** Add some component state to the Event. */
-  case class WithState[E, S](
-      inner: EventSource[E],
-      runtimeState: RuntimeState[S]
-  ) extends EventSource[(E, S)]
-
-  case class MapSource[E, F](
-      from: EventSource[E],
-      fn: E => F
-  ) extends EventSource[F]
-
-  /** Some collect function. */
-  case class CollectEvent[E, F](
-      from: EventSource[E],
-      fn: PartialFunction[E, F]
-  ) extends EventSource[F]
-
   /** Pseudo Event source, to chain multiple reactions on one source. */
   case class AndSource[E](
       binding: EventBinding.SourceSink[E]
@@ -67,36 +50,60 @@ object EventSource {
       right: EventSource[E]
   ) extends EventSource[E]
 
-  case class TapSource[E](
-      inner: EventSource[E],
-      fn: E => Unit
-  ) extends EventSource[E]
-
   /** A Timer. */
   case class Timer(
       duration: FiniteDuration,
       periodic: Boolean = false
   ) extends EventSource[Unit]
+
+  /** Transforms an event source. */
+  case class PostTransformer[E, O](
+      inner: EventSource[E],
+      transformer: EventTransformer[E, O]
+  ) extends EventSource[O]
+}
+
+sealed trait EventTransformer[I, O]
+
+object EventTransformer {
+  // Simple Transformations
+  case class Map[I, O](fn: I => O)                                extends EventTransformer[I, O]
+  case class Collect[I, O](fn: PartialFunction[I, O])             extends EventTransformer[I, O]
+  case class Tapped[I](fn: I => Unit)                             extends EventTransformer[I, I]
+  // Adding Runtime State
+  case class WithState[I, S](runtimeState: RuntimeState[S])       extends EventTransformer[I, (I, S)]
+  // Adding an Effect
+  case class WithEffect[I, E](effectFn: I => Effect[E])           extends EventTransformer[I, (I, Try[E])]
+  // Removing the Failure part of trys
+  case class TryUnpack1[E](failure: EventSink[Throwable])         extends EventTransformer[Try[E], E]
+  case class TryUnpack2[I, E](failure: EventSink[(I, Throwable)]) extends EventTransformer[(I, Try[E]), (I, E)]
+  // Call other sinks, used for fan out.
+  case class And[I](other: EventSink[I])                          extends EventTransformer[I, I]
 }
 
 /** Sink of an [[EventBinding]] */
 sealed trait EventSink[-E] {
 
   /** Add another sink */
-  def and[T <: E](sink: EventSink[T]): EventSink[T] = {
-    this match {
-      case m: EventSink.Multiple[_] =>
-        m.copy(m.sinks :+ sink)
-      case other                    =>
-        EventSink.Multiple(Vector(this, sink))
-    }
+  inline def and[T <: E](sink: EventSink[T]): EventSink[T] = {
+    preTransform(
+      EventTransformer.And(this)
+    )
+  }
+
+  inline def preTransform[F, T <: E](transformer: EventTransformer[F, T]): EventSink[F] = {
+    EventSink.PreTransformer(this, transformer)
   }
 
   /** Applies a partial function before calling the sink. */
-  def contraCollect[F](pf: PartialFunction[F, E]): EventSink[F] = EventSink.ContraCollect(this, pf)
+  inline def contraCollect[F](pf: PartialFunction[F, E]): EventSink[F] = {
+    preTransform(EventTransformer.Collect(pf))
+  }
 
   /** Applies a map function before calling a sink. */
-  def contraMap[F](f: F => E): EventSink[F] = EventSink.ContraMap(this, f)
+  def contraMap[F](f: F => E): EventSink[F] = {
+    preTransform(EventTransformer.Map(f))
+  }
 }
 
 object EventSink {
@@ -107,20 +114,14 @@ object EventSink {
   /** Execute some custom Code */
   case class ExecuteCode[E](f: E => Unit) extends EventSink[E]
 
-  /** Chain multiple sinks. */
-  case class Multiple[E](sinks: Vector[EventSink[E]]) extends EventSink[E]
-
-  /** Applies a partial function before calling the sink. */
-  case class ContraCollect[E, F](sink: EventSink[E], pf: PartialFunction[F, E]) extends EventSink[F]
-
-  /** Applies a map function before calling a sink. */
-  case class ContraMap[E, F](sink: EventSink[E], f: F => E) extends EventSink[F]
-
   /** Trigger a Channel. */
   case class ChannelSink[E](channel: WeakReference[Channel[E]]) extends EventSink[E]
 
   /** Set a javascript property */
   case class SetProperty[D <: ScalaJsElement, S](property: JsProperty[D, S]) extends EventSink[S]
+
+  /** Pretransformes a sink. */
+  case class PreTransformer[E, F](sink: EventSink[F], transformer: EventTransformer[E, F]) extends EventSink[E]
 
   object ChannelSink {
     inline def apply[E](channel: Channel[E]): ChannelSink[E] = ChannelSink(WeakReference(channel))

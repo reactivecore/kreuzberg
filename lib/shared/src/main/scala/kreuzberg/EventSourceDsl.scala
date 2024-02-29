@@ -2,7 +2,7 @@ package kreuzberg
 
 import kreuzberg.RuntimeState.JsProperty
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, ExecutionContext}
 import scala.util.{Failure, Success, Try}
 import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
 
@@ -20,7 +20,11 @@ trait EventSourceDslModifiers[+E] {
 
   /** Add some runtime state. */
   inline def state[S](from: RuntimeState[S]): EventSource[(E, S)] = {
-    EventSource.WithState(this, from)
+    withTransformer(EventTransformer.WithState(from))
+  }
+
+  inline def withTransformer[T >: E, O](transformer: EventTransformer[T, O]): EventSource[O] = {
+    EventSource.PostTransformer(this, transformer)
   }
 
   /** Replace with runtime state. */
@@ -35,19 +39,19 @@ trait EventSourceDslModifiers[+E] {
   inline def withEffect[T >: E, R](op: T => Effect[R]): EventSource[Try[R]] = effect(op).map(_._2)
 
   /** Add some future. */
-  inline def future[T >: E, R](op: T => Future[R]): EventSource[(T, Try[R])] = {
-    effect(in => Effect.future(_ => op(in)))
+  inline def future[T >: E, R](op: T => ExecutionContext ?=> Future[R]): EventSource[(T, Try[R])] = {
+    effect(in => Effect.future(op(in)))
   }
 
   /** Replace with future result. */
-  inline def withFuture[T >: E, R](op: T => Future[R]): EventSource[Try[R]] = future(op).map(_._2)
+  inline def withFuture[T >: E, R](op: T => ExecutionContext ?=> Future[R]): EventSource[Try[R]] = future(op).map(_._2)
 
   // Transforming functions
-  def map[F](f: E => F): EventSource[F] = EventSource.MapSource(this, f)
+  inline def map[F](f: E => F): EventSource[F] = withTransformer(EventTransformer.Map(f))
 
-  def collect[F](f: PartialFunction[E, F]): EventSource[F] = EventSource.CollectEvent(this, f)
+  inline def collect[F](f: PartialFunction[E, F]): EventSource[F] = withTransformer(EventTransformer.Collect(f))
 
-  def filter(f: E => Boolean): EventSource[E] = collect {
+  inline def filter(f: E => Boolean): EventSource[E] = collect {
     case x if f(x) => x
   }
 
@@ -159,5 +163,5 @@ trait EventSourceActions[+E] {
   def or[T >: E](source: EventSource[T]): EventSource[T] = EventSource.OrSource(this, source)
 
   /** Execute code while traversing the source. */
-  def tap[T >: E](fn: T => Unit): EventSource[T] = EventSource.TapSource(this, fn)
+  inline def tap[T >: E](fn: T => Unit): EventSource[T] = withTransformer(EventTransformer.Tapped(fn))
 }

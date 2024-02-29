@@ -45,7 +45,7 @@ object TodoAdderForm extends SimpleComponentBase {
 object LazyTodoViewer extends LazyLoader[TodoList] {
   override def load()(using c: ServiceRepository): Effect[TodoList] = {
     val api = provide[Api]
-    Effect.future { _ => api.todoApi.listItems() }.map(response => TodoList.apply(response.items))
+    Effect.future { api.todoApi.listItems() }.map(response => TodoList.apply(response.items))
   }
 
   override def ok(data: TodoList)(using c: SimpleContext): Html = {

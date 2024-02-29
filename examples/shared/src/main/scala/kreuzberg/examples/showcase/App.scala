@@ -40,7 +40,7 @@ object App extends SimpleComponentBase {
     PathCodec.prefix("/lazy/"),
     eagerTitle = path => s"Lazy...",
     routingTarget = path => {
-      Effect.future { _ =>
+      Effect.future {
         SlowApiMock.timer(
           1.second,
           RoutingTarget(
