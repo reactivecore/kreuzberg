@@ -1,9 +1,11 @@
 package kreuzberg.extras
 
 import kreuzberg.{
+  AssemblerContext,
   Effect,
   EventSink,
   EventSource,
+  EventTransformer,
   Html,
   Model,
   ServiceRepository,
@@ -21,6 +23,18 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
   /** Event sink for refreshing the loader. */
   def refresh: EventSink[Any] = EventSink.ModelChange(model, (_, _) => LazyState.Init)
 
+  /** Event sink for refreshing (silently) */
+  def silentRefresh(using a: AssemblerContext): EventSink[Any] = {
+    EventTransformer
+      .AddEffect { _ =>
+        load()
+      }
+      .map {
+        _._2.fold(err => LazyState.Failed(err), ok => LazyState.Ok(ok))
+      }
+      .intoModel(model)
+  }
+
   override def assemble(using c: SimpleContext): Html = {
     val data = subscribe(model)
     data match {
@@ -32,7 +46,7 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
               _.fold(err => LazyState.Failed(err), ok => LazyState.Ok(ok))
             }
             .intoModel(model),
-          EventSource.Assembled.setModel(model, LazyState.WaitResponse)
+          EventSource.Assembled.setModelTo(model, LazyState.WaitResponse)
         )
         waiting()
       case LazyState.WaitResponse    =>
@@ -45,7 +59,7 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
   }
 
   /** Load from external service. */
-  def load()(using c: ServiceRepository): Effect[T]
+  def load()(using c: AssemblerContext): Effect[T]
 
   /** Html which is rendered during loading. */
   def waiting()(using c: SimpleContext): Html = {
