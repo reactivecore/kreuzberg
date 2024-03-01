@@ -32,7 +32,7 @@ case class SimpleRouter(
     val route      = decideRoute(routeValue)
     subscribe(SimpleRouter.currentTarget)
 
-    val target     = route match {
+    val target = route match {
       case e: EagerRoute => e.eagerTarget(routeValue)
       case _             => read(SimpleRouter.currentTarget)
     }
@@ -49,12 +49,12 @@ case class SimpleRouter(
           BrowserRouting.setDocumentTitle(titlePrefix + title)
         }
         .and
-        .setModel(SimpleRouter.loading, true)
+        .setModelTo(SimpleRouter.loading, true)
         .and
         .effect { case (path, route) =>
           route.target(path)
         }
-        .setModel(SimpleRouter.loading, false)
+        .setModelTo(SimpleRouter.loading, false)
         .and
         .map {
           case ((path, _), Success(target)) => (path, target)
@@ -70,11 +70,18 @@ case class SimpleRouter(
           model.copy(currentRoute = Some(path))
         }
         .and
-        .intoModel(SimpleRouter.currentTarget)(_._2)
+        .map(_._2)
+        .intoModel(SimpleRouter.currentTarget)
     }
 
     add(
       SimpleRouter.gotoChannel.transform(handlePath(_, true))
+    )
+
+    add(
+      SimpleRouter.reloadChannel
+        .map { _ => routeValue }
+        .transform(handlePath(_, false))
     )
 
     add(
@@ -120,6 +127,10 @@ object SimpleRouter {
 
   /** Event Sink for going to a specific route. */
   def goto: EventSink[String] = EventSink.ChannelSink(gotoChannel)
+
+  /** Force a reload. */
+  val reloadChannel: Channel[Any] = Channel.create()
+  def reload: EventSink[Any]      = EventSink.ChannelSink(reloadChannel)
 
   /** Event Sink for going to a specific fixed route. */
   def gotoTarget(target: String): EventSink[Any] = goto.contraMap(_ => target)

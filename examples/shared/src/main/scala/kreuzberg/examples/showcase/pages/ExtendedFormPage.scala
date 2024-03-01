@@ -65,9 +65,7 @@ object ExtendedFormPage extends SimpleComponentBase {
   override def assemble(using c: SimpleContext): Html = {
 
     add(
-      okButton.onClicked.withState(formComponent.validatedState).intoModel(state) { validatedState =>
-        validatedState.toString
-      }
+      okButton.onClicked.withState(formComponent.validatedState).map(_.toString).intoModel(state)
     )
     div(
       h2("Generated Form Example"),

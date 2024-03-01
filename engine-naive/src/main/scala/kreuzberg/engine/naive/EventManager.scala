@@ -182,7 +182,7 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
           }
           underlying(in)
         }
-      case EventTransformer.WithState(runtimeState) => { in =>
+      case EventTransformer.AddState(runtimeState)  => { in =>
         try {
           val state = fetchStateUnsafe(runtimeState)
           underlying((in, state))
@@ -191,7 +191,7 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
             Logger.warn(s"Error fetching runtime state: ${e.getMessage}")
         }
       }
-      case EventTransformer.WithEffect(effectFn)    => { in =>
+      case EventTransformer.AddEffect(effectFn)     => { in =>
         effectFn(in).fn(implicitly[ExecutionContext]).andThen { case result =>
           underlying((in, result))
         }
@@ -220,6 +220,10 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
           othersTransformed.apply(in)
           underlying(in)
         }
+      }
+      case EventTransformer.Chained(a, b)           => {
+        val preTransform1 = buildTransformer(node, b, underlying)
+        buildTransformer(node, a, preTransform1)
       }
     }
   }
@@ -280,10 +284,6 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
         scalajs.js.timers.setTimeout(0) {
           sink(())
         }
-      case e: EventSource.EffectEvent[_, _]                 =>
-        bindEffect(ownNode, e, sink)
-      case a: EventSource.AndSource[_]                      =>
-        bindAnd(ownNode, a, sink)
       case c: EventSource.ChannelSource[_]                  =>
         bindChannel(ownNode, c, sink)
       case o: EventSource.OrSource[_]                       =>
@@ -332,30 +332,6 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
 
   private def fetchJsRuntimeStateUnsafe[R <: ScalaJsElement, S](s: RuntimeState.JsRuntimeStateBase[R, S]): S = {
     s.getter(delegate.locate(s.componentId).asInstanceOf[R])
-  }
-
-  private def bindEffect[E, F[_], R](
-      own: TreeNode,
-      event: EventSource.EffectEvent[E, R],
-      sink: ((E, Try[R])) => Unit
-  ): Unit = {
-    bindEventSource(
-      own,
-      event.trigger,
-      v =>
-        event.effectOperation(v).fn(implicitly[ExecutionContext]).andThen { case result =>
-          sink((v, result))
-        }
-    )
-  }
-
-  private def bindAnd[T](ownNode: TreeNode, event: EventSource.AndSource[T], sink1: T => Unit): Unit = {
-    val sink0               = transformSink(ownNode, event.binding.sink)
-    val combined: T => Unit = { value =>
-      sink0(value)
-      sink1(value)
-    }
-    bindEventSource(ownNode, event.binding.source, combined)
   }
 
   private def bindChannel[T](ownNode: TreeNode, event: EventSource.ChannelSource[T], sink: T => Unit): Unit = {
