@@ -9,7 +9,7 @@ import kreuzberg.rpc.ServiceExecutionError
 
 import scala.util.control.NonFatal
 
-type ZioDispatcher = Dispatcher[Task, String]
+type ZioDispatcher = Dispatcher[Task]
 
 case class ApiDispatcher(backend: ZioDispatcher) {
 
@@ -20,15 +20,25 @@ case class ApiDispatcher(backend: ZioDispatcher) {
       encodeErrors(serviceName, callName) {
         for {
           body     <- r.body.asString
+          request  <- ZIO.attempt(
+                        kreuzberg.rpc.Request.forceJsonString(
+                          body,
+                          r.headers.map { header =>
+                            header.headerName -> header.renderedValue
+                          }.toList
+                        )
+                      )
           response <- {
             // Also attempt call, otherwise we get hard to debug HTTP 500 errors
             // When the backend.call itself throws an exception.
             ZIO.attempt {
-              backend.call(serviceName, callName, body)
+              backend.call(serviceName, callName, request)
             }.flatten
           }
         } yield {
-          Response.json(response)
+          Response
+            .json(response.json.toString)
+            .withStatus(Status.fromInt(response.statusCode).getOrElse(Status.Ok))
         }
       }
     case Method.POST -> "" /: "api" /: path                       =>
@@ -41,7 +51,7 @@ case class ApiDispatcher(backend: ZioDispatcher) {
         for {
           _ <- ZIO.logInfoCause(s"Failed request ${serviceName}/${callName}", Cause.fail(f))
         } yield {
-          Response.json(f.encode.toJson).withStatus(Status.BadRequest)
+          Response.json(f.encode.toJson.toString).withStatus(Status.BadRequest)
         }
       case NonFatal(e) =>
         for {
@@ -49,7 +59,7 @@ case class ApiDispatcher(backend: ZioDispatcher) {
         } yield {
           // Do not add internal information, this may leak sensitive information to the user
           val wrapped = ServiceExecutionError("Internal Error")
-          Response.json(wrapped.encode.toJson).withStatus(Status.InternalServerError)
+          Response.json(wrapped.encode.toJson.toString).withStatus(Status.InternalServerError)
         }
       case e           =>
         for {
@@ -57,7 +67,7 @@ case class ApiDispatcher(backend: ZioDispatcher) {
         } yield {
           // Do not add internal information, this may leak sensitive information to the user
           val wrapped = ServiceExecutionError("Fatal Error")
-          Response.json(wrapped.encode.toJson).withStatus(Status.InternalServerError)
+          Response.json(wrapped.encode.toJson.toString).withStatus(Status.InternalServerError)
         }
     }
 

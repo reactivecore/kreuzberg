@@ -1,7 +1,5 @@
 package kreuzberg.rpc
 
-import upickle.default.*
-
 class FailureTest extends TestBase {
 
   val samples = Seq(
@@ -10,7 +8,8 @@ class FailureTest extends TestBase {
     UnknownCallError("service1", "call1"),
     ServiceExecutionError("message1", Some(42)),
     ValidationFailed("BAM"),
-    NotFound("BIM")
+    NotFound("BIM"),
+    SecurityError("BUZ")
   )
 
   it should "serialize and deserialize all examples" in {

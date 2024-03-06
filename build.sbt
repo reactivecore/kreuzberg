@@ -6,16 +6,15 @@ val versionTag = sys.env
   .filter(_.startsWith("v"))
   .map(_.stripPrefix("v"))
 
-val snapshotVersion = "0.7-SNAPSHOT"
+val snapshotVersion = "0.8-SNAPSHOT"
 val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
 
-ThisBuild / scalaVersion := "3.3.0"
+ThisBuild / scalaVersion := "3.3.2"
 
 ThisBuild / scalacOptions += "-Xcheck-macros"
 ThisBuild / scalacOptions += "-feature"
-// ThisBuild / scalacOptions += "-explain"
 
 ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
@@ -32,8 +31,16 @@ val scalaJsDomVersion            = "2.6.0"
 val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.1.0"
-val upickleVersion               = "3.1.0"
 val scalaTagsVersion             = "0.12.0"
+val circeVersion                 = "0.14.6"
+
+val isIntelliJ = {
+  val isIdea = sys.props.get("idea.managed").contains("true")
+  if (isIdea) {
+    println("Using IntelliJ workarounds. Do not publish")
+  }
+  isIdea
+}
 
 def publishSettings = Seq(
   publishTo               := sonatypePublishToBundle.value,
@@ -71,7 +78,7 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("l
     testSettings,
     publishSettings,
     libraryDependencies += (
-      "dev.zio" %%% "zio" % zioVersion % Provided
+      "dev.zio" %%% "zio" % zioVersion % (if (isIntelliJ) Compile else Provided)
     )
   )
   .jsSettings(
@@ -96,23 +103,6 @@ lazy val engineNaive = (project in file("engine-naive"))
   .dependsOn(lib.js, engineCommon.js)
   .settings(
     name := "kreuzberg-engine-naive",
-    testSettings,
-    publishSettings
-  )
-
-/** ZIO Based Engine (slower, bigger size, cleaner) */
-lazy val engineZio = (project in file("engine-zio"))
-  .enablePlugins(ScalaJSPlugin)
-  .dependsOn(lib.js, engineCommon.js)
-  .settings(
-    name := "kreuzberg-engine-zio",
-    libraryDependencies ++= Seq(
-      "dev.zio"           %%% "zio"                  % zioVersion,
-      "dev.zio"           %%% "zio-streams"          % zioVersion,
-      "org.scala-js"      %%% "scalajs-dom"          % scalaJsDomVersion,
-      "io.github.cquiroz" %%% "scala-java-time"      % scalaJsJavaTimeVersion,
-      "io.github.cquiroz" %%% "scala-java-time-tzdb" % scalaJsJavaTimeVersion
-    ),
     testSettings,
     publishSettings
   )
@@ -144,8 +134,9 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("r
   .settings(
     name               := "kreuzberg-rpc",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "upickle" % upickleVersion,
-      "dev.zio"     %%% "zio"     % zioVersion % Provided
+      "io.circe" %%% "circe-core"   % circeVersion,
+      "io.circe" %%% "circe-parser" % circeVersion,
+      "dev.zio"  %%% "zio"          % zioVersion % (if (isIntelliJ) Compile else Provided)
     ),
     evictionErrorLevel := Level.Warn,
     testSettings,
@@ -178,7 +169,8 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     name            := "examples",
     publishArtifact := false,
     publish / skip  := true,
-    publishLocal    := {}
+    publishLocal    := {},
+    testSettings
   )
   .jsSettings(
     // Moving JavaScript to a place, where we can easily find it by the server
@@ -191,27 +183,6 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .jsConfigure(_.dependsOn(engineNaive))
   .dependsOn(lib, xml, scalatags, extras, rpc)
 
-// ZIO Build of Examples
-lazy val examplesZio = (crossProject(JSPlatform, JVMPlatform) in file("examples-zio"))
-  .settings(
-    name            := "examples-zio",
-    publishArtifact := false,
-    publish / skip  := true,
-    publishLocal    := {}
-  )
-  .jsSettings(
-    // Moving JavaScript to a place, where we can easily find it by the server
-    Compile / fastOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/fast/main.js",
-    Compile / fullOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/opt/main.js",
-    scalaJSUseMainModuleInitializer    := true,
-    Compile / mainClass                := Some("kreuzberg.examples.showcasezio.Main")
-  )
-  .jvmSettings(
-    Compile / mainClass := Some("kreuzberg.examples.showcase.ServerMainZio")
-  )
-  .dependsOn(examples)
-  .jsConfigure(_.dependsOn(engineZio))
-
 lazy val runner = (project in file("runner"))
   .settings(
     Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
@@ -219,20 +190,10 @@ lazy val runner = (project in file("runner"))
     reStartArgs               := Seq("serve"),
     publishArtifact           := false,
     publish / skip            := true,
-    publishLocal              := {}
+    publishLocal              := {},
+    testSettings
   )
   .dependsOn(examples.jvm)
-
-lazy val runnerZio = (project in file("runner-zio"))
-  .settings(
-    Compile / compile         := (Compile / compile).dependsOn(examplesZio.js / Compile / fastOptJS).value,
-    Compile / run / mainClass := (examplesZio.jvm / Compile / run / mainClass).value,
-    reStartArgs               := Seq("serve"),
-    publishArtifact           := false,
-    publish / skip            := true,
-    publishLocal              := {}
-  )
-  .dependsOn(examplesZio.jvm)
 
 lazy val root = (project in file("."))
   .settings(
@@ -245,7 +206,6 @@ lazy val root = (project in file("."))
     lib.jvm,
     lib.native,
     engineNaive,
-    engineZio,
     engineCommon.js,
     engineCommon.jvm,
     engineCommon.native,
@@ -261,8 +221,6 @@ lazy val root = (project in file("."))
     miniserver,
     examples.js,
     examples.jvm,
-    examplesZio.js,
-    examplesZio.jvm,
     rpc.js,
     rpc.jvm,
     rpc.native

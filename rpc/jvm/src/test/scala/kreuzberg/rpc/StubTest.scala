@@ -1,10 +1,12 @@
 package kreuzberg.rpc
 
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import io.circe.Json
 
+import scala.annotation.experimental
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
+@experimental
 class StubTest extends TestBase {
 
   trait SampleService {
@@ -16,11 +18,11 @@ class StubTest extends TestBase {
   }
 
   trait Env {
-    object backend extends CallingBackend[Future, String] {
-      val calls            = Seq.newBuilder[(String, String, String)]
-      var response: String = ""
+    object backend extends CallingBackend[Future] {
+      val calls              = Seq.newBuilder[(String, String, Request)]
+      var response: Response = Response(Json.obj())
 
-      def call(service: String, name: String, input: String): Future[String] = {
+      override def call(service: String, name: String, input: Request): Future[Response] = {
         calls += ((service, name, input))
         Future.successful(response)
       }
@@ -30,24 +32,28 @@ class StubTest extends TestBase {
   }
 
   it should "create a working stub" in new Env {
-    backend.response = "10"
+    backend.response = Response.forceJsonString("10")
 
     await(service.hello()) shouldBe 10
-    backend.calls.result() shouldBe Seq(("SampleService", "hello", "{}"))
+    backend.calls.result() shouldBe Seq(("SampleService", "hello", Request.forceJsonString("{}")))
     backend.calls.clear()
   }
 
   it should "encode multiple parameters" in new Env {
-    backend.response = "\"ok\""
+    backend.response = Response.forceJsonString("\"ok\"")
 
     await(service.twoArgs(Credentials("a", "b"), Credentials("c", "d"))) shouldBe "ok"
     backend.calls.result() shouldBe Seq(
-      ("SampleService", "twoArgs", """{"a1":{"name":"a","password":"b"},"a2":{"name":"c","password":"d"}}""")
+      (
+        "SampleService",
+        "twoArgs",
+        Request.forceJsonString("""{"a1":{"name":"a","password":"b"},"a2":{"name":"c","password":"d"}}""")
+      )
     )
   }
 
   it should "handle errors" in new Env {
-    backend.response = "invalid"
+    backend.response = Response.forceJsonString("42")
     val r = service.login(Credentials("", ""))
     awaitError[CodecError](r)
   }

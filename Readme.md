@@ -7,8 +7,8 @@ It is built upon:
 - [Scala JS](https://www.scala-js.org/)
 - [Scala DOM](https://scala-js.github.io/scala-js-dom/)
 - [ScalaTags](https://github.com/com-lihaoyi/scalatags) (optional)
-- [UPickle](https://github.com/com-lihaoyi/upickle) (optional)
-- [ZIO](https://zio.dev/) (optional)
+- [Circe](https://circe.github.io/circe/) (optional)
+- [ZIO](https://zio.dev/) (optional, example server)
 
 Please note, this is beta software and some parts may have been hastily written.
 
@@ -49,14 +49,12 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
 - `scalatags`: Support for ScalaTags.
 - `xml`: Support for Scala XML. Adds at least 50kb (13kb compressed).
 - `extras`: Contains various components, including a simple router.
-- `rpc`: An experimental RPC library for making calls between JavaScript and JVM.
+- `rpc`: An experimental RPC library for making calls between JavaScript and JVM. Needs `@experimental`-Annotation
 - `examples`: Sample applications.
 - `miniserver`: A simple ZIO-ZHTTP-based server for starting the example application.
 - `engine-common`: Contains common engine code.
 - `engine-naive`: Contains the naive rendering engine.
-- `engine-zio`: A ZIO-based rendering engine.
 - `runner`: Wraps the naive engine with examples.
-- `runner-zio`: Wraps the ZIO engine with examples.
  
 # How to
 
@@ -68,10 +66,6 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
 - Start the Examples (naive engine)
   ```
   runner/run serve
-  ```
-- Start the Examples (ZIO Engine)
-  ```
-  runnerZio/run serve
   ```
 
 - Watching for changes

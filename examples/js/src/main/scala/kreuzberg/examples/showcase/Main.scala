@@ -1,8 +1,11 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg.engine.naive.Binder
-import kreuzberg.extras.{LocalStorage, BrowserLocalStorageBackend}
+import kreuzberg.extras.{BrowserLocalStorageBackend, LocalStorage}
 
+import scala.annotation.experimental
+
+@experimental
 object Main {
   def main(args: Array[String]): Unit = {
     import kreuzberg._

@@ -1,17 +1,20 @@
 package kreuzberg.rpc
 
+import scala.annotation.experimental
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 
+@experimental
 class MacroTest extends TestBase {
 
   it should "work around" in {
     val dispatcher = Dispatcher.makeDispatcher(UserServiceDummy: UserService[Future])
 
-    object Forwarder extends CallingBackend[Future, String] {
-      def call(service: String, name: String, input: String): Future[String] = {
+    object Forwarder extends CallingBackend[Future] {
+
+      override def call(service: String, name: String, input: Request): Future[Response] = {
         dispatcher.call(service, name, input)
       }
     }
