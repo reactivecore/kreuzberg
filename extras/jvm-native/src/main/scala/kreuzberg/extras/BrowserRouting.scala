@@ -2,10 +2,10 @@ package kreuzberg.extras
 
 object BrowserRouting {
 
-  def getCurrentPath(): String = {
-    "/"
+  def getCurrentResource(): UrlResource = {
+    UrlResource("")
   }
-
+  
   def setDocumentTitle(title: String): Unit = {
     // empty
   }
