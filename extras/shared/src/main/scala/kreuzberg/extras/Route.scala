@@ -6,13 +6,13 @@ import kreuzberg._
 trait Route {
 
   /** Returns true if the route can handle a given path. */
-  def canHandle(path: String): Boolean
+  def canHandle(resource: UrlResource): Boolean
 
   /** Title displayed while loading. */
-  def preTitle(path: String): String
+  def preTitle(resource: UrlResource): String
 
   /** Execute the route, can load lazy. */
-  def target(path: String)(using AssemblerContext): Effect[RoutingTarget]
+  def target(resource: UrlResource)(using AssemblerContext): Effect[RoutingTarget]
 }
 
 case class RoutingTarget(
@@ -27,15 +27,15 @@ object Route {
     type State
     val pathCodec: PathCodec[State]
 
-    override def canHandle(path: String): Boolean = pathCodec.handles(path)
+    override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
 
-    override def target(path: String)(using AssemblerContext): Effect[RoutingTarget] = Effect.const {
-      eagerTarget(path)
+    override def target(resource: UrlResource)(using AssemblerContext): Effect[RoutingTarget] = Effect.const {
+      eagerTarget(resource)
     }
 
-    def eagerTarget(path: String): RoutingTarget = {
-      val state = pathCodec.decode(path).getOrElse {
-        throw new IllegalStateException(s"Unmatched path ${path}")
+    def eagerTarget(resource: UrlResource): RoutingTarget = {
+      val state = pathCodec.decode(resource).getOrElse {
+        throw new IllegalStateException(s"Unmatched path ${resource}")
       }
       RoutingTarget(title(state), component(state))
     }
@@ -43,7 +43,7 @@ object Route {
     /** Returns a title for that path. */
     def title(state: State): String
 
-    override def preTitle(path: String): String = eagerTarget(path).title
+    override def preTitle(resource: UrlResource): String = eagerTarget(resource).title
 
     /** Assembles a component for a given path. */
     def component(state: State): Component
@@ -85,14 +85,14 @@ object Route {
       routingTarget: S => AssemblerContext ?=> Effect[RoutingTarget]
   ) extends Route {
 
-    override def canHandle(path: String): Boolean = pathCodec.handles(path)
+    override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
 
-    override def target(path: String)(using AssemblerContext): Effect[RoutingTarget] = {
-      routingTarget(pathCodec.forceDecode(path))
+    override def target(resource: UrlResource)(using AssemblerContext): Effect[RoutingTarget] = {
+      routingTarget(pathCodec.forceDecode(resource))
     }
 
-    override def preTitle(path: String): String = {
-      eagerTitle(pathCodec.forceDecode(path))
+    override def preTitle(resource: UrlResource): String = {
+      eagerTitle(pathCodec.forceDecode(resource))
     }
   }
 }

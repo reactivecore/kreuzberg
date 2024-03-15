@@ -1,17 +1,9 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg.*
-import kreuzberg.examples.showcase.pages.{
-  ExtendedFormPage,
-  FormPage,
-  IndexPage,
-  LazyPage,
-  NotFoundPage,
-  WizzardPage,
-  XmlPage
-}
+import kreuzberg.examples.showcase.pages.{ExtendedFormPage, FormPage, IndexPage, LazyPage, NotFoundPage, WizzardPage, XmlPage}
 import kreuzberg.examples.showcase.todo.{TodoList, TodoPage, TodoPageWithApi}
-import kreuzberg.extras.{PathCodec, Route, RoutingTarget, SimpleRouter}
+import kreuzberg.extras.{PathCodec, Route, RoutingTarget, SimpleRouter, UrlResource}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -27,7 +19,7 @@ object App extends SimpleComponentBase {
       LoadingIndicator,
       SimpleRouter(
         routes,
-        Route.DependentRoute[String](
+        Route.DependentRoute[UrlResource](
           PathCodec.all,
           s => NotFoundPage(s),
           s => "Not Found"

@@ -1,14 +1,15 @@
 package kreuzberg.examples.showcase.pages
 
 import kreuzberg.*
+import kreuzberg.extras.UrlResource
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-case class NotFoundPage(path: String) extends ComponentBase {
+case class NotFoundPage(resource: UrlResource) extends ComponentBase {
 
   override def assemble(using context: AssemblerContext): Assembly = {
     div(
-      s"Path ${path} not found"
+      s"Path ${resource} not found"
     )
   }
 }
