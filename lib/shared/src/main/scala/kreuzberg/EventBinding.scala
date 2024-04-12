@@ -17,7 +17,7 @@ trait EventTransformable[+E] extends EventTransformationDsl[E] with EventSinkApp
 /** A Source of an [[EventBinding]]. */
 sealed trait EventSource[+E] extends EventTransformable[E] {
   override type WithTransformer[F] = EventSource[F]
-  override type WithSink[G]    = EventBinding.SourceSink[G]
+  override type WithSink[G]        = EventBinding.SourceSink[G]
 
   override def withTransformer[Q](transformer: EventTransformer[E, Q]): EventSource[Q] = {
     EventSource.PostTransformer(this, transformer)
@@ -78,7 +78,7 @@ sealed trait EventTransformer[-I, +O] extends EventTransformable[O] {
   inline def transform[R](f: EventTransformer[I, O] => R): R = f(this)
 
   override final type WithTransformer[X] = EventTransformer[I @uncheckedVariance, X]
-  override final type WithSink[X]    = EventSink[I @uncheckedVariance]
+  override final type WithSink[X]        = EventSink[I @uncheckedVariance]
 
   /** Transforms using a Transformer. */
 
@@ -88,6 +88,10 @@ sealed trait EventTransformer[-I, +O] extends EventTransformable[O] {
 
   override def to[T >: O](sink: EventSink[T]): EventSink[I] = {
     EventSink.PreTransformer(sink, this)
+  }
+
+  def viaSink(sink: EventSink[O]): EventTransformer[I, O] = {
+    EventTransformer.Chained(this, EventTransformer.And(sink))
   }
 }
 
@@ -105,6 +109,13 @@ object EventTransformer {
   case class TryUnpack2[I, E](failure: EventSink[(I, Throwable)]) extends EventTransformer[(I, Try[E]), (I, E)]
   // Call other sinks, used for fan out.
   case class And[I](other: EventSink[I])                          extends EventTransformer[I, I]
+
+  /** Empty, Starting point for transformations. */
+  case class Empty[I]() extends EventTransformer[I, I] {
+    override def withTransformer[Q](transformer: EventTransformer[I, Q]): EventTransformer[I, Q] = {
+      transformer
+    }
+  }
 
   case class Chained[I, X, O](a: EventTransformer[I, X], b: EventTransformer[X, O]) extends EventTransformer[I, O]
 }

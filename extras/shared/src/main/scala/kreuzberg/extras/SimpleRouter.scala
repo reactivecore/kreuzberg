@@ -16,114 +16,156 @@ import scala.util.{Failure, Success}
  *   route to be called, if no route matches
  * @param titlePrefix
  *   prefix to be added for titles
+ * @param errorHandler
+ *   generic error handler
+ * @param loadingHandler
+ *   generic loading handler
  */
 case class SimpleRouter(
     routes: Vector[Route],
     notFoundRoute: EagerRoute,
     titlePrefix: String = "",
-    errorHandler: Throwable => EagerRoute = SimpleRouter.DefaultErrorHandler
+    errorHandler: (UrlResource, Throwable) => Component = SimpleRouter.DefaultErrorHandler,
+    loadingHandler: Option[Route] => Component = SimpleRouter.DefaultLoadingHandler
 ) extends SimpleComponentBase {
 
   override def assemble(using context: SimpleContext): Html = {
     val routingState = subscribe(SimpleRouter.routingStateModel)
     Logger.debug(s"Assembling SimpleRouter with value ${routingState} on model ${SimpleRouter.routingStateModel.id}")
 
-    val routeValue = routingState.currentRoute.getOrElse(BrowserRouting.getCurrentResource())
-    val route      = decideRoute(routeValue)
-    subscribe(SimpleRouter.currentTarget)
-
-    val target = route match {
-      case e: EagerRoute => e.eagerTarget(routeValue)
-      case _             => read(SimpleRouter.currentTarget)
-    }
-
-    def handlePath(in: EventSource[UrlResource], pushState: Boolean): EventBinding = {
-      in.map { path => path -> decideRoute(path) }
-        .executeCode { case (path, nextRoute) =>
+    def handlePath(pushState: Boolean): EventSink[UrlResource] = {
+      EventTransformer
+        .Empty[UrlResource]()
+        .map { url =>
+          url -> decideRoute(url)
+        }
+        .tap { case (url, nextRoute) =>
+          Logger.debug(s"Going to ${url} (route=${nextRoute}, pushState=${pushState})")
           val currentPath = BrowserRouting.getCurrentResource()
-          val title       = nextRoute.preTitle(path)
-          if (pushState && path != currentPath) {
-            Logger.debug(s"Push state ${title}/${path}")
-            BrowserRouting.pushState(title, path.str)
+          val title       = nextRoute.preTitle(url)
+          if (pushState && url != currentPath) {
+            Logger.debug(s"Push state ${title}/${url}")
+            BrowserRouting.pushState(title, url.str)
           }
           BrowserRouting.setDocumentTitle(titlePrefix + title)
         }
-        .and
-        .setModelTo(SimpleRouter.loading, true)
-        .and
-        .effect { case (path, route) =>
-          route.target(path)
+        .map { case (url, route) =>
+          decideInitialState(url, route)
         }
-        .setModelTo(SimpleRouter.loading, false)
-        .and
-        .map {
-          case ((path, _), Success(target)) => (path, target)
-          case ((path, _), Failure(error))  => (path, errorHandler(error).eagerTarget(path))
+        .viaSink(
+          EventSink.ModelChange(SimpleRouter.routingStateModel, (e, _) => e)
+        )
+        .collect { case loading: RoutingState.Loading =>
+          loading
         }
-        .executeCode { case (path, target) =>
-          val title = target.title
-          BrowserRouting.replaceState(title, path.str)
-          BrowserRouting.setDocumentTitle(titlePrefix + title)
+        .effect { loading =>
+          loading.route.target(loading.url)
         }
-        .and
-        .changeModel(SimpleRouter.routingStateModel) { case ((path, target), model) =>
-          model.copy(currentRoute = Some(path))
+        .filter { case (loading, _) =>
+          // Otherwise the user is probably on the nxt screen
+          val stateAgain = SimpleRouter.routingStateModel.read
+          stateAgain match {
+            case l: RoutingState.Loading if l.invocation == loading.invocation => true
+            case _                                                             =>
+              Logger.debug(
+                s"Discarding response of loading, not yet on the same loading page"
+              )
+              false
+          }
         }
-        .and
-        .map(_._2)
-        .intoModel(SimpleRouter.currentTarget)
+        .tap { case (_, maybeLoaded) =>
+          maybeLoaded.foreach { routingTarget =>
+            BrowserRouting.setDocumentTitle(routingTarget.title)
+          }
+        }
+        .map { case (loading, maybeLoaded) =>
+          maybeLoaded match {
+            case Failure(exception) => RoutingState.Failed(loading.url, loading.route, exception)
+            case Success(v)         => RoutingState.Loaded(loading.url, loading.route, v.component)
+          }
+        }
+        .intoModel(SimpleRouter.routingStateModel)
+    }
+
+    val (component: Component, url: UrlResource) = routingState match {
+      case RoutingState.Empty                         =>
+        val url = BrowserRouting.getCurrentResource()
+        add(
+          EventSource.Assembled
+            .map { _ => url }
+            .to(handlePath(false))
+        )
+        (loadingHandler(None), url)
+      case RoutingState.Loading(url, route, _)        =>
+        (loadingHandler(Some(route)), url)
+      case RoutingState.Failed(url, route, error)     =>
+        (errorHandler(url, error), url)
+      case RoutingState.Loaded(url, route, component) =>
+        (component, url)
     }
 
     add(
-      SimpleRouter.gotoChannel.transform(handlePath(_, true))
+      SimpleRouter.gotoChannel.to(handlePath(true))
     )
 
     add(
-      SimpleRouter.reloadChannel
-        .map { _ => routeValue }
-        .transform(handlePath(_, false))
-    )
-
-    add(
-      EventSource.Js
-        .window("load")
-        .map { _ => BrowserRouting.getCurrentResource() }
-        .transform(handlePath(_, false))
+      SimpleRouter.reloadChannel.map(_ => url).to(handlePath(false))
     )
 
     add(
       EventSource.Js
         .window("popstate")
-        .changeModel(SimpleRouter.routingStateModel) { (_, current) =>
-          val path = BrowserRouting.getCurrentResource()
-          Logger.debug(s"Popstate event ${path}")
-          RoutingState(Some(path))
-        }
+        .map(_ => BrowserRouting.getCurrentResource())
+        .to(handlePath(false))
     )
 
-    div(target.component.wrap)
+    div(component.wrap)
   }
 
-  private def decideRoute(resource: UrlResource): Route = {
-    routes.find(_.canHandle(resource)).getOrElse(notFoundRoute)
+  private def decideRoute(url: UrlResource): Route = {
+    routes.find(_.canHandle(url)).getOrElse(notFoundRoute)
+  }
+
+  private def decideInitialState(url: UrlResource, route: Route): RoutingState = {
+    route match {
+      case eager: EagerRoute =>
+        val state     = eager.pathCodec.forceDecode(url)
+        val component = eager.component(state)
+        RoutingState.Loaded(url, route, component)
+      case otherwise         =>
+        RoutingState.Loading(url, route, Identifier.next())
+    }
   }
 }
 
 object SimpleRouter {
   val gotoChannel: Channel[UrlResource] = Channel.create()
 
-  case class RoutingState(
-      currentRoute: Option[UrlResource] = None
-  )
+  sealed trait RoutingState
 
-  /** Current routing state. */
-  val routingStateModel = Model.create(RoutingState())
+  object RoutingState {
 
-  /** Current shown target. */
-  val currentTarget = Model.create[RoutingTarget](RoutingTarget("", EmptyComponent))
+    /** Not yet initialized */
+    case object Empty extends RoutingState
 
-  /** If we are currently loading data. */
-  val loading = Model.create[Boolean](false)
+    /**
+     * Loading the next state.
+     * @param invocation
+     *   an id to correlate result to loading, otherwise we may overwrite forwarded states.
+     */
+    case class Loading(url: UrlResource, route: Route, invocation: Identifier) extends RoutingState
+
+    /** Loaded state. */
+    case class Loaded(url: UrlResource, route: Route, component: Component) extends RoutingState
+    case class Failed(url: UrlResource, route: Route, error: Throwable)     extends RoutingState
+  }
+
+  private val routingStateModel = Model.create[RoutingState](RoutingState.Empty)
+
+  def loading: Subscribeable[Boolean] = routingStateModel.map {
+    case _: RoutingState.Loading => true
+    case _                       => false
+  }
 
   /** Event Sink for going to a specific route. */
   def goto: EventSink[UrlResource] = EventSink.ChannelSink(gotoChannel)
@@ -144,22 +186,16 @@ object SimpleRouter {
     }
   }
 
-  val DefaultErrorHandler: Throwable => EagerRoute = error => {
-    new EagerRoute {
-      override type State = UrlResource
-
-      override val pathCodec: PathCodec[UrlResource] = PathCodec.all
-
-      override def title(path: UrlResource): String = "Error"
-
-      override def component(resource: UrlResource): Component = new SimpleComponentBase {
-        override def assemble(using c: SimpleContext): Html = {
-          h2("Error")
-          div(s"An unrecoverable error handled on loading route ${resource}: ${error.getMessage}")
-        }
+  val DefaultErrorHandler: (UrlResource, Throwable) => Component = { (url, error) =>
+    new SimpleComponentBase {
+      override def assemble(using c: SimpleContext): Html = {
+        h2("Error")
+        div(s"An unrecoverable error handled on loading route ${url}: ${error.getMessage}")
       }
-
-      override def canHandle(resource: UrlResource): Boolean = true
     }
+  }
+
+  val DefaultLoadingHandler: Option[Route] => Component = route => {
+    EmptyComponent
   }
 }
