@@ -221,6 +221,9 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
           underlying(in)
         }
       }
+      case EventTransformer.Empty()                 => { in =>
+        underlying(in)
+      }
       case EventTransformer.Chained(a, b)           => {
         val preTransform1 = buildTransformer(node, b, underlying)
         buildTransformer(node, a, preTransform1)
