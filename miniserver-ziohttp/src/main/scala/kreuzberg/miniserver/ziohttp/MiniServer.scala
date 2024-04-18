@@ -1,5 +1,6 @@
-package kreuzberg.miniserver
+package kreuzberg.miniserver.ziohttp
 
+import kreuzberg.miniserver.{Index, Location, MiniServerConfig}
 import kreuzberg.rpc.Dispatcher
 import zio.*
 import zio.http.*
@@ -7,7 +8,7 @@ import zio.logging.backend.SLF4J
 
 import java.nio.file.Paths
 
-class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
+class MiniServer(config: MiniServerConfig[Task]) extends ZIOAppDefault {
 
   /** Hook before startup. */
   def preflightCheck: Task[Unit] = {
@@ -56,10 +57,8 @@ class MiniServer(config: MiniServerConfig) extends ZIOAppDefault {
     apiEffect     = config.api.getOrElse(ZIO.succeed(Dispatcher.empty: ZioDispatcher))
     dispatcher   <- apiEffect
     apiDispatcher = ApiDispatcher(dispatcher)
-    extraAppTask  = config.extraApp.getOrElse(ZIO.succeed(Http.collectHttp[Request].apply(PartialFunction.empty)))
-    extraApp     <- extraAppTask
     all           =
-      (apiDispatcher.app() ++ extraApp ++ assetProvider).withDefaultErrorResponse @@ HttpAppMiddleware.requestLogging()
+      (apiDispatcher.app() ++ assetProvider).withDefaultErrorResponse @@ HttpAppMiddleware.requestLogging()
     port         <- Server.install(all)
     _            <- ZIO.logInfo(s"Started server on port: ${port}")
     _            <- ZIO.never

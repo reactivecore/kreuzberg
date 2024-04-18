@@ -1,12 +1,15 @@
-package kreuzberg.miniserver
+package kreuzberg.miniserver.ziohttp
+
+import kreuzberg.miniserver.*
+import zio.Task
 
 import java.io.File
 import java.nio.file.{Files, Path, Paths, StandardCopyOption}
 import java.util.jar.{JarEntry, JarFile}
-import scala.jdk.StreamConverters.*
 import scala.jdk.CollectionConverters.*
+import scala.jdk.StreamConverters.*
 
-class Bootstrapper(config: MiniServerConfig) {
+class Bootstrapper(config: MiniServerConfig[Task]) {
   val help =
     """
       |serve        - start development server

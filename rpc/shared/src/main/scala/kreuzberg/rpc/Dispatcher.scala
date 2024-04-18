@@ -44,6 +44,11 @@ object Dispatcher {
     ${ makeDispatcherMacro[Task, A]('handler) }
   }
 
+  @experimental
+  inline def makeIdDispatcher[A](handler: A): Dispatcher[Id] = {
+    ${ makeDispatcherMacro[Id, A]('handler) }
+  }
+
   /** Create a dispatcher for an Interface A with custom Effect and Transport type. */
   @experimental
   inline def makeCustomDispatcher[F[_], A](handler: A): Dispatcher[F] = {

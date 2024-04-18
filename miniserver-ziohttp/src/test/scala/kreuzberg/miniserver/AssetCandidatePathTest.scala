@@ -28,13 +28,13 @@ class AssetCandidatePathTest extends TestBase {
   }
 
   "Directory" should "find a file" in {
-    val baseDir = "miniserver/src/test/resources/test"
+    val baseDir = "miniserver-ziohttp/src/test/resources/test"
     val located = locateDir(baseDir)
 
     val dir = AssetCandidatePath.Directory(located.toString, "foobar")
     dir.locate("foobar/resource1.txt") shouldBe Some(Location.File(located.resolve("resource1.txt").toFile))
     dir.locate("resource1.txt") shouldBe None
     dir.locate("foobar/resource2.txt") shouldBe None
-    dir.locate("foobar/../../scala/kreuzberg/miniserver/TestBase.scala") shouldBe None // escape attack
+    dir.locate("foobar/../../scala/kreuzberg/miniserver-ziohttp/TestBase.scala") shouldBe None // escape attack
   }
 }

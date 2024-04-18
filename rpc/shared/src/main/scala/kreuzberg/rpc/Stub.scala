@@ -31,6 +31,11 @@ object Stub {
     makeStubMacro[Task, T]('backend)
   }
 
+  @experimental
+  inline def makeIdStub[T](backend: CallingBackend[Id]): T = ${
+    makeStubMacro[Id, T]('backend)
+  }
+
   // Note: Can't be private, see  https://github.com/lampepfl/dotty/issues/16091
   @experimental
   def makeStubMacro[F[_], A](
