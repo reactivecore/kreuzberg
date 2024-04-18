@@ -4,6 +4,8 @@ import io.circe.{Decoder, Encoder, Json}
 import scala.concurrent.{ExecutionContext, Future}
 import zio.{Task, ZIO}
 
+type Id[T] = T
+
 /** Defines necessary properties of the used effect */
 trait EffectSupport[F[_]] {
 
@@ -64,6 +66,16 @@ object EffectSupport {
     override def flatMap[A, B](in: Future[A])(f: A => Future[B]): Future[B] = in.flatMap(f)
 
     override def map[A, B](in: Future[A])(f: A => B): Future[B] = in.map(f)
+  }
+
+  implicit object idSupport extends EffectSupport[Id] {
+    override def failure[A](failure: Failure): Id[A] = throw failure
+
+    override def success[A](value: A): Id[A] = value
+
+    override def flatMap[A, B](in: Id[A])(f: A => Id[B]): Id[B] = f(in)
+
+    override def map[A, B](in: Id[A])(f: A => B): Id[B] = f(in)
   }
 
   // Note: Only available for clients which do have ZIO Imported

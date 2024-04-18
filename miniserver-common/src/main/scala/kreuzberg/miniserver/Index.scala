@@ -1,9 +1,10 @@
 package kreuzberg.miniserver
+import kreuzberg.scalatags.*
 import scalatags.Text.all.*
 import scalatags.Text.tags2.noscript
-import kreuzberg.scalatags._
 
-case class Index(config: MiniServerConfig) {
+/** Index page for MiniServer. */
+case class Index(config: MiniServerConfig[_]) {
   def index = html(
     head(
       script(src := config.hashedUrl("main.js")),

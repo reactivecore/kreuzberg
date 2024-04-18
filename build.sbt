@@ -33,6 +33,8 @@ val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.1.0"
 val scalaTagsVersion             = "0.12.0"
 val circeVersion                 = "0.14.6"
+val tapirVersion                 = "1.9.11"
+val questVersion                 = "0.2.0"
 
 val isIntelliJ = {
   val isIdea = sys.props.get("idea.managed").contains("true")
@@ -74,12 +76,9 @@ val logsettings = libraryDependencies ++= Seq(
 /** Defines a component. */
 lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("lib"))
   .settings(
-    name         := "kreuzberg",
+    name := "kreuzberg",
     testSettings,
-    publishSettings,
-    libraryDependencies += (
-      "dev.zio" %%% "zio" % zioVersion % (if (isIntelliJ) Compile else Provided)
-    )
+    publishSettings
   )
   .jsSettings(
     libraryDependencies ++= Seq(
@@ -152,9 +151,19 @@ lazy val extras = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file
   )
   .dependsOn(lib % "compile->compile;test->test", scalatags)
 
-lazy val miniserver = (project in file("miniserver"))
+// Common Code for Server Side
+lazy val miniserverCommon = (project in file("miniserver-common"))
   .settings(
-    name := "kreuzberg-miniserver",
+    name := "kreuzberg-miniserver-common",
+    testSettings,
+    publishSettings
+  )
+  .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm)
+
+// ZIO Based Mini Server
+lazy val miniserverZioHttp = (project in file("miniserver-ziohttp"))
+  .settings(
+    name := "kreuzberg-miniserver-ziohttp",
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio-http"           % zioHttpVersion,
       "dev.zio" %% "zio-logging-slf4j2" % zioLoggingVersion
@@ -162,7 +171,23 @@ lazy val miniserver = (project in file("miniserver"))
     testSettings,
     publishSettings
   )
-  .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm)
+  .dependsOn(miniserverCommon)
+
+// Tapir/Loom based Mini Server
+lazy val miniserverLoom = (project in file("miniserver-loom"))
+  .settings(
+    name := "kreuzberg-miniserver-loom",
+    libraryDependencies ++= Seq(
+      "org.slf4j"                    % "slf4j-api"               % "2.0.12",
+      "com.softwaremill.sttp.tapir" %% "tapir-netty-server-loom" % tapirVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % tapirVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % tapirVersion,
+      "net.reactivecore"            %% "quest"                   % questVersion
+    ),
+    testSettings,
+    publishSettings
+  )
+  .dependsOn(miniserverCommon)
 
 lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
@@ -179,14 +204,26 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     scalaJSUseMainModuleInitializer    := true
   )
   .jvmSettings(logsettings)
-  .jvmConfigure(_.dependsOn(miniserver))
+  .jvmConfigure(_.dependsOn(miniserverZioHttp, miniserverLoom))
   .jsConfigure(_.dependsOn(engineNaive))
   .dependsOn(lib, xml, scalatags, extras, rpc)
 
 lazy val runner = (project in file("runner"))
   .settings(
     Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
-    Compile / run / mainClass := (examples.jvm / Compile / run / mainClass).value,
+    Compile / run / mainClass := Some("kreuzberg.examples.showcase.ServerMain"),
+    reStartArgs               := Seq("serve"),
+    publishArtifact           := false,
+    publish / skip            := true,
+    publishLocal              := {},
+    testSettings
+  )
+  .dependsOn(examples.jvm)
+
+lazy val runnerLoom = (project in file("runner-loom"))
+  .settings(
+    Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
+    Compile / run / mainClass := Some("kreuzberg.examples.showcase.ServerMainLoom"),
     reStartArgs               := Seq("serve"),
     publishArtifact           := false,
     publish / skip            := true,
@@ -218,7 +255,9 @@ lazy val root = (project in file("."))
     extras.js,
     extras.jvm,
     extras.native,
-    miniserver,
+    miniserverZioHttp,
+    miniserverLoom,
+    miniserverCommon,
     examples.js,
     examples.jvm,
     rpc.js,

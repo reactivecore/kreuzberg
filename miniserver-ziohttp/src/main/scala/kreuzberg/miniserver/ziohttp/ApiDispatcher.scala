@@ -1,11 +1,8 @@
-package kreuzberg.miniserver
+package kreuzberg.miniserver.ziohttp
 
-import kreuzberg.rpc.Dispatcher
-import zio.{Cause, IO, Task, UIO, ZIO}
-import kreuzberg.rpc.Failure
+import kreuzberg.rpc.{CodecError, Dispatcher, Failure, ServiceExecutionError}
 import zio.http.*
-import kreuzberg.rpc.CodecError
-import kreuzberg.rpc.ServiceExecutionError
+import zio.{Cause, IO, Task, UIO, ZIO}
 
 import scala.util.control.NonFatal
 

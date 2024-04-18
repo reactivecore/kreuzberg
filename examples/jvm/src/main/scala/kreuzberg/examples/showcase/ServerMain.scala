@@ -2,6 +2,7 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.examples.showcase.todo.TodoApi
 import kreuzberg.miniserver.*
+import kreuzberg.miniserver.ziohttp.Bootstrapper
 import kreuzberg.rpc.{Dispatcher, Failure, SecurityError}
 import zio.ZIO
 
