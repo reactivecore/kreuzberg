@@ -4,7 +4,7 @@ import scalatags.Text.all.*
 import scalatags.Text.tags2.noscript
 
 /** Index page for MiniServer. */
-case class Index(config: MiniServerConfig[_]) {
+case class Index(config: DeploymentConfig) {
   def index = html(
     head(
       script(src := config.hashedUrl("main.js")),
