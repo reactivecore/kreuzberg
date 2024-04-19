@@ -49,7 +49,7 @@ class MiniServer(config: MiniServerConfig[Task]) extends ZIOAppDefault {
       )
   }
 
-  def serverConfigLayer: TaskLayer[Server] = Server.defaultWithPort(config.port)
+  def serverConfigLayer: TaskLayer[Server] = Server.defaultWith(_.binding(config.host, config.port))
 
   def app: RIO[Server, Unit] = for {
     _            <- preflightCheck

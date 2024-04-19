@@ -27,6 +27,7 @@ class MiniServer(config: MiniServerConfig[Id]) {
       .fromServerEndpoints[Id](endpoints, "MiniServer", "0.1")
 
     val server = NettyIdServer()
+      .host(config.host)
       .port(config.port)
       .addEndpoints(endpoints)
       .addEndpoints(if (config.deploymentType.contains(DeploymentType.Debug)) docEndpoints else Nil)
