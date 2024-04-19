@@ -21,19 +21,18 @@ ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
 
-val zioVersion                   = "2.0.16"
-val zioLoggingVersion            = "2.1.14"
-val scalatagsVersion             = "0.12.0"
+val zioVersion                   = "2.0.22"
+val zioLoggingVersion            = "2.2.2"
+val scalaTagsVersion             = "0.12.0"
 val zioHttpVersion               = "3.0.0-RC2"
-val scalatestVersion             = "3.2.16"
-val logbackVersion               = "1.4.7"
-val scalaJsDomVersion            = "2.6.0"
+val scalatestVersion             = "3.2.18"
+val logbackVersion               = "1.5.6"
+val scalaJsDomVersion            = "2.8.0"
 val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
-val scalaXmlVersion              = "2.1.0"
-val scalaTagsVersion             = "0.12.0"
+val scalaXmlVersion              = "2.2.0"
 val circeVersion                 = "0.14.6"
-val tapirVersion                 = "1.9.11"
+val tapirVersion                 = "1.10.4"
 val questVersion                 = "0.2.0"
 
 val isIntelliJ = {
@@ -211,19 +210,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
 lazy val runner = (project in file("runner"))
   .settings(
     Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
-    Compile / run / mainClass := Some("kreuzberg.examples.showcase.ServerMain"),
-    reStartArgs               := Seq("serve"),
-    publishArtifact           := false,
-    publish / skip            := true,
-    publishLocal              := {},
-    testSettings
-  )
-  .dependsOn(examples.jvm)
-
-lazy val runnerLoom = (project in file("runner-loom"))
-  .settings(
-    Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
-    Compile / run / mainClass := Some("kreuzberg.examples.showcase.ServerMainLoom"),
+    Compile / run / mainClass := Some("kreuzberg.examples.showcase.Main"),
     reStartArgs               := Seq("serve"),
     publishArtifact           := false,
     publish / skip            := true,

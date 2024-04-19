@@ -1,45 +1,25 @@
-package kreuzberg.miniserver.ziohttp
+package kreuzberg.miniserver
 
-import kreuzberg.miniserver.*
-import zio.Task
-
-import java.io.File
 import java.nio.file.{Files, Path, Paths, StandardCopyOption}
 import java.util.jar.{JarEntry, JarFile}
 import scala.jdk.CollectionConverters.*
 import scala.jdk.StreamConverters.*
 
-class Bootstrapper(config: MiniServerConfig[Task]) {
-  val help =
-    """
-      |serve        - start development server
-      |export <dir> - start export script
-      |help         - show help
-      |""".stripMargin
-
-  private val blacklistRegexes = config.produktionBlacklist.map(_.r)
+/** Exports Index, JS and Assets to a directory */
+class Exporter(config: DeploymentConfig) {
 
   final def main(args: Array[String]): Unit = {
     args.headOption match {
-      case Some("serve")  =>
-        new MiniServer(config).main(args.tail)
-      case Some("export") =>
-        val dir = args.tail.headOption.getOrElse {
-          println("Missing directory")
-          sys.exit(1)
-        }
-        exportAll(Paths.get(dir))
-      case Some("help")   =>
-        println(help)
-      case None           =>
-        println(help)
-      case other          =>
-        println(s"Unknown argument ${other}")
-        sys.exit(1)
+      case None      =>
+        println(s"Expected directory")
+        System.exit(1)
+      case Some(dir) =>
+        exportAll(Path.of(dir))
     }
   }
 
-  private def exportAll(dir: Path): Unit = {
+  /** Export everything into given directory. */
+  def exportAll(dir: Path): Unit = {
     println(s"Exporting into ${dir}...")
     Files.createDirectories(dir)
     val renderedIndex = "<!DOCTYPE html>" + Index(config).index.toString
@@ -108,6 +88,8 @@ class Bootstrapper(config: MiniServerConfig[Task]) {
     val inputStream = file.getInputStream(jarEntry)
     Files.copy(inputStream, dstName, StandardCopyOption.REPLACE_EXISTING)
   }
+
+  private val blacklistRegexes = config.produktionBlacklist.map(_.r)
 
   private def isBlacklisted(s: String): Boolean = {
     blacklistRegexes.exists(_.matches(s))

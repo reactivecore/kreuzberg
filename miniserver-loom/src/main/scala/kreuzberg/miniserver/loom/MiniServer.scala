@@ -30,12 +30,12 @@ class MiniServer(config: MiniServerConfig[Id]) {
       .host(config.host)
       .port(config.port)
       .addEndpoints(endpoints)
-      .addEndpoints(if (config.deploymentType.contains(DeploymentType.Debug)) docEndpoints else Nil)
+      .addEndpoints(if (config.deployment.deploymentType.contains(DeploymentType.Debug)) docEndpoints else Nil)
       .start()
     logger.info(s"Listening on port ${config.port}")
   }
 
-  private val indexHtml: String = Index(config).index.toString
+  private val indexHtml: String = Index(config.deployment).index.toString
 
   val assetEndpoint: PublicEndpoint[List[String], StatusCode, ByteBuffer, Any] = {
     endpoint.get
@@ -46,7 +46,7 @@ class MiniServer(config: MiniServerConfig[Id]) {
 
   private val assetHandler = assetEndpoint.serverLogic[Id] { paths =>
     val fullName = paths.mkString("/")
-    config.locateAsset(fullName) match {
+    config.deployment.locateAsset(fullName) match {
       case None        => Left(StatusCode.NotFound)
       case Some(value) =>
         Using.resource(value.load()) { data =>

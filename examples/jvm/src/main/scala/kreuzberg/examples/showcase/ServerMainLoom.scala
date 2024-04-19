@@ -44,13 +44,7 @@ object ServerMainLoom extends App {
     }
 
   val config = MiniServerConfig[Id](
-    AssetPaths(
-      Seq(
-        AssetCandidatePath("examples/js/target/client_bundle/client/fast"),
-        AssetCandidatePath("../examples/js/target/client_bundle/client/fast"),
-        AssetCandidatePath("../../examples/js/target/client_bundle/client/fast")
-      )
-    ),
+    deploymentConfig,
     api = Some(todoDispatcher)
   )
 

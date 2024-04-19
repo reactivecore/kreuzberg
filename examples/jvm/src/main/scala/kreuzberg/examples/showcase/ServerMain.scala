@@ -2,7 +2,6 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.examples.showcase.todo.TodoApi
 import kreuzberg.miniserver.*
-import kreuzberg.miniserver.ziohttp.Bootstrapper
 import kreuzberg.rpc.{Dispatcher, Failure, SecurityError}
 import zio.ZIO
 
@@ -10,15 +9,9 @@ import scala.annotation.experimental
 
 @experimental
 object ServerMain
-    extends Bootstrapper(
+    extends kreuzberg.miniserver.ziohttp.MiniServer(
       MiniServerConfig(
-        AssetPaths(
-          Seq(
-            AssetCandidatePath("examples/js/target/client_bundle/client/fast"),
-            AssetCandidatePath("../examples/js/target/client_bundle/client/fast"),
-            AssetCandidatePath("../../examples/js/target/client_bundle/client/fast")
-          )
-        ),
+        deploymentConfig,
         api = Some(ZIO.attempt {
           Dispatcher.makeZioDispatcher[TodoApi[zio.Task]](new TodoService).preRequestFlatMap { request =>
             // Demonstrating adding a pre filter

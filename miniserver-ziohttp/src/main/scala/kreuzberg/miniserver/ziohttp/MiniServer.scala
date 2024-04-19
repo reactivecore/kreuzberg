@@ -13,21 +13,21 @@ class MiniServer(config: MiniServerConfig[Task]) extends ZIOAppDefault {
   /** Hook before startup. */
   def preflightCheck: Task[Unit] = {
     ZIO
-      .fromOption(config.locateAsset("main.js"))
+      .fromOption(config.deployment.locateAsset("main.js"))
       .mapError { _ =>
         val cwd = Paths.get("").toAbsolutePath
         new IllegalStateException(
-          s"Could not find client javascript code, searched in ${config.assetPaths}, working directory=$cwd"
+          s"Could not find client javascript code, searched in ${config.deployment.assetPaths}, working directory=$cwd"
         )
       }
       .unit
   }
 
-  private val indexHtml: String = Index(config).index.toString
+  private val indexHtml: String = Index(config.deployment).index.toString
 
   def assetProvider: HttpApp[Any, Throwable] = Http.collectHttp[Request] {
     case Method.GET -> "" /: "assets" /: path =>
-      config.locateAsset(path.encode) match {
+      config.deployment.locateAsset(path.encode) match {
         case None                              =>
           Http.fromHandler(Handler.notFound)
         case Some(Location.File(file))         =>
@@ -44,7 +44,7 @@ class MiniServer(config: MiniServerConfig[Task]) extends ZIOAppDefault {
     case Method.GET -> "" /: path             =>
       Http.fromHandler(
         Handler.html(
-          Index(config).index.toString
+          Index(config.deployment).index.toString
         )
       )
   }
