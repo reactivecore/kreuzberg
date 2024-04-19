@@ -12,6 +12,7 @@ case class MiniServerConfig[F[_]](
     extraJs: Seq[String] = Nil,
     extraCss: Seq[String] = Nil,
     extraHtmlHeader: Seq[Html] = Nil,
+    host: String = "0.0.0.0",
     port: Int = 8090,
     deploymentType: Option[DeploymentType] = None,
     produktionBlacklist: Seq[String] = Seq(
