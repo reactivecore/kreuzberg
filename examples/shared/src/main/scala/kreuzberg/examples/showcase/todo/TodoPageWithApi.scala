@@ -61,6 +61,14 @@ object TodoPageWithApi extends SimpleComponentBase {
     val lister = provide[Api].todoApi
     val form   = TodoAdderForm
 
+    addHandler(form.onAdd) { text =>
+      lister.addItem(text).foreach { _ =>
+        LazyTodoViewer.refresh.trigger(())
+        form.clear.trigger(())
+      }
+    }
+
+    /*
     add(
       form.onAdd
         .future(text => lister.addItem(text))
@@ -68,6 +76,7 @@ object TodoPageWithApi extends SimpleComponentBase {
         .and
         .trigger(form.clear)
     )
+     */
 
     div(
       h2("API Based TODO App"),

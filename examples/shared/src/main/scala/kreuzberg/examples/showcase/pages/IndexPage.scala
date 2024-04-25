@@ -14,11 +14,10 @@ case object Counter extends SimpleComponentBase {
   override def assemble(using c: SimpleContext): Html = {
     val counter = subscribe(model)
 
-    add(
-      EventSource
-        .Timer(1.second, true)
-        .changeModelDirect(model) { x => x + 1 }
-    )
+    addHandler(EventSource.Timer(1.second, true)) { _ =>
+      model.set(model.read + 1)
+    }
+
     all.span(s"Showing for ${counter} seconds")
   }
 }

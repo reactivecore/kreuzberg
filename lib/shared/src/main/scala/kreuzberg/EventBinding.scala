@@ -32,6 +32,12 @@ sealed trait EventSource[+E] extends EventTransformable[E] {
   override def to[T >: E](sink: EventSink[T]): EventBinding.SourceSink[T] = {
     EventBinding.SourceSink(this, sink)
   }
+
+  /** Attach an imperative handler. */
+  def handle[T >: E](f: T => HandlerContext ?=> Unit): EventBinding.SourceSink[T] = {
+    val sink = EventSink.Handler[T]((c, v) => f(v)(using c))
+    to(sink)
+  }
 }
 
 object EventSource {
@@ -143,6 +149,11 @@ sealed trait EventSink[-E] {
   def contraMap[F](f: F => E): EventSink[F] = {
     preTransform(EventTransformer.Map(f))
   }
+
+  /** Call from an imperative handler */
+  def trigger(value: E)(using h: HandlerContext): Unit = {
+    h.triggerSink(this, value)
+  }
 }
 
 object EventSink {
@@ -161,6 +172,9 @@ object EventSink {
 
   /** Pretransformes a sink. */
   case class PreTransformer[E, F](sink: EventSink[F], transformer: EventTransformer[E, F]) extends EventSink[E]
+
+  /** An imperative handler. */
+  case class Handler[E](f: (HandlerContext, E) => Unit) extends EventSink[E]
 
   object ChannelSink {
     inline def apply[E](channel: Channel[E]): ChannelSink[E] = ChannelSink(WeakReference(channel))
