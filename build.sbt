@@ -21,8 +21,6 @@ ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
 
-val zioVersion                   = "2.0.22"
-val zioLoggingVersion            = "2.2.2"
 val scalaTagsVersion             = "0.12.0"
 val zioHttpVersion               = "3.0.0-RC2"
 val scalatestVersion             = "3.2.18"
@@ -133,8 +131,7 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("r
     name               := "kreuzberg-rpc",
     libraryDependencies ++= Seq(
       "io.circe" %%% "circe-core"   % circeVersion,
-      "io.circe" %%% "circe-parser" % circeVersion,
-      "dev.zio"  %%% "zio"          % zioVersion % (if (isIntelliJ) Compile else Provided)
+      "io.circe" %%% "circe-parser" % circeVersion
     ),
     evictionErrorLevel := Level.Warn,
     testSettings,
@@ -158,19 +155,6 @@ lazy val miniserverCommon = (project in file("miniserver-common"))
     publishSettings
   )
   .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm)
-
-// ZIO Based Mini Server
-lazy val miniserverZioHttp = (project in file("miniserver-ziohttp"))
-  .settings(
-    name := "kreuzberg-miniserver-ziohttp",
-    libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-http"           % zioHttpVersion,
-      "dev.zio" %% "zio-logging-slf4j2" % zioLoggingVersion
-    ),
-    testSettings,
-    publishSettings
-  )
-  .dependsOn(miniserverCommon)
 
 // Tapir/Loom based Mini Server
 lazy val miniserverLoom = (project in file("miniserver-loom"))
@@ -203,7 +187,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     scalaJSUseMainModuleInitializer    := true
   )
   .jvmSettings(logsettings)
-  .jvmConfigure(_.dependsOn(miniserverZioHttp, miniserverLoom))
+  .jvmConfigure(_.dependsOn(miniserverLoom))
   .jsConfigure(_.dependsOn(engineNaive))
   .dependsOn(lib, xml, scalatags, extras, rpc)
 
@@ -242,7 +226,6 @@ lazy val root = (project in file("."))
     extras.js,
     extras.jvm,
     extras.native,
-    miniserverZioHttp,
     miniserverLoom,
     miniserverCommon,
     examples.js,

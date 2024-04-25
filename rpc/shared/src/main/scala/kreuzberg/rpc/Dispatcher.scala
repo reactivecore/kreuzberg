@@ -5,7 +5,6 @@ import io.circe.{Decoder, Encoder, Json}
 import scala.annotation.experimental
 import scala.quoted.*
 import scala.concurrent.Future
-import zio.Task
 
 /** A wrapped service. */
 trait Dispatcher[F[_]] {
@@ -37,11 +36,6 @@ object Dispatcher {
   @experimental
   inline def makeDispatcher[A](handler: A): Dispatcher[Future] = {
     ${ makeDispatcherMacro[Future, A]('handler) }
-  }
-
-  @experimental
-  inline def makeZioDispatcher[A](handler: A): Dispatcher[Task] = {
-    ${ makeDispatcherMacro[Task, A]('handler) }
   }
 
   @experimental

@@ -8,7 +8,6 @@ It is built upon:
 - [Scala DOM](https://scala-js.github.io/scala-js-dom/)
 - [ScalaTags](https://github.com/com-lihaoyi/scalatags) (optional)
 - [Circe](https://circe.github.io/circe/) (optional)
-- [ZIO](https://zio.dev/) (optional, example server)
 - [Tapir](https://github.com/softwaremill/tapir) (optional, example server)
 
 Please note, this is beta software and some parts may have been hastily written.
@@ -52,7 +51,6 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
 - `extras`: Contains various components, including a simple router.
 - `rpc`: An experimental RPC library for making calls between JavaScript and JVM. Needs `@experimental`-Annotation
 - `examples`: Sample applications.
-- `miniserver-ziohttp`: A simple ZIO-ZHTTP-based server for starting the example application.
 - `miniserver-loom`: A Simple Tapir/Virtual threads based server for starting the example application (Needs JVM >=21)
 - `engine-common`: Contains common engine code.
 - `engine-naive`: Contains the naive rendering engine.
