@@ -1,9 +1,6 @@
 package kreuzberg.examples.showcase
 
-import kreuzberg.examples.showcase.todo.TodoApi
-import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, DeploymentConfig, MiniServerConfig}
-import kreuzberg.rpc.{Dispatcher, SecurityError}
-import zio.ZIO
+import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, DeploymentConfig}
 
 val deploymentConfig = DeploymentConfig(
   AssetPaths(

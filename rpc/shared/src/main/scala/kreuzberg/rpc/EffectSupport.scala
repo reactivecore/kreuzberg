@@ -2,7 +2,6 @@ package kreuzberg.rpc
 import io.circe.{Decoder, Encoder, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
-import zio.{Task, ZIO}
 
 type Id[T] = T
 
@@ -76,24 +75,5 @@ object EffectSupport {
     override def flatMap[A, B](in: Id[A])(f: A => Id[B]): Id[B] = f(in)
 
     override def map[A, B](in: Id[A])(f: A => B): Id[B] = f(in)
-  }
-
-  // Note: Only available for clients which do have ZIO Imported
-  implicit def zioEffect: EffectSupport[Task] = new EffectSupport[Task] {
-    override def failure[A](failure: Failure): Task[A] = {
-      ZIO.fail(failure)
-    }
-
-    override def success[A](value: A): Task[A] = {
-      ZIO.succeed(value)
-    }
-
-    override def flatMap[A, B](in: Task[A])(f: A => Task[B]): Task[B] = {
-      in.flatMap(f)
-    }
-
-    override def map[A, B](in: Task[A])(f: A => B): Task[B] = {
-      in.map(f)
-    }
   }
 }
