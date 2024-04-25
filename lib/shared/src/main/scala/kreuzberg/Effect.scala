@@ -14,6 +14,6 @@ case class Effect[T](fn: ExecutionContext => Future[T]) {
 object Effect {
 
   def const[T](value: T): Effect[T] = Effect(_ => Future.successful(value))
-
+  
   inline def future[T](f: ExecutionContext ?=> Future[T]): Effect[T] = Effect(ec => f(using ec))
 }

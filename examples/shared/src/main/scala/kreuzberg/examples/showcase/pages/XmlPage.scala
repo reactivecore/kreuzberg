@@ -11,11 +11,11 @@ object XmlPage extends SimpleComponentBase {
     val scalaTagsLabel = Label(value)
     val xmlLabel       = XmlLabel(value)
 
-    add(
-      editor.onInputEvent
-        .withState(editor.text)
-        .changeModel(value)((n, _) => n)
-    )
+    addHandler(editor.onInputEvent) { _ =>
+      val v = editor.text.read
+      value.set(v)
+    }
+
     <div>
       <h2>XML Example</h2>
       <div>

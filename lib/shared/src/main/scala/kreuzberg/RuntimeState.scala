@@ -12,6 +12,11 @@ sealed trait RuntimeState[S] {
   def map[S2](f: S => S2): RuntimeState[S2] = {
     RuntimeState.Mapping(this, f)
   }
+
+  /** Read the state from Handler */
+  def read(using h: HandlerContext): S = {
+    h.state(this)
+  }
 }
 
 object RuntimeState {
@@ -44,7 +49,11 @@ object RuntimeState {
       componentId: Identifier,
       getter: D => S,
       setter: (D, S) => Unit
-  ) extends JsRuntimeStateBase[D, S]
+  ) extends JsRuntimeStateBase[D, S] {
+    def set(value: S)(using h: HandlerContext): Unit = {
+      h.setProperty(this, value)
+    }
+  }
 
   case class And[S1, S2](
       left: RuntimeState[S1],
