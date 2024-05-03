@@ -154,6 +154,11 @@ sealed trait EventSink[-E] {
   def trigger(value: E)(using h: HandlerContext): Unit = {
     h.triggerSink(this, value)
   }
+
+  /** Like trigger, but for Unit and or Any */
+  def trigger()(using h: HandlerContext, ev: Unit => E): Unit = {
+    trigger(ev(()))
+  }
 }
 
 object EventSink {

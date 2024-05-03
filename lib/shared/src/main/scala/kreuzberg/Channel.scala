@@ -22,6 +22,11 @@ final class Channel[T] private {
   def trigger(value: T)(using h: HandlerContext): Unit = {
     h.triggerChannel(this, value)
   }
+
+  /** Trigger from Handler (Unit or Any) */
+  def trigger()(using h: HandlerContext, ev: Unit => T): Unit = {
+    h.triggerChannel(this, ev(()))
+  }
 }
 
 object Channel {
