@@ -1,6 +1,5 @@
 package kreuzberg.rpc
 import io.circe.{Decoder, Encoder, Json}
-import zio.Task
 
 import scala.annotation.experimental
 import scala.quoted.*
@@ -24,11 +23,6 @@ object Stub {
   @experimental
   inline def makeStub[T](backend: CallingBackend[Future]): T = ${
     makeStubMacro[Future, T]('backend)
-  }
-
-  @experimental
-  inline def makeZioStub[T](backend: CallingBackend[Task]): T = ${
-    makeStubMacro[Task, T]('backend)
   }
 
   @experimental

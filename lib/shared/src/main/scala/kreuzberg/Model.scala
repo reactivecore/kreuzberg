@@ -39,7 +39,7 @@ final class Model[T] private (initialValue: ServiceRepository ?=> T) extends Sub
   override def equals(obj: Any): Boolean = {
     obj match {
       case c: Model[_] => id == c.id
-      case _             => false
+      case _           => false
     }
   }
 
@@ -55,6 +55,16 @@ final class Model[T] private (initialValue: ServiceRepository ?=> T) extends Sub
   override def initial(using ServiceRepository): T = initialValue
 
   override def dependencies: Seq[Identifier] = Seq(id)
+
+  /** Set a value from an Handler. */
+  def set(value: T)(using h: HandlerContext): Unit = {
+    h.setModel(this, value)
+  }
+
+  /** Update a model from handler. */
+  def update(f: T => T)(using h: HandlerContext): Unit = {
+    h.updateModel(this, f)
+  }
 }
 
 object Model {

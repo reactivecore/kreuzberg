@@ -13,7 +13,7 @@ import scala.util.control.NonFatal
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Encapsulate the highly stateful event handling. */
-class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
+class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) {
 
   /** A Pending change. */
   private sealed trait PendingChange
@@ -130,11 +130,11 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
       node: TreeNode,
       sourceSink: EventBinding.SourceSink[E]
   ): Unit = {
-    val transformedSink = transformSink(node, sourceSink.sink)
+    val transformedSink = transformSink(sourceSink.sink)
     bindEventSource(node, sourceSink.source, transformedSink)
   }
 
-  private def transformSink[T](node: TreeNode, eventSink: EventSink[T]): T => Unit = {
+  private def transformSink[T](eventSink: EventSink[T]): T => Unit = {
     eventSink match
       case EventSink.ModelChange(modelId, f)                 =>
         eventData =>
@@ -145,27 +145,73 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
           _pending.append(change)
           ensureNextIteration()
       case EventSink.ChannelSink(channel)                    =>
-        eventData => triggerChannel(channel, eventData)
+        eventData => triggerWeakChannel(channel, eventData)
       case EventSink.ExecuteCode(f)                          => f
       case EventSink.SetProperty(property)                   =>
         eventData => {
           updateJsProperty(eventData, property)
         }
       case EventSink.PreTransformer(underlying, transformer) =>
-        preTransformSink(node, transformer, underlying)
+        preTransformSink(transformer, underlying)
+      case EventSink.Handler(fn)                             =>
+        value => {
+          fn(eventHandlerContext, value)
+        }
+  }
+
+  private object eventHandlerContext extends HandlerContext {
+    override def setModel[T](model: Model[T], value: T): Unit = {
+      updateModel(model, _ => value)
+    }
+
+    override def updateModel[T](model: Model[T], updateFn: T => T): Unit = {
+      val change = PendingModelChange(model, fn = updateFn)
+      _pending.append(change)
+      ensureNextIteration()
+    }
+
+    override def triggerChannel[T](channel: Channel[T], value: T): Unit = {
+      EventManager.this.triggerChannel(channel, value)
+    }
+
+    override def triggerSink[E](sink: EventSink[E], value: E): Unit = {
+      transformSink(sink)(value)
+    }
+
+    override def state[T](state: RuntimeState[T]): T = {
+      fetchStateUnsafe(state)
+    }
+
+    override def setProperty[D <: ScalaJsElement, T](property: RuntimeState.JsProperty[D, T], value: T): Unit = {
+      updateJsProperty(value, property)
+    }
+
+    override def value[M](model: Subscribeable[M]): M = {
+      _currentState.value(model)
+    }
+
+    override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = {
+      sp.serviceOption
+    }
+
+    override def execute(runnable: Runnable): Unit = {
+      implicitly[ExecutionContext].execute(runnable)
+    }
+
+    override def reportFailure(cause: Throwable): Unit = {
+      implicitly[ExecutionContext].reportFailure(cause)
+    }
   }
 
   private def preTransformSink[E, F](
-      node: TreeNode,
       transformer: EventTransformer[E, F],
       sink: EventSink[F]
   ): E => Unit = {
-    val underlying = transformSink(node, sink)
-    buildTransformer(node, transformer, underlying)
+    val underlying = transformSink(sink)
+    buildTransformer(transformer, underlying)
   }
 
   private def buildTransformer[E, F](
-      node: TreeNode,
       transformer: EventTransformer[E, F],
       underlying: F => Unit
   ): E => Unit = {
@@ -197,7 +243,7 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
         }
       }
       case EventTransformer.TryUnpack1(failureSink) => {
-        val failureSinkTransformed = transformSink(node, failureSink)
+        val failureSinkTransformed = transformSink(failureSink)
         in => {
           in match {
             case Success(ok)      => underlying(ok)
@@ -206,7 +252,7 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
         }
       }
       case EventTransformer.TryUnpack2(failureSink) => {
-        val failureSinkTransformed = transformSink(node, failureSink)
+        val failureSinkTransformed = transformSink(failureSink)
         in => {
           in match {
             case (v, Success(ok))      => underlying(v -> ok)
@@ -215,7 +261,7 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
         }
       }
       case EventTransformer.And(other)              => {
-        val othersTransformed = transformSink(node, other)
+        val othersTransformed = transformSink(other)
         in => {
           othersTransformed.apply(in)
           underlying(in)
@@ -225,18 +271,22 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
         underlying(in)
       }
       case EventTransformer.Chained(a, b)           => {
-        val preTransform1 = buildTransformer(node, b, underlying)
-        buildTransformer(node, a, preTransform1)
+        val preTransform1 = buildTransformer(b, underlying)
+        buildTransformer(a, preTransform1)
       }
     }
   }
 
-  private def triggerChannel[T](ref: WeakReference[Channel[T]], data: T): Unit = {
+  private def triggerWeakChannel[T](ref: WeakReference[Channel[T]], data: T): Unit = {
     ref.get match {
       case Some(c) =>
-        _channelBindings.foreachKey(c.id) { _.asInstanceOf[ChannelBinding[T]].handler(data) }
+        triggerChannel(c, data)
       case None    => // nothing
     }
+  }
+
+  private def triggerChannel[T](channel: Channel[T], data: T): Unit = {
+    _channelBindings.foreachKey(channel.id) { _.asInstanceOf[ChannelBinding[T]].handler(data) }
   }
 
   private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
@@ -306,7 +356,7 @@ class EventManager(delegate: EventManagerDelegate)(using ServiceRepository) {
         }
         _registeredTimers.add(ownNode.id, timer)
       case EventSource.PostTransformer(source, transformer) =>
-        val transformedSink = buildTransformer(ownNode, transformer, sink)
+        val transformedSink = buildTransformer(transformer, sink)
         bindEventSource(ownNode, source, transformedSink)
   }
 
