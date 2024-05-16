@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.server.ServerEndpoint
+import sttp.tapir.server.netty.NettySocketConfig
 import sttp.tapir.server.netty.loom.{Id, NettyIdServer}
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
@@ -19,20 +20,22 @@ class MiniServer(config: MiniServerConfig[Id]) {
     val endpoints = List(
       assetHandler,
       indexHandler
-    ) ++ apiEndpointHandler.toList ++ List(
-      otherIndexHandler
-    )
+    ) ++ apiEndpointHandler.toList
 
     val docEndpoints: List[ServerEndpoint[Any, Id]] = SwaggerInterpreter()
       .fromServerEndpoints[Id](endpoints, "MiniServer", "0.1")
 
+    val socketConfig = NettySocketConfig.default.withReuseAddress
+
     val server = NettyIdServer()
       .host(config.host)
       .port(config.port)
+      .modifyConfig(_.socketConfig(socketConfig))
       .addEndpoints(endpoints)
-      .addEndpoints(if (config.deployment.deploymentType.contains(DeploymentType.Debug)) docEndpoints else Nil)
+      .addEndpoints(if (config.deployment.deploymentType == DeploymentType.Debug) docEndpoints else Nil)
+      .addEndpoint(otherIndexHandler)
       .start()
-    logger.info(s"Listening on port ${config.port}")
+    logger.info(s"Listening on port ${config.port} (mode=${config.deployment.deploymentType})")
   }
 
   private val indexHtml: String = Index(config.deployment).index.toString
