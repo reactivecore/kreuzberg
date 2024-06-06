@@ -162,9 +162,18 @@ object SimpleRouter {
 
   private val routingStateModel = Model.create[RoutingState](RoutingState.Empty)
 
+  /** Subscribable Loading State */
   def loading: Subscribeable[Boolean] = routingStateModel.map {
     case _: RoutingState.Loading => true
     case _                       => false
+  }
+
+  /** Subscribable current url (e.g. for Nav Buttons) */
+  def currentUrl: Subscribeable[UrlResource] = routingStateModel.map {
+    case RoutingState.Empty              => UrlResource()
+    case RoutingState.Loading(url, _, _) => url
+    case RoutingState.Loaded(url, _, _)  => url
+    case RoutingState.Failed(url, _, _)  => url
   }
 
   /** Event Sink for going to a specific route. */
