@@ -5,7 +5,7 @@ package kreuzberg.extras
  *
  * Note: path is not url encoded, so keep care do not have illegal characters in it.
  */
-case class UrlResource(str: String) extends AnyVal {
+case class UrlResource(str: String = "/") extends AnyVal {
 
   /** Returns the path */
   def path: String = {
@@ -51,9 +51,14 @@ case class UrlResource(str: String) extends AnyVal {
       }
       .toMap
   }
+
+  override def toString: String = {
+    str
+  }
 }
 
 object UrlResource {
+
   /** Strip the Query from a path */
   def stripQuery(path: String): String = {
     path.indexOf('?') match {
