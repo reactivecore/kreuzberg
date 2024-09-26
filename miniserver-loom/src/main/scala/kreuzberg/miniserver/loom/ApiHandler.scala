@@ -33,8 +33,11 @@ case class ApiHandler(dispatcher: Dispatcher[Id]) {
       if (!dispatcher.handles(serviceName)) {
         bail(Left(UnknownServiceError(serviceName).encodeToJson -> StatusCode.NotFound))
       }
+      val jsonObject = json.asObject.getOrElse {
+        bail(Left(Json.obj("msg" -> Json.fromString("Expected JSON object")) -> StatusCode.BadRequest))
+      }
 
-      val request  = kreuzberg.rpc.Request(json, headers.map { h => h.name -> h.value })
+      val request  = kreuzberg.rpc.Request(jsonObject, headers.map { h => h.name -> h.value })
       val response =
         try {
           dispatcher.call(serviceName, callName, request)

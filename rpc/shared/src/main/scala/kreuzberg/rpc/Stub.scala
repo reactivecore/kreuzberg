@@ -53,18 +53,38 @@ object Stub {
 
     def decls(cls: Symbol): List[Symbol] = {
       methods.map { method =>
-        // println(s"Generating ${method.name}")
-
-        type R
-        given Type[R] = method.returnType.typeArgs.head.asType.asInstanceOf[Type[R]]
-        type Outer = F[R]
-        val outerTyper = TypeRepr.of[Outer]
+        val methodType = generateMethodType(method)
 
         Symbol.newMethod(
           parent = cls,
           name = method.name,
-          tpe = MethodType(method.paramNames)(_ => method.paramTypes, _ => outerTyper)
+          tpe = methodType
         )
+      }
+    }
+
+    def generateMethodType(method: analyzer.Method): MethodType = {
+      type R
+      given Type[R] = method.returnType.typeArgs.head.asType.asInstanceOf[Type[R]]
+
+      type Outer = F[R]
+      val outerTyper = TypeRepr.of[Outer]
+
+      if (method.parameters.isEmpty) {
+        MethodType(Nil)(_ => Nil, _ => outerTyper)
+      } else {
+        val last = method.parameters.last
+
+        val base   = MethodType(last.methodTypeKind)(last.parameters.map(_.name))(
+          _ => last.parameters.map(_.parameterType),
+          _ => outerTyper
+        )
+        val result = method.parameters.reverse.tail.foldLeft(base) { case (current, methodGroup) =>
+          val paramNames = methodGroup.parameters.map(_.name)
+          val paramTypes = methodGroup.parameters.map(_.parameterType)
+          MethodType(methodGroup.methodTypeKind)(paramNames)(_ => paramTypes, _ => current)
+        }
+        result
       }
     }
 
@@ -80,29 +100,27 @@ object Stub {
       x.asTerm
     }
 
-    def encodeArg(dtype: TypeRepr, arg: Tree): Expr[Json] = {
+    def encodeArg(name: String, dtype: TypeRepr, arg: Tree, request: Expr[Request]): Expr[Request] = {
       type X
       given Type[X]  = dtype.asType.asInstanceOf[Type[X]]
-      val argEncoder = Expr.summon[Encoder[X]].getOrElse {
-        throw new IllegalArgumentException("Could not find encoder for type X" + dtype)
+      val paramCodec = Expr.summon[ParamCodec[X]].getOrElse {
+        throw new IllegalArgumentException(s"Could not find ParamCodec for ${dtype.show}")
       }
-      '{ ${ argEncoder }.apply(${ arg.asExprOf[X] }) }
+
+      '{ ${ paramCodec }.encode(${ Expr(name) }, ${ arg.asExprOf[X] }, ${ request }) }
     }
 
-    def encodeNamedArgs(names: List[String], dtypes: List[TypeRepr], args: List[Tree]): Expr[Json] = {
-      val argExpressions: List[Expr[(String, Json)]] = names.zip(dtypes).zip(args).map { case ((name, dtype), arg) =>
-        '{ ${ Expr(name) } -> ${ encodeArg(dtype, arg) } }
+    def encodeNamedArgs(names: List[String], dtypes: List[TypeRepr], args: List[Tree]): Expr[Request] = {
+      val initial: Expr[Request] = '{ Request.empty }
+      names.zip(dtypes).zip(args).foldLeft(initial) { case (current, ((name, datatype), arg)) =>
+        encodeArg(name, datatype, arg, current)
       }
-
-      val varArgs = scala.quoted.Varargs(argExpressions)
-
-      '{ MessageCodec.combine($varArgs: _*) }
     }
 
     def multiArgImplementation(method: analyzer.Method, args: List[List[Tree]]): Term = {
-      val encodedArgs = encodeNamedArgs(method.paramNames, method.paramTypes, args.head)
+      val request = encodeNamedArgs(method.paramNames, method.paramTypes, args.flatten)
       makeDecode(method) {
-        '{ $backend.call(${ Expr(analyze.apiName) }, ${ Expr(method.name) }, Request($encodedArgs)) }
+        '{ $backend.call(${ Expr(analyze.apiName) }, ${ Expr(method.name) }, ${ request }) }
       }
     }
 
@@ -121,7 +139,7 @@ object Stub {
     val newCls =
       Typed(Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil), TypeTree.of[A])
     val result = Block(List(clsDef), newCls).asExprOf[A]
-    // println(s"RESULT: ${result.show}")
+    // println(s"STUB: ${result.show}")
     result
   }
 }

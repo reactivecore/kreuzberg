@@ -7,7 +7,7 @@ trait ScalaJsEvent {
 }
 
 trait ScalaJsNode {
-  def addEventListener[T <: ScalaJsEvent](`type`: String, listener: T => _, useCapture: Boolean = false): Unit
+  def addEventListener[T <: ScalaJsEvent](`type`: String, listener: T => ?, useCapture: Boolean = false): Unit
 }
 
 trait ScalaJsElement {

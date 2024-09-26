@@ -73,13 +73,13 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
   /**
    * Bindings for foreign components Key = affected component
    */
-  private val _foreignBindings = new MutableMultimap[Identifier, ForeignBinding[_]]()
+  private val _foreignBindings = new MutableMultimap[Identifier, ForeignBinding[?]]()
 
   /** Bindings to Window Events. */
   private val _windowEventBindings = new MutableMultimap[String, WindowEventBinding]()
 
   /** Bindings to channels. */
-  private val _channelBindings = new MutableMultimap[Identifier, ChannelBinding[_]]()
+  private val _channelBindings = new MutableMultimap[Identifier, ChannelBinding[?]]()
 
   /** Timers with owners. */
   private val _registeredTimers = new MutableMultimap[Identifier, RegisteredTimer]()
