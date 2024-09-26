@@ -47,7 +47,7 @@ object ExtendedFormPage extends SimpleComponentBase {
         label = "Enter a Large number",
         formType = "number",
         codec = Codec.simpleInt,
-        Validator.fromPredicate(_ > 100, "Must be be large")
+        validator = Validator.fromPredicate(_ > 100, "Must be be large")
       )
   ).xmap[Register](
     tuple => Register(tuple._1, tuple._2, tuple._3, tuple._4, tuple._5, tuple._6),

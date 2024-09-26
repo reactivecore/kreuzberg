@@ -13,7 +13,7 @@ trait HeadlessComponent extends Identified {
 /** Assembled service. */
 case class HeadlessAssembly(
     handlers: Vector[EventBinding] = Vector.empty,
-    subscriptions: Vector[Subscribeable[_]] = Vector.empty,
+    subscriptions: Vector[Subscribeable[?]] = Vector.empty,
     children: Vector[HeadlessComponent] = Vector.empty
 )
 

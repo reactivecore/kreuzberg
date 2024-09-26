@@ -19,14 +19,32 @@ private[rpc] class TraitAnalyzer[Q <: Quotes](using val quotes: Q) {
       symbol: Symbol,
       defDef: DefDef,
       returnType: TypeRepr,
-      parameters: List[List[MethodParameter]]
+      parameters: List[MethodParameterGroup]
   ) {
     def flatParameters: List[MethodParameter] = {
-      parameters.flatten
+      parameters.flatMap(_.parameters)
     }
 
     def paramNames: List[String]   = flatParameters.map(_.name)
     def paramTypes: List[TypeRepr] = flatParameters.map(_.parameterType)
+  }
+
+  case class MethodParameterGroup(
+      isImplicit: Boolean,
+      isGiven: Boolean,
+      parameters: List[MethodParameter]
+  ) {
+
+    /** Translates to methodTypeKind */
+    def methodTypeKind: MethodTypeKind = {
+      if (isImplicit) {
+        MethodTypeKind.Implicit
+      } else if (isGiven) {
+        MethodTypeKind.Contextual
+      } else {
+        MethodTypeKind.Plain
+      }
+    }
   }
 
   case class MethodParameter(
@@ -66,9 +84,19 @@ private[rpc] class TraitAnalyzer[Q <: Quotes](using val quotes: Q) {
       val decoded = member.tree.asInstanceOf[DefDef]
 
       val parameters = decoded.paramss.map { paramClause =>
-        paramClause.params.map {
+        val (isGiven, isImplicit) = paramClause match {
+          case t: TermParamClause =>
+            // println(s"Is Given: ${t.isGiven}")
+            // println(s"Is Implicit: ${t.isImplicit}")
+            (t.isGiven, t.isImplicit)
+          case _                  =>
+            // println(s"Not a term param clasue")
+            (false, false)
+        }
+        val parameters            = paramClause.params.map {
           case v: ValDef  =>
             // println(s"Parameter: ${v.name}, ${v.tpt.tpe}")
+
             MethodParameter(
               v.name,
               v.tpt.tpe
@@ -77,6 +105,11 @@ private[rpc] class TraitAnalyzer[Q <: Quotes](using val quotes: Q) {
             println("Do not know what to do with ${p}")
             ???
         }
+        MethodParameterGroup(
+          isImplicit = isImplicit,
+          isGiven = isGiven,
+          parameters = parameters
+        )
       }
       Method(
         decoded.name,

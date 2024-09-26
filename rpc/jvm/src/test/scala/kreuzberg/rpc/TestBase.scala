@@ -13,7 +13,7 @@ class TestBase extends AnyFlatSpec with Matchers {
     Await.result(f, 1.minute)
   }
 
-  def awaitError[E <: AnyRef](f: Future[_])(using ClassTag[E]): E = {
+  def awaitError[E <: AnyRef](f: Future[?])(using ClassTag[E]): E = {
     intercept[E] {
       await(f)
     }

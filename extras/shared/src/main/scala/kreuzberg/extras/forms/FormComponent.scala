@@ -55,7 +55,7 @@ trait FormFieldComponent extends Component {
 object FormFieldComponent {
 
   /** Input inside form field. */
-  case class FormFieldInput(field: FormField[_], initialValue: String) extends SimpleComponentBase {
+  case class FormFieldInput(field: FormField[?], initialValue: String) extends SimpleComponentBase {
     override def assemble(using c: SimpleContext): Html = {
       input(
         name   := field.name,
@@ -84,7 +84,7 @@ object FormFieldComponent {
     }
   }
 
-  case class Default(field: FormField[_], initialValue: String) extends SimpleComponentBase with FormFieldComponent {
+  case class Default(field: FormField[?], initialValue: String) extends SimpleComponentBase with FormFieldComponent {
     val input               = FormFieldInput(field, initialValue)
     val violations          = Model.create[List[String]](Nil)
     val violationsComponent = FormFieldViolationsComponent(violations)
@@ -113,12 +113,12 @@ object FormFieldComponent {
 }
 
 trait FormFieldComponentBuilder {
-  def build(field: FormField[_], initialValue: String): FormFieldComponent
+  def build(field: FormField[?], initialValue: String): FormFieldComponent
 }
 
 object FormFieldComponentBuilder {
   object Default extends FormFieldComponentBuilder {
-    override def build(field: FormField[_], initialValue: String): FormFieldComponent = {
+    override def build(field: FormField[?], initialValue: String): FormFieldComponent = {
       FormFieldComponent.Default(field, initialValue)
     }
   }

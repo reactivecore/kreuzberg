@@ -14,6 +14,6 @@ package kreuzberg
 case class Assembly(
     html: Html,
     handlers: Vector[EventBinding] = Vector.empty,
-    subscriptions: Vector[Subscribeable[_]] = Vector.empty,
+    subscriptions: Vector[Subscribeable[?]] = Vector.empty,
     headless: Vector[HeadlessComponent] = Vector.empty
 )
