@@ -120,43 +120,15 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     _registeredTimers.deregisterKeys(c => !referencedComponents.contains(c))(_.stopper())
   }
 
-  private def activateEvent(node: TreeNode, eventBinding: EventBinding): Unit = {
-    eventBinding match {
-      case s: EventBinding.SourceSink[_] => activateSourceSinkBinding(node, s)
+  private def activateEvent[E](node: TreeNode, eventBinding: EventBinding[E]): Unit = {
+    val transformedSink = transformSink(eventBinding.sink)
+    bindEventSource(node, eventBinding.source, transformedSink)
+  }
+
+  private def transformSink[T](eventSink: EventSink[T]): T => Unit = { value =>
+    {
+      eventSink.f(eventHandlerContext, value)
     }
-  }
-
-  private def activateSourceSinkBinding[E](
-      node: TreeNode,
-      sourceSink: EventBinding.SourceSink[E]
-  ): Unit = {
-    val transformedSink = transformSink(sourceSink.sink)
-    bindEventSource(node, sourceSink.source, transformedSink)
-  }
-
-  private def transformSink[T](eventSink: EventSink[T]): T => Unit = {
-    eventSink match
-      case EventSink.ModelChange(modelId, f)                 =>
-        eventData =>
-          val change = PendingModelChange(
-            modelId,
-            fn = f(eventData, _)
-          )
-          _pending.append(change)
-          ensureNextIteration()
-      case EventSink.ChannelSink(channel)                    =>
-        eventData => triggerWeakChannel(channel, eventData)
-      case EventSink.ExecuteCode(f)                          => f
-      case EventSink.SetProperty(property)                   =>
-        eventData => {
-          updateJsProperty(eventData, property)
-        }
-      case EventSink.PreTransformer(underlying, transformer) =>
-        preTransformSink(transformer, underlying)
-      case EventSink.Handler(fn)                             =>
-        value => {
-          fn(eventHandlerContext, value)
-        }
   }
 
   private object eventHandlerContext extends HandlerContext {
@@ -203,80 +175,6 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     }
   }
 
-  private def preTransformSink[E, F](
-      transformer: EventTransformer[E, F],
-      sink: EventSink[F]
-  ): E => Unit = {
-    val underlying = transformSink(sink)
-    buildTransformer(transformer, underlying)
-  }
-
-  private def buildTransformer[E, F](
-      transformer: EventTransformer[E, F],
-      underlying: F => Unit
-  ): E => Unit = {
-    transformer match {
-      case EventTransformer.Map(fn)                 => in => underlying(fn(in))
-      case EventTransformer.Collect(fn)             => in => if (fn.isDefinedAt(in)) { underlying(fn(in)) }
-      case EventTransformer.Tapped(fn)              =>
-        in => {
-          try {
-            fn(in)
-          } catch {
-            case NonFatal(e) =>
-              Logger.warn(s"Error in tap: ${e.getMessage}")
-          }
-          underlying(in)
-        }
-      case EventTransformer.AddState(runtimeState)  => { in =>
-        try {
-          val state = fetchStateUnsafe(runtimeState)
-          underlying((in, state))
-        } catch {
-          case NonFatal(e) =>
-            Logger.warn(s"Error fetching runtime state: ${e.getMessage}")
-        }
-      }
-      case EventTransformer.AddEffect(effectFn)     => { in =>
-        effectFn(in).fn(implicitly[ExecutionContext]).andThen { case result =>
-          underlying((in, result))
-        }
-      }
-      case EventTransformer.TryUnpack1(failureSink) => {
-        val failureSinkTransformed = transformSink(failureSink)
-        in => {
-          in match {
-            case Success(ok)      => underlying(ok)
-            case Failure(failure) => failureSinkTransformed(failure)
-          }
-        }
-      }
-      case EventTransformer.TryUnpack2(failureSink) => {
-        val failureSinkTransformed = transformSink(failureSink)
-        in => {
-          in match {
-            case (v, Success(ok))      => underlying(v -> ok)
-            case (v, Failure(failure)) => failureSinkTransformed(v -> failure)
-          }
-        }
-      }
-      case EventTransformer.And(other)              => {
-        val othersTransformed = transformSink(other)
-        in => {
-          othersTransformed.apply(in)
-          underlying(in)
-        }
-      }
-      case EventTransformer.Empty()                 => { in =>
-        underlying(in)
-      }
-      case EventTransformer.Chained(a, b)           => {
-        val preTransform1 = buildTransformer(b, underlying)
-        buildTransformer(a, preTransform1)
-      }
-    }
-  }
-
   private def triggerWeakChannel[T](ref: WeakReference[Channel[T]], data: T): Unit = {
     ref.get match {
       case Some(c) =>
@@ -291,7 +189,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
 
   private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
     eventSource match
-      case j: EventSource.Js[_]                             =>
+      case j: EventSource.Js[_]             =>
         j.jsEvent.componentId match {
           case None              =>
             val handler: ScalaJsEvent => Unit = { in =>
@@ -333,16 +231,16 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
             }
             bindJsEvent(source, j.jsEvent, sink)
         }
-      case EventSource.Assembled                            =>
+      case EventSource.Assembled            =>
         scalajs.js.timers.setTimeout(0) {
           sink(())
         }
-      case c: EventSource.ChannelSource[_]                  =>
+      case c: EventSource.ChannelSource[_]  =>
         bindChannel(ownNode, c, sink)
-      case o: EventSource.OrSource[_]                       =>
+      case o: EventSource.OrSource[_]       =>
         bindEventSource(ownNode, o.left, sink)
         bindEventSource(ownNode, o.right, sink)
-      case t: EventSource.Timer                             =>
+      case t: EventSource.Timer             =>
         val timer = if (t.periodic) {
           val handle = scalajs.js.timers.setInterval(t.duration) { sink(()) }
           RegisteredTimer(
@@ -355,9 +253,20 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
           )
         }
         _registeredTimers.add(ownNode.id, timer)
-      case EventSource.PostTransformer(source, transformer) =>
-        val transformedSink = buildTransformer(transformer, sink)
-        bindEventSource(ownNode, source, transformedSink)
+      case t: EventSource.Transformer[?, ?] =>
+        bindTransformer(ownNode, t, sink)
+  }
+
+  private def bindTransformer[E, F](
+      ownNode: TreeNode,
+      transformer: EventSource.Transformer[E, F],
+      sink: F => Unit
+  ): Unit = {
+    val updatedSink: E => Unit = { input =>
+      val transformed = transformer.f(input)
+      transformed.foreach(sink)
+    }
+    bindEventSource(ownNode, transformer.from, updatedSink)
   }
 
   private def fetchStateUnsafe[S](s: RuntimeState[S]): S = {

@@ -5,7 +5,6 @@ import kreuzberg.{
   Effect,
   EventSink,
   EventSource,
-  EventTransformer,
   Html,
   Model,
   ServiceRepository,
@@ -13,6 +12,7 @@ import kreuzberg.{
   SimpleContext,
   SimpleHtml
 }
+import scala.util.{Success, Failure}
 
 /** A Base class for components which lazy load stuff from an external service. */
 abstract class LazyLoader[T] extends SimpleComponentBase {
@@ -21,18 +21,17 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
   val model = Model.create[LazyState[T]](LazyState.Init)
 
   /** Event sink for refreshing the loader. */
-  def refresh: EventSink[Any] = EventSink.ModelChange(model, (_, _) => LazyState.Init)
+  def refresh: EventSink[Any] = EventSink.apply { _ =>
+    model.set(LazyState.Init)
+  }
 
   /** Event sink for refreshing (silently) */
-  def silentRefresh(using a: AssemblerContext): EventSink[Any] = {
-    EventTransformer
-      .AddEffect { _ =>
-        load()
+  def silentRefresh(using a: AssemblerContext): EventSink[Any] = EventSink { _ =>
+    load()
+      .runAndHandle {
+        case Success(value) => model.set(LazyState.Ok(value))
+        case Failure(e)     => model.set(LazyState.Failed(e))
       }
-      .map {
-        _._2.fold(err => LazyState.Failed(err), ok => LazyState.Ok(ok))
-      }
-      .intoModel(model)
   }
 
   override def assemble(using c: SimpleContext): Html = {
@@ -40,13 +39,10 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
     data match {
       case LazyState.Init            =>
         add(
-          EventSource.Assembled
-            .withEffect(_ => load())
-            .map {
-              _.fold(err => LazyState.Failed(err), ok => LazyState.Ok(ok))
-            }
-            .intoModel(model),
-          EventSource.Assembled.setModelTo(model, LazyState.WaitResponse)
+          EventSource.Assembled.handle { _ =>
+            model.set(LazyState.WaitResponse)
+            silentRefresh.trigger(())
+          }
         )
         waiting()
       case LazyState.WaitResponse    =>

@@ -6,37 +6,55 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
 
+import scala.annotation.targetName
 import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.duration.FiniteDuration
 import scala.ref.WeakReference
 import scala.util.Failure
 import scala.util.Success
 
-trait EventTransformable[+E] extends EventTransformationDsl[E] with EventSinkApplicationDsl[E]
-
 /** A Source of an [[EventBinding]]. */
-sealed trait EventSource[+E] extends EventTransformable[E] {
-  override type WithTransformer[F] = EventSource[F]
-  override type WithSink[G]        = EventBinding.SourceSink[G]
-
-  override def withTransformer[Q](transformer: EventTransformer[E, Q]): EventSource[Q] = {
-    EventSource.PostTransformer(this, transformer)
-  }
-
-  /** Transform via function. */
-  inline def transform[R](f: EventSource[E] => R): R = f(this)
+sealed trait EventSource[+E] {
 
   /** Combine with some other event source. */
   def or[T >: E](source: EventSource[T]): EventSource[T] = EventSource.OrSource(this, source)
 
-  override def to[T >: E](sink: EventSink[T]): EventBinding.SourceSink[T] = {
-    EventBinding.SourceSink(this, sink)
+  /** Attach a handler */
+  def handle[T >: E](f: T => HandlerContext ?=> Unit): EventBinding[T] = {
+    EventBinding(
+      this,
+      EventSink(f)
+    )
   }
 
-  /** Attach an imperative handler. */
-  def handle[T >: E](f: T => HandlerContext ?=> Unit): EventBinding.SourceSink[T] = {
-    val sink = EventSink.Handler[T]((c, v) => f(v)(using c))
-    to(sink)
+  def handleAny(f: HandlerContext ?=> Unit): EventBinding[Any] = {
+    handle(_ => f)
+  }
+
+  /** Attach a handler. */
+  def to[T >: E](sink: EventSink[T]): EventBinding[T] = {
+    EventBinding(this, sink)
+  }
+
+  def map[F](f: E => F): EventSource[F] = {
+    EventSource.Transformer(this, e => List(f(e)))
+  }
+
+  def filter(f: E => Boolean): EventSource[E] = {
+    EventSource.Transformer(this, e => if (f(e)) Nil else List(e))
+  }
+
+  def collect[F](f: PartialFunction[E, F]): EventSource[F] = {
+    EventSource.Transformer(
+      this,
+      e => {
+        if (f.isDefinedAt(e)) {
+          List(f(e))
+        } else {
+          Nil
+        }
+      }
+    )
   }
 }
 
@@ -71,139 +89,27 @@ object EventSource {
       periodic: Boolean = false
   ) extends EventSource[Unit]
 
-  /** Transforms an event source. */
-  case class PostTransformer[E, O](
-      inner: EventSource[E],
-      transformer: EventTransformer[E, O]
-  ) extends EventSource[O]
+  /** Transforms event sources */
+  case class Transformer[E, F](
+      from: EventSource[E],
+      f: E => Seq[F]
+  ) extends EventSource[F]
 }
 
-sealed trait EventTransformer[-I, +O] extends EventTransformable[O] {
+/** A Sink of events */
+case class EventSink[E](f: (HandlerContext, E) => Unit) {
 
-  /** Transform via function. */
-  inline def transform[R](f: EventTransformer[I, O] => R): R = f(this)
-
-  override final type WithTransformer[X] = EventTransformer[I @uncheckedVariance, X]
-  override final type WithSink[X]        = EventSink[I @uncheckedVariance]
-
-  /** Transforms using a Transformer. */
-
-  override def withTransformer[Q](transformer: EventTransformer[O, Q]): EventTransformer[I, Q] = {
-    EventTransformer.Chained[I, O, Q](this, transformer)
-  }
-
-  override def to[T >: O](sink: EventSink[T]): EventSink[I] = {
-    EventSink.PreTransformer(sink, this)
-  }
-
-  def viaSink(sink: EventSink[O]): EventTransformer[I, O] = {
-    EventTransformer.Chained(this, EventTransformer.And(sink))
-  }
-}
-
-object EventTransformer {
-  // Simple Transformations
-  case class Map[I, O](fn: I => O)                                extends EventTransformer[I, O]
-  case class Collect[I, O](fn: PartialFunction[I, O])             extends EventTransformer[I, O]
-  case class Tapped[I](fn: I => Unit)                             extends EventTransformer[I, I]
-  // Adding Runtime State
-  case class AddState[I, S](runtimeState: RuntimeState[S])        extends EventTransformer[I, (I, S)]
-  // Adding an Effect
-  case class AddEffect[I, E](effectFn: I => Effect[E])            extends EventTransformer[I, (I, Try[E])]
-  // Removing the Failure part of trys
-  case class TryUnpack1[E](failure: EventSink[Throwable])         extends EventTransformer[Try[E], E]
-  case class TryUnpack2[I, E](failure: EventSink[(I, Throwable)]) extends EventTransformer[(I, Try[E]), (I, E)]
-  // Call other sinks, used for fan out.
-  case class And[I](other: EventSink[I])                          extends EventTransformer[I, I]
-
-  /** Empty, Starting point for transformations. */
-  case class Empty[I]() extends EventTransformer[I, I] {
-    override def withTransformer[Q](transformer: EventTransformer[I, Q]): EventTransformer[I, Q] = {
-      transformer
-    }
-  }
-
-  case class Chained[I, X, O](a: EventTransformer[I, X], b: EventTransformer[X, O]) extends EventTransformer[I, O]
-}
-
-/** Sink of an [[EventBinding]] */
-sealed trait EventSink[-E] {
-
-  /** Add another sink */
-  inline def and[T <: E](sink: EventSink[T]): EventSink[T] = {
-    preTransform(
-      EventTransformer.And(this)
-    )
-  }
-
-  inline def preTransform[F, T <: E](transformer: EventTransformer[F, T]): EventSink[F] = {
-    EventSink.PreTransformer(this, transformer)
-  }
-
-  /** Applies a partial function before calling the sink. */
-  inline def contraCollect[F](pf: PartialFunction[F, E]): EventSink[F] = {
-    preTransform(EventTransformer.Collect(pf))
-  }
-
-  /** Applies a map function before calling a sink. */
-  def contraMap[F](f: F => E): EventSink[F] = {
-    preTransform(EventTransformer.Map(f))
-  }
-
-  /** Call from an imperative handler */
   def trigger(value: E)(using h: HandlerContext): Unit = {
     h.triggerSink(this, value)
   }
 
-  /** Like trigger, but for Unit and or Any */
-  def trigger()(using h: HandlerContext, ev: Unit => E): Unit = {
-    trigger(ev(()))
-  }
 }
 
 object EventSink {
-
-  /** Issue a model change */
-  case class ModelChange[E, M](model: Model[M], f: (E, M) => M) extends EventSink[E]
-
-  /** Execute some custom Code */
-  case class ExecuteCode[E](f: E => Unit) extends EventSink[E]
-
-  /** Trigger a Channel. */
-  case class ChannelSink[E](channel: WeakReference[Channel[E]]) extends EventSink[E]
-
-  /** Set a javascript property */
-  case class SetProperty[D <: ScalaJsElement, S](property: JsProperty[D, S]) extends EventSink[S]
-
-  /** Pretransformes a sink. */
-  case class PreTransformer[E, F](sink: EventSink[F], transformer: EventTransformer[E, F]) extends EventSink[E]
-
-  /** An imperative handler. */
-  case class Handler[E](f: (HandlerContext, E) => Unit) extends EventSink[E]
-
-  object ChannelSink {
-    inline def apply[E](channel: Channel[E]): ChannelSink[E] = ChannelSink(WeakReference(channel))
+  def apply[E](f: E => HandlerContext ?=> Unit): EventSink[E] = {
+    EventSink((c, v) => f(v)(using c))
   }
 }
 
-sealed trait EventBinding
-
-object EventBinding {
-
-  /** Binds some source event to sink event. */
-  case class SourceSink[E](
-      source: EventSource[E],
-      sink: EventSink[E]
-  ) extends EventBinding {
-
-    /** Helper for adding more sinks on one source. */
-    inline def and: EventSource[E] = source.withTransformer(
-      EventTransformer.And(sink)
-    )
-  }
-
-  def apply[E](
-      source: EventSource[E],
-      sink: EventSink[E]
-  ): SourceSink[E] = SourceSink(source, sink)
-}
+/** An event binding. */
+case class EventBinding[E](source: EventSource[E], sink: EventSink[E])

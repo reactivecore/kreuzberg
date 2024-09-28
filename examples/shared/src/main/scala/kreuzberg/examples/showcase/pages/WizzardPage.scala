@@ -25,8 +25,12 @@ case class Wizzard(
     val nextButton  = Button("next")
 
     add(
-      prevButton.onClicked.changeModelDirect(pageModel)(x => Math.max(0, x - 1)),
-      nextButton.onClicked.changeModelDirect(pageModel)(x => Math.min(pages.size - 1, x + 1))
+      prevButton.onClicked.handleAny {
+        pageModel.update(p => Math.max(0, p - 1))
+      },
+      nextButton.onClicked.handleAny {
+        pageModel.update(p => Math.min(pages.size - 1, p + 1))
+      }
     )
 
     div(selected.wrap, prevButton.wrap, nextButton.wrap)
