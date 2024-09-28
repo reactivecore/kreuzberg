@@ -127,6 +127,7 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in f
   )
   .dependsOn(lib, engineCommon % Test)
 
+// Note: rpc doesn't depend on lib (because we do not need it)
 lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("rpc"))
   .settings(
     name               := "kreuzberg-rpc",
@@ -138,7 +139,11 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("r
     testSettings,
     publishSettings
   )
-  .dependsOn(lib)
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "org.scala-js" %%% "scalajs-dom" % scalaJsDomVersion
+    )
+  )
 
 lazy val extras = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("extras"))
   .settings(

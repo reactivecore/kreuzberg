@@ -3,10 +3,11 @@ package kreuzberg
 import kreuzberg.RuntimeState.JsProperty
 import kreuzberg.dom.ScalaJsElement
 
+import scala.annotation.implicitNotFound
 import scala.concurrent.ExecutionContext
-import scala.ref.WeakReference
 
 /** Context for imperative Event Handlers */
+@implicitNotFound("HandlerContext not found, are you inside an EventHandler?")
 trait HandlerContext extends ModelValueProvider with ServiceRepository with ExecutionContext {
 
   /** Issue a model change. */

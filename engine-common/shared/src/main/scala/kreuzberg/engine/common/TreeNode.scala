@@ -20,7 +20,7 @@ case class TreeNode(
     component: HeadlessOrComponent,
     html: Html,
     children: Vector[TreeNode],
-    handlers: Vector[EventBinding],
+    handlers: Vector[EventBinding[?]],
     subscriptions: Vector[Identifier]
 ) {
   override def toString: String = s"Component ${id}/${component}"

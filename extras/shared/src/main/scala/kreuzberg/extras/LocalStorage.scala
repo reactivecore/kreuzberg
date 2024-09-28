@@ -18,7 +18,7 @@ case class LocalStorage[M](initial: M, key: String, serializer: M => String, des
     val current = read(model)
     HeadlessAssembly(
       handlers = Vector(
-        EventSource.Assembled.executeCode { _ =>
+        EventSource.Assembled.handle { _ =>
           writeValue(current)
         }
       ),

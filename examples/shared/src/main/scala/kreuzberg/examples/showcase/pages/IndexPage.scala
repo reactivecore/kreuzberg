@@ -30,7 +30,9 @@ object IndexPage extends SimpleComponentBase {
 
   def assemble(using context: SimpleContext): Html = {
     add(
-      countIncrementer.onClicked.changeModelDirect(count)(_ + 1)
+      countIncrementer.onClicked.handle { _ =>
+        count.update(_ + 1)
+      }
     )
     addService(secondCounter)
     div(

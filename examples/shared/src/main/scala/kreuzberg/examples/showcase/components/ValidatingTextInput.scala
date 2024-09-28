@@ -35,20 +35,12 @@ case class ValidatingTextInput(
     val errorShower = ErrorShower(errorModel)
 
     add(
-      textInput.onInputEvent
-        .withState(textInput.text)
-        .changeModel(valueModel) { (v, _) =>
-          Logger.debug(s"Setting value to ${v}")
-          v
-        }
-        .and
-        .changeModel(errorModel) { (v, _) =>
-          {
-            val error = validator(v)
-            Logger.debug(s"Setting error to ${error}")
-            error
-          }
-        }
+      textInput.onInputEvent.handle { _ =>
+        val value  = textInput.text.read
+        valueModel.set(value)
+        val errors = validator(value)
+        errorModel.set(errors)
+      }
     )
 
     div(

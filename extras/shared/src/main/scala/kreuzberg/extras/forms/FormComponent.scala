@@ -91,12 +91,11 @@ object FormFieldComponent {
 
     override def assemble(using c: SimpleContext): Html = {
       add(
-        input.onInputEvent
-          .withState(input.text)
-          .map { value =>
-            field.decodeAndValidate(value).fold(_.asList, _ => Nil)
-          }
-          .intoModel(violations)
+        input.onInputEvent.handle { _ =>
+          val value   = input.text.read
+          val decoded = field.decodeAndValidate(value).fold(_.asList, _ => Nil)
+          violations.set(decoded)
+        }
       )
       div(
         label(
