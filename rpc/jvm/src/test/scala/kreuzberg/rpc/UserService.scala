@@ -40,19 +40,16 @@ class UserMock(backend: CallingBackend[Future])(implicit e: EffectSupport[Future
   override def authenticate(credentials: Credentials): Future[AuthenticateResult] = {
     // Die aufrufe müssen alle irgendwie gleich aussehen.
     // Wie werden multiple argumente kodiert?
-    val encoded  = MessageCodec.combine(
-      "credentials" -> credentials.asJson
-    )
-    val response = backend.call("UserService", "authenticate", Request(encoded))
+    val encoded  = ParamCodec[Credentials].encode("credentials", credentials, Request.empty)
+    val response = backend.call("UserService", "authenticate", encoded)
     e.decodeResponse(response)
   }
 
   override def logout(token: String, reason: String): Future[Boolean] = {
-    val encoded  = MessageCodec.combine(
-      "token"  -> token.asJson,
-      "reason" -> reason.asJson
-    )
-    val response = backend.call("UserService", "logout", Request(encoded))
+    var request  = Request.empty
+    request = ParamCodec[String].encode("token", token, request)
+    request = ParamCodec[String].encode("reason", reason, request)
+    val response = backend.call("UserService", "logout", request)
     e.decodeResponse(response)
   }
 }
@@ -81,16 +78,9 @@ class UserServiceDispatcher(backend: UserService[Future])(
   }
 
   private def callAuthenticate(input: Request): Future[Response] = {
-    val args         = for {
-      decode <- MessageCodec.split(input.payload, Seq("credentials"))
-      arg0   <- decode.head.as[Credentials]
-    } yield {
-      arg0
-    }
-    effect.flatMap(effect.wrap(args.left.map(Failure.fromCirceError))) { args =>
-      effect.flatMap(backend.authenticate(args)) { result =>
-        effect.success(Response(result.asJson))
-      }
+    val args = ParamCodec[Credentials].decode("credentials", input)
+    effect.flatMap(backend.authenticate(args)) { result =>
+      effect.success(Response(result.asJson))
     }
   }
 }

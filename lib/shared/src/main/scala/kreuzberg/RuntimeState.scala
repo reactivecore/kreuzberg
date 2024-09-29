@@ -1,6 +1,6 @@
 package kreuzberg
 
-import kreuzberg.dom.ScalaJsElement
+import org.scalajs.dom.Element
 
 /** Encapsulates a runtime state field. */
 sealed trait RuntimeState[S] {
@@ -22,7 +22,7 @@ sealed trait RuntimeState[S] {
 object RuntimeState {
 
   /** Base for runtime state. */
-  sealed trait JsRuntimeStateBase[D <: ScalaJsElement, S] extends RuntimeState[S] {
+  sealed trait JsRuntimeStateBase[D <: Element, S] extends RuntimeState[S] {
     def componentId: Identifier
     def getter: D => S
   }
@@ -39,13 +39,13 @@ object RuntimeState {
    * @tparam S
    *   Return type
    */
-  case class JsRuntimeState[D <: ScalaJsElement, S](
+  case class JsRuntimeState[D <: Element, S](
       componentId: Identifier,
       getter: D => S
   ) extends JsRuntimeStateBase[D, S]
 
   /** Encapsulates a read/writable property. */
-  case class JsProperty[D <: ScalaJsElement, S](
+  case class JsProperty[D <: Element, S](
       componentId: Identifier,
       getter: D => S,
       setter: (D, S) => Unit

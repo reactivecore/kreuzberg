@@ -23,7 +23,7 @@ trait SimpleContextDsl extends ComponentDsl {
   }
 
   /** Add an event binding. */
-  protected def add(binding0: EventBinding, others: EventBinding*)(using c: SimpleContext): Unit = {
+  protected def add(binding0: EventBinding[?], others: EventBinding[?]*)(using c: SimpleContext): Unit = {
     c.addEventBinding(binding0)
     others.foreach(c.addEventBinding)
   }

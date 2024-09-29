@@ -18,7 +18,7 @@ case class LocalStorage[M](initial: M, key: String, serializer: M => String, des
     val current = read(model)
     HeadlessAssembly(
       handlers = Vector(
-        EventSource.Assembled.executeCode { _ =>
+        EventSource.Assembled.handle { _ =>
           writeValue(current)
         }
       ),
@@ -46,16 +46,12 @@ case class LocalStorage[M](initial: M, key: String, serializer: M => String, des
 object LocalStorage {
 
   /** Necessary backend for LocalStorage. */
-  trait Backend {
+  trait Backend derives ServiceNameProvider {
 
     /** Save local Storage. */
     def set(key: String, value: String): Unit
 
     /** Load Local Storage. */
     def get(key: String): Option[String]
-  }
-
-  object Backend {
-    given snp: ServiceNameProvider[Backend] = ServiceNameProvider.create("local_storage_backend")
   }
 }

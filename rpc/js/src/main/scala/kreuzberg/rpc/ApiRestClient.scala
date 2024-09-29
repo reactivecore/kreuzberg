@@ -1,6 +1,6 @@
 package kreuzberg.rpc
 
-import kreuzberg.{Logger, rpc}
+import kreuzberg.rpc
 import org.scalajs.dom.*
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -8,7 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Rest client for API Calls. */
 class ApiRestClient(baseUrl: String)(implicit ec: ExecutionContext) extends CallingBackend[Future] {
 
-  override def call(service: ByteString, name: ByteString, input: rpc.Request): Future[rpc.Response] = {
+  override def call(service: String, name: String, input: rpc.Request): Future[rpc.Response] = {
     val url = baseUrl + service + "/" + name
 
     val headers = Headers()
@@ -19,15 +19,11 @@ class ApiRestClient(baseUrl: String)(implicit ec: ExecutionContext) extends Call
 
     object init extends RequestInit
     init.method = HttpMethod.POST
-    init.body = input.payload.toString
+    init.body = input.payload.toJson.toString
     init.headers = headers
 
-    val t0 = System.currentTimeMillis()
-    Logger.debug(s"Calling ${url}")
     for {
       fetch   <- Fetch.fetch(url, init).toFuture
-      t1       = System.currentTimeMillis()
-      _        = Logger.debug(s"${url} responded with ${fetch.status} after ${t1 - t0}ms")
       content <- decodeResponse(fetch)
     } yield {
       content

@@ -1,14 +1,16 @@
 package kreuzberg.extras
 
-import scalatags.Text.all._
-import kreuzberg._
-import kreuzberg.scalatags._
+import scalatags.Text.all.*
+import kreuzberg.*
+import kreuzberg.scalatags.*
+import org.scalajs.dom.Event
 
 case class PlainLink(
     name: String,
     target: String
 ) extends SimpleComponentBase {
-  val onClick = jsEvent("click", true, true)
+
+  val onClick: EventSource[Event] = jsEvent("click", true).hook(_.preventDefault())
 
   override def assemble(implicit c: SimpleContext): Html = {
     a(name, href := target)

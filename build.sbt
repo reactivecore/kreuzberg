@@ -6,31 +6,32 @@ val versionTag = sys.env
   .filter(_.startsWith("v"))
   .map(_.stripPrefix("v"))
 
-val snapshotVersion = "0.9-SNAPSHOT"
+val snapshotVersion = "0.10-SNAPSHOT"
 val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
 
-ThisBuild / scalaVersion := "3.3.3"
+ThisBuild / scalaVersion := "3.5.1"
 
 ThisBuild / scalacOptions += "-Xcheck-macros"
 ThisBuild / scalacOptions += "-feature"
+ThisBuild / scalacOptions ++= Seq("-rewrite", "-source", "3.4-migration")
 
 ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
 
-val scalaTagsVersion             = "0.12.0"
-val zioHttpVersion               = "3.0.0-RC2"
-val scalatestVersion             = "3.2.18"
+val scalaTagsVersion             = "0.13.1"
+val scalatestVersion             = "3.2.19"
 val logbackVersion               = "1.5.6"
+val slf4jVersion                 = "2.0.13"
 val scalaJsDomVersion            = "2.8.0"
 val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
-val scalaXmlVersion              = "2.2.0"
-val circeVersion                 = "0.14.6"
-val tapirVersion                 = "1.10.4"
+val scalaXmlVersion              = "2.3.0"
+val circeVersion                 = "0.14.9"
+val tapirVersion                 = "1.10.14"
 val questVersion                 = "0.2.0"
 
 val isIntelliJ = {
@@ -70,6 +71,13 @@ val logsettings = libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % logbackVersion
 )
 
+lazy val jsDomMock = (crossProject(JVMPlatform, NativePlatform) in file("js-dom-mock"))
+  .settings(
+    name := "kreuzberg-scalajs-dom-mock",
+    testSettings,
+    publishSettings
+  )
+
 /** Defines a component. */
 lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("lib"))
   .settings(
@@ -77,6 +85,8 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("l
     testSettings,
     publishSettings
   )
+  .jvmConfigure(_.dependsOn(jsDomMock.jvm))
+  .nativeConfigure(_.dependsOn(jsDomMock.native))
   .jsSettings(
     libraryDependencies ++= Seq(
       "org.scala-js"  %%% "scalajs-dom"            % scalaJsDomVersion,
@@ -126,6 +136,7 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in f
   )
   .dependsOn(lib, engineCommon % Test)
 
+// Note: rpc doesn't depend on lib (because we do not need it)
 lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("rpc"))
   .settings(
     name               := "kreuzberg-rpc",
@@ -137,7 +148,11 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("r
     testSettings,
     publishSettings
   )
-  .dependsOn(lib)
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "org.scala-js" %%% "scalajs-dom" % scalaJsDomVersion
+    )
+  )
 
 lazy val extras = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("extras"))
   .settings(
@@ -161,8 +176,8 @@ lazy val miniserverLoom = (project in file("miniserver-loom"))
   .settings(
     name := "kreuzberg-miniserver-loom",
     libraryDependencies ++= Seq(
-      "org.slf4j"                    % "slf4j-api"               % "2.0.12",
-      "com.softwaremill.sttp.tapir" %% "tapir-netty-server-loom" % tapirVersion,
+      "org.slf4j"                    % "slf4j-api"               % slf4jVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-netty-server-sync" % tapirVersion,
       "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % tapirVersion,
       "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % tapirVersion,
       "net.reactivecore"            %% "quest"                   % questVersion

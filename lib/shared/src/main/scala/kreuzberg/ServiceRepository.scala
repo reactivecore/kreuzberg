@@ -1,5 +1,7 @@
 package kreuzberg
 
+import scala.quoted.{Expr, Quotes, Type}
+
 /** Contains unique services identified by their Name. */
 trait ServiceRepository {
 
@@ -48,8 +50,20 @@ trait ServiceNameProvider[T] {
 }
 
 object ServiceNameProvider {
-  def create[T](withName: String): ServiceNameProvider[T] = new ServiceNameProvider[T] {
-    override def name: String = withName
+  case class Impl[T](name: String) extends ServiceNameProvider[T]
+
+  def create[T](withName: String): ServiceNameProvider[T] = Impl(withName)
+
+  inline def derived[T]: ServiceNameProvider[T] = {
+    Impl(typeName[T])
+  }
+
+  private inline def typeName[T]: String = {
+    ${ typeNameImpl[T] }
+  }
+
+  private def typeNameImpl[T](using types: Type[T], quotes: Quotes): Expr[String] = {
+    Expr(Type.show[T])
   }
 }
 

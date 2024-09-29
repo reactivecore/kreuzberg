@@ -21,15 +21,15 @@ object TodoAdderForm extends SimpleComponentBase {
     add(
       onSubmit
         .or(button.onClicked)
-        .withState(textInput.text)
-        .trigger(onAdd)
+        .handleAny {
+          val entry = textInput.text.read
+          onAdd.trigger(entry)
+        }
     )
     add(
-      clear
-        .map(_ => "")
-        .intoProperty(textInput.text)
-        .and
-        .executeCode(_ => println("Cleared?!"))
+      clear.handleAny {
+        textInput.text.set("")
+      }
     )
     form(
       label("Element: "),
@@ -67,16 +67,6 @@ object TodoPageWithApi extends SimpleComponentBase {
         form.clear.trigger(())
       }
     }
-
-    /*
-    add(
-      form.onAdd
-        .future(text => lister.addItem(text))
-        .to(LazyTodoViewer.refresh)
-        .and
-        .trigger(form.clear)
-    )
-     */
 
     div(
       h2("API Based TODO App"),

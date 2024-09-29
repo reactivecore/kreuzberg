@@ -9,8 +9,4 @@ import scala.concurrent.Future
 case class Api(
     callingBackend: CallingBackend[Future],
     todoApi: TodoApi[Future]
-)
-
-object Api {
-  given snp: ServiceNameProvider[Api] = ServiceNameProvider.create("api")
-}
+) derives ServiceNameProvider

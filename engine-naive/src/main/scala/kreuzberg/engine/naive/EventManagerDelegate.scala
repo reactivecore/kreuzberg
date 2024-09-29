@@ -1,8 +1,8 @@
 package kreuzberg.engine.naive
 
-import kreuzberg.dom.ScalaJsElement
 import kreuzberg.*
 import kreuzberg.engine.common.ModelValues
+import org.scalajs.dom.Element
 
 /** Callback for EventManager. */
 trait EventManagerDelegate {
@@ -16,5 +16,5 @@ trait EventManagerDelegate {
                       changedModels: Set[Identifier]
   ): Unit
 
-  def locate(componentId: Identifier): ScalaJsElement
+  def locate(componentId: Identifier): Element
 }
