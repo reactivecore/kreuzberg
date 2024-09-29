@@ -4,7 +4,7 @@ package kreuzberg.extras.forms
 trait Form[T] {
 
   /** The fields of a form */
-  def fields: List[FormField[_]]
+  def fields: List[FormField[?]]
 
   /** Codec for form values. */
   def codec: Codec[T, List[String]]
@@ -18,7 +18,7 @@ trait Form[T] {
     val underlyingValidator: Validator[U]  = validator.contraMap(contraMapFn)
 
     new Form[U] {
-      override def fields: List[FormField[_]] = Form.this.fields
+      override def fields: List[FormField[?]] = Form.this.fields
 
       override def codec: Codec[U, List[String]] = underlying
 
@@ -30,7 +30,7 @@ trait Form[T] {
   def chainValidator(validator: Validator[T]): Form[T] = {
     val chainedValidator = this.validator.chain(validator)
     new Form[T] {
-      override def fields: List[FormField[_]] = Form.this.fields
+      override def fields: List[FormField[?]] = Form.this.fields
 
       override def codec: Codec[T, List[String]] = Form.this.codec
 

@@ -3,16 +3,17 @@ package kreuzberg.miniserver.loom
 import kreuzberg.miniserver.{DeploymentType, Index, MiniServerConfig}
 import org.slf4j.LoggerFactory
 import sttp.model.StatusCode
+import sttp.shared.Identity
 import sttp.tapir.*
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.netty.NettySocketConfig
-import sttp.tapir.server.netty.loom.{Id, NettyIdServer}
+import sttp.tapir.server.netty.sync.NettySyncServer
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
 import java.nio.ByteBuffer
 import scala.util.Using
 
-class MiniServer(config: MiniServerConfig[Id]) {
+class MiniServer(config: MiniServerConfig[Identity]) {
   val logger = LoggerFactory.getLogger(getClass)
 
   def run(): Unit = {
@@ -22,20 +23,20 @@ class MiniServer(config: MiniServerConfig[Id]) {
       indexHandler
     ) ++ apiEndpointHandler.toList
 
-    val docEndpoints: List[ServerEndpoint[Any, Id]] = SwaggerInterpreter()
-      .fromServerEndpoints[Id](endpoints, "MiniServer", "0.1")
+    val docEndpoints: List[ServerEndpoint[Any, Identity]] = SwaggerInterpreter()
+      .fromServerEndpoints[Identity](endpoints, "MiniServer", "0.1")
 
     val socketConfig = NettySocketConfig.default.withReuseAddress
 
-    val server = NettyIdServer()
+    logger.info(s"Will start on port ${config.port} (mode=${config.deployment.deploymentType})")
+    NettySyncServer()
       .host(config.host)
       .port(config.port)
       .modifyConfig(_.socketConfig(socketConfig))
       .addEndpoints(endpoints)
       .addEndpoints(if (config.deployment.deploymentType == DeploymentType.Debug) docEndpoints else Nil)
       .addEndpoint(otherIndexHandler)
-      .start()
-    logger.info(s"Listening on port ${config.port} (mode=${config.deployment.deploymentType})")
+      .startAndWait()
   }
 
   private val indexHtml: String = Index(config.deployment).index.toString
@@ -47,7 +48,7 @@ class MiniServer(config: MiniServerConfig[Id]) {
       .out(byteBufferBody)
   }
 
-  private val assetHandler = assetEndpoint.serverLogic[Id] { paths =>
+  private val assetHandler = assetEndpoint.serverLogic[Identity] { paths =>
     val fullName = paths.mkString("/")
     config.deployment.locateAsset(fullName) match {
       case None        => Left(StatusCode.NotFound)
@@ -65,7 +66,7 @@ class MiniServer(config: MiniServerConfig[Id]) {
       .out(htmlBodyUtf8)
   }
 
-  private val indexHandler = indexEndpoint.serverLogicSuccess[Id] { _ =>
+  private val indexHandler = indexEndpoint.serverLogicSuccess[Identity] { _ =>
     indexHtml
   }
 
@@ -75,7 +76,7 @@ class MiniServer(config: MiniServerConfig[Id]) {
       .out(htmlBodyUtf8)
   }
 
-  private val otherIndexHandler = otherIndexEndpoint.serverLogicSuccess[Id] { _ =>
+  private val otherIndexHandler = otherIndexEndpoint.serverLogicSuccess[Identity] { _ =>
     indexHtml
   }
 

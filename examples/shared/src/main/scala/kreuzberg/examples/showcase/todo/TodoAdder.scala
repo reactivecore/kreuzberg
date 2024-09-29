@@ -15,24 +15,14 @@ case class TodoAdder(
   val onSubmit  = jsEvent("submit", true)
 
   def assemble(using context: SimpleContext): Html = {
-    val sink = EventSink.ModelChange[String, TodoList](
-      model,
-      { (t, current) =>
-        Logger.debug(s"Appending ${t}")
-        val result = current.append(t)
-        Logger.debug(s"Result ${result}")
-        result
-      }
-    )
-
     add(
       onSubmit
         .or(button.onClicked)
-        .withState(textInput.text)
-        .changeModel(model) { (entry, current) => current.append(entry) }
-        .and
-        .map { _ => "" }
-        .intoProperty(textInput.text)
+        .handleAny {
+          val entry = textInput.text.read
+          model.update(_.append(entry))
+          textInput.text.set("")
+        }
     )
 
     form(

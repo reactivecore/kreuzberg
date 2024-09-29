@@ -1,12 +1,13 @@
 package kreuzberg
 
 import kreuzberg.RuntimeState.JsProperty
-import kreuzberg.dom.ScalaJsElement
+import org.scalajs.dom.Element
 
+import scala.annotation.implicitNotFound
 import scala.concurrent.ExecutionContext
-import scala.ref.WeakReference
 
 /** Context for imperative Event Handlers */
+@implicitNotFound("HandlerContext not found, are you inside an EventHandler?")
 trait HandlerContext extends ModelValueProvider with ServiceRepository with ExecutionContext {
 
   /** Issue a model change. */
@@ -25,5 +26,5 @@ trait HandlerContext extends ModelValueProvider with ServiceRepository with Exec
   def state[T](state: RuntimeState[T]): T
 
   /** Set some JavaScript property. */
-  def setProperty[D <: ScalaJsElement, T](property: JsProperty[D, T], value: T): Unit
+  def setProperty[D <: Element, T](property: JsProperty[D, T], value: T): Unit
 }

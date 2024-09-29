@@ -8,7 +8,7 @@ trait Validator[-T] {
   /** Validate some value, returns list of violations. */
   def validate(value: T): Option[ValidationError]
 
-  def validated[U <: T](value: U): Result[_] = validate(value).toLeft(())
+  def validated[U <: T](value: U): Result[?] = validate(value).toLeft(())
 
   /** Chains multiple validators. */
   def chain[U <: T](other: Validator[U]): Validator[U] = {

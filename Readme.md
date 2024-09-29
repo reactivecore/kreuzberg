@@ -55,6 +55,7 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
 - `engine-common`: Contains common engine code.
 - `engine-naive`: Contains the naive rendering engine.
 - `runner`: Wraps the naive engine with examples.
+- `js-dom-mock` Mocks out some types of Scala JS DOM for JVM/Scala Native
  
 # How to
 

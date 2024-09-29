@@ -28,6 +28,12 @@ trait Dispatcher[F[_]] {
       }
     }
   }
+
+  def asCallingBackend: CallingBackend[F] = new CallingBackend[F] {
+    override def call(service: String, name: String, input: Request): F[Response] = {
+      Dispatcher.this.call(service, name, input)
+    }
+  }
 }
 
 object Dispatcher {
@@ -137,29 +143,40 @@ object Dispatcher {
       inner
     }
 
+    def synthetisizeCall(arguments: List[Term], method: analyzer.Method): Term = {
+      var splitArguments: List[List[Term]] = Nil
+
+      var remainingArgs: List[Term] = arguments
+
+      method.parameters.foreach { paramGroup =>
+        val groupArgs = remainingArgs.take(paramGroup.parameters.size)
+        splitArguments = groupArgs :: splitArguments
+        remainingArgs = remainingArgs.drop(paramGroup.parameters.size)
+      }
+      splitArguments = splitArguments.reverse
+
+      val result = handler.asTerm
+        .select(method.symbol)
+        .appliedToArgss(splitArguments)
+
+      result
+    }
+
     def callMethod(parent: Symbol, argss: List[List[Tree]], method: analyzer.Method): Term = {
       val args = argss.head.head.asExprOf[Request]
 
-      val inner = ValDef.let(
-        parent,
-        '{ MessageCodec.split(${ args }.payload, ${ Expr(method.paramNames) }).toTry.get }.asTerm
-      ) { params =>
-        val paramsExp = params.asExprOf[Seq[Json]]
-
-        val decodingTerms = method.paramTypes.zipWithIndex.map { case (dtype, idx) =>
-          type X
-          given Type[X]     = dtype.asType.asInstanceOf[Type[X]]
-          val decoder       = Expr.summon[Decoder[X]].getOrElse {
-            throw new IllegalArgumentException("Could not find decoder for type X" + dtype)
+      val inner = {
+        val decodingTerms: List[Term] =
+          method.paramTypes.zip(method.paramNames).zipWithIndex.map { case ((dtype, paramName), idx) =>
+            type X
+            given Type[X]     = dtype.asType.asInstanceOf[Type[X]]
+            val paramCodec    = Expr.summon[ParamCodec[X]].getOrElse {
+              throw new IllegalArgumentException(s"Could not find ParamCodec for type X: ${dtype.show}, Idx: ${idx}")
+            }
+            val idxExpression = Expr(idx)
+            val decodeTerm    = '{ $paramCodec.decode(${ Expr(paramName) }, $args) }.asTerm: Term
+            decodeTerm
           }
-          val idxExpression = Expr(idx)
-          val getExpression = '{ $paramsExp.apply($idxExpression) }
-          val decodeTerm    = '{ $decoder.decodeJson($getExpression).toTry.get }.asTerm
-          decodeTerm
-        }
-
-        // Representing the target method
-        val ref = Select.unique(handler.asTerm, method.name)
 
         ValDef.let(parent, decodingTerms) { values =>
           type R
@@ -167,7 +184,7 @@ object Dispatcher {
           val returnEncoder = Expr.summon[Encoder[R]].getOrElse {
             throw new IllegalArgumentException("Could not find codec for type R" + method.returnType)
           }
-          val called        = Apply(ref, values).asExprOf[F[R]]
+          val called        = synthetisizeCall(values, method).asExprOf[F[R]]
           '{
             $effect.encodeResponse($called)(using $returnEncoder)
           }.asTerm
@@ -226,7 +243,7 @@ object Dispatcher {
     val newCls =
       Typed(Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil), TypeTree.of[Dispatcher[F]])
     val result = Block(List(clsDef), newCls).asExprOf[Dispatcher[F]]
-    // println(s"RESULT: ${result.show}")
+    // println(s"DISPATCHER: ${result.show}")
     result
   }
 }

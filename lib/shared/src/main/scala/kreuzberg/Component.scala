@@ -1,6 +1,6 @@
 package kreuzberg
 
-import kreuzberg.dom.ScalaJsElement
+import org.scalajs.dom.Element
 
 /**
  * The base for all UI components.
@@ -13,7 +13,7 @@ trait Component extends Identified {
   final val id = Identifier.next()
 
   /** Data type of JS Representation. */
-  type DomElement <: ScalaJsElement
+  type DomElement <: Element
 
   /** Assemble the object. */
   def assemble(using context: AssemblerContext): Assembly

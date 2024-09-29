@@ -1,14 +1,13 @@
 package kreuzberg.engine.common
 
 import kreuzberg.*
-import kreuzberg.dom.*
 import kreuzberg.engine.common.UpdatePath.Change
-import kreuzberg.engine.common.TreeNode
+import org.scalajs.dom.Element
 
 import scala.util.control.NonFatal
 
 /** Responsible for drawing component trees. */
-class BrowserDrawer(rootElement: ScalaJsElement) {
+class BrowserDrawer(rootElement: Element) {
 
   /** Redraw root node */
   def drawRoot(node: TreeNode): Unit = {
@@ -57,7 +56,7 @@ class BrowserDrawer(rootElement: ScalaJsElement) {
   }
 
   /** Find an element for a given Component ID. */
-  def findElement(id: Identifier): ScalaJsElement = {
+  def findElement(id: Identifier): Element = {
     try {
       rootElement
         .querySelector(s"[data-id=\"${id.value}\"]")

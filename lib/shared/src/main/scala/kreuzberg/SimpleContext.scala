@@ -2,8 +2,8 @@ package kreuzberg
 
 /** A simple of AssemblerContext which also collects event bindings / event subscriptions */
 class SimpleContext(underlying: AssemblerContext) extends AssemblerContext {
-  private val _eventBindings = Vector.newBuilder[EventBinding]
-  private val _subscriptions = Vector.newBuilder[Subscribeable[_]]
+  private val _eventBindings = Vector.newBuilder[EventBinding[?]]
+  private val _subscriptions = Vector.newBuilder[Subscribeable[?]]
   private val _services      = Vector.newBuilder[HeadlessComponent]
 
   override def value[M](model: Subscribeable[M]): M = {
@@ -12,11 +12,11 @@ class SimpleContext(underlying: AssemblerContext) extends AssemblerContext {
 
   override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = underlying.serviceOption[S]
 
-  def addEventBinding(binding: EventBinding): Unit = {
+  def addEventBinding(binding: EventBinding[?]): Unit = {
     _eventBindings += binding
   }
 
-  def addSubscription(model: Subscribeable[_]): Unit = {
+  def addSubscription(model: Subscribeable[?]): Unit = {
     _subscriptions += model
   }
 
@@ -24,7 +24,7 @@ class SimpleContext(underlying: AssemblerContext) extends AssemblerContext {
     _services += service
   }
 
-  def eventBindings(): Vector[EventBinding]     = _eventBindings.result()
-  def subscriptions(): Vector[Subscribeable[_]] = _subscriptions.result()
+  def eventBindings(): Vector[EventBinding[?]]     = _eventBindings.result()
+  def subscriptions(): Vector[Subscribeable[?]] = _subscriptions.result()
   def services(): Vector[HeadlessComponent]     = _services.result()
 }

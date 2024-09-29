@@ -19,7 +19,7 @@ object Generator {
   private inline def build[T](
       fieldValidator: Validator[T],
       mainValidator: List[UseValidator[T]],
-      fields: List[FieldDescription[_]],
+      fields: List[FieldDescription[?]],
       encoder: T => List[String],
       decoder: List[String] => DecodingResult[T]
   ): Form[T] = {
@@ -27,7 +27,7 @@ object Generator {
     val mergedValidator = mainValidator.foldLeft(fieldValidator) { (v, a) => v.chain(a.validator) }
     val formCodec       = Codec.fromEncoderAndDecoder(encoder, decoder)
     new Form[T] {
-      override def fields: List[FormField[_]] = formFields
+      override def fields: List[FormField[?]] = formFields
 
       override def codec: Codec[T, List[String]] = formCodec
 
@@ -67,12 +67,12 @@ object Generator {
       defaultFieldType: String
   )
 
-  private inline def fetchFieldDescriptions[T]: List[FieldDescription[_]] = {
+  private inline def fetchFieldDescriptions[T]: List[FieldDescription[?]] = {
     ${ fetchFieldDescriptionsImpl[T] }
   }
 
   /** Fetch field descriptions if there is */
-  private def fetchFieldDescriptionsImpl[T](using Quotes, Type[T]): Expr[List[FieldDescription[_]]] = {
+  private def fetchFieldDescriptionsImpl[T](using Quotes, Type[T]): Expr[List[FieldDescription[?]]] = {
     val analyzer = new Analyzer()
     val analyzed = analyzer.analyze[T]
 
@@ -200,7 +200,7 @@ object Generator {
     case class Result[T](
         name: String,
         symbol: Symbol,
-        fields: List[FieldResult[_]],
+        fields: List[FieldResult[?]],
         mainAnnotation: List[Expr[UseValidator[T]]],
         companion: Symbol,
         applyMethod: Symbol
@@ -225,7 +225,7 @@ object Generator {
       val name              = symbol.name
       val constructorFields = symbol.primaryConstructor.paramSymss.flatten
 
-      def analyzeField(constructorFieldSymbol: Symbol): FieldResult[_] = {
+      def analyzeField(constructorFieldSymbol: Symbol): FieldResult[?] = {
         val declaredField = symbol.declaredField(constructorFieldSymbol.name)
         val casted        = declaredField.tree match {
           case valDef: ValDef => valDef

@@ -1,8 +1,5 @@
 package kreuzberg
 
-import kreuzberg.*
-import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
-
 /**
  * A Component base which uses a more imperative [[AssemblerContext]] for collecting event handlers and model
  * subscriptions.

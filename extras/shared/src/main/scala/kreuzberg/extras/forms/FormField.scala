@@ -34,7 +34,7 @@ sealed trait RecursiveFormFields[T <: Tuple] extends Form[T] {
 object RecursiveFormFields {
 
   object Leaf extends RecursiveFormFields[EmptyTuple] {
-    override def fields: List[FormField[_]] = Nil
+    override def fields: List[FormField[?]] = Nil
 
     override object codec extends Codec[EmptyTuple, List[String]] {
       override def encode(value: EmptyTuple): List[String] = Nil
@@ -47,7 +47,7 @@ object RecursiveFormFields {
 
   case class Node[T, R <: Tuple](head: FormField[T], remaining: RecursiveFormFields[R])
       extends RecursiveFormFields[T *: R] {
-    override def fields: List[FormField[_]] = head :: remaining.fields
+    override def fields: List[FormField[?]] = head :: remaining.fields
 
     object codec extends Codec[T *: R, List[String]] {
       override def encode(value: T *: R): List[String] = {
