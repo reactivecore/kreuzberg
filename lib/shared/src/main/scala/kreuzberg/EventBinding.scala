@@ -99,8 +99,14 @@ object EventSource {
 /** A Sink of events */
 case class EventSink[E](f: (HandlerContext, E) => Unit) {
 
+  /** Trigger a sink */
   def trigger(value: E)(using h: HandlerContext): Unit = {
     h.triggerSink(this, value)
+  }
+
+  /** Trigger from Handler (Unit or Any) */
+  def trigger()(using h: HandlerContext, ev: Unit => E): Unit = {
+    h.triggerSink(this, ev(()))
   }
 
 }
