@@ -66,7 +66,7 @@ object ExtendedFormPage extends SimpleComponentBase {
 
     add(
       okButton.onClicked.handleAny {
-        val s = formComponent.validatedState.read.toString
+        val s = formComponent.validatedState.read().toString
         state.set(s)
       }
     )

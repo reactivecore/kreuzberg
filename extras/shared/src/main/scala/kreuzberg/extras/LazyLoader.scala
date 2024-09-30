@@ -41,7 +41,7 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
         add(
           EventSource.Assembled.handle { _ =>
             model.set(LazyState.WaitResponse)
-            silentRefresh.trigger(())
+            silentRefresh()
           }
         )
         waiting()

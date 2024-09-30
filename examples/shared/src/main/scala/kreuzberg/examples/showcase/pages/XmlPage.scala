@@ -12,7 +12,7 @@ object XmlPage extends SimpleComponentBase {
     val xmlLabel       = XmlLabel(value)
 
     addHandler(editor.onInputEvent) { _ =>
-      val v = editor.text.read
+      val v = editor.text.read()
       value.set(v)
     }
 

@@ -22,8 +22,8 @@ object TodoAdderForm extends SimpleComponentBase {
       onSubmit
         .or(button.onClicked)
         .handleAny {
-          val entry = textInput.text.read
-          onAdd.trigger(entry)
+          val entry = textInput.text.read()
+          onAdd(entry)
         }
     )
     add(
@@ -63,8 +63,8 @@ object TodoPageWithApi extends SimpleComponentBase {
 
     addHandler(form.onAdd) { text =>
       lister.addItem(text).foreach { _ =>
-        LazyTodoViewer.refresh.trigger(())
-        form.clear.trigger(())
+        LazyTodoViewer.refresh()
+        form.clear()
       }
     }
 
