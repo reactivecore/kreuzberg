@@ -180,7 +180,7 @@ object SimpleRouter {
   def gotoTarget(target: UrlResource): EventSink[Any] = EventSink { _ => gotoChannel(target) }
 
   /** Event sink for going to root (e.g. on logout) */
-  def gotoRoot(): EventSink[Any] = EventSink { _ => gotoChannel(UrlResource("/")) }
+  def gotoRoot: EventSink[Any] = EventSink { _ => gotoChannel(UrlResource("/")) }
 
   case object EmptyComponent extends SimpleComponentBase {
     override def assemble(using c: SimpleContext): Html = {
