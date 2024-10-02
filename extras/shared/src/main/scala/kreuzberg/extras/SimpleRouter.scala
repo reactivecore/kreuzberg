@@ -55,7 +55,7 @@ case class SimpleRouter(
             val effect = loading.route.target(loading.url)
             effect.runAndHandle { result =>
               // Otherwise the user is probably on the nxt screen
-              val stateAgain   = SimpleRouter.routingStateModel.read
+              val stateAgain   = SimpleRouter.routingStateModel.read()
               val continueHere = stateAgain match {
                 case l: RoutingState.Loading if l.invocation == loading.invocation => true
                 case _                                                             =>

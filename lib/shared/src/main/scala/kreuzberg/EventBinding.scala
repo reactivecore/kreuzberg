@@ -1,17 +1,9 @@
 package kreuzberg
 
-import kreuzberg.RuntimeState.JsProperty
+import kreuzberg.dom.ScalaJsEvent
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
-import kreuzberg.dom.{ScalaJsElement, ScalaJsEvent}
-
-import scala.annotation.targetName
-import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.duration.FiniteDuration
 import scala.ref.WeakReference
-import scala.util.Failure
-import scala.util.Success
 
 /** A Source of an [[EventBinding]]. */
 sealed trait EventSource[+E] {

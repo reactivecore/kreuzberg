@@ -15,7 +15,7 @@ case object Counter extends SimpleComponentBase {
     val counter = subscribe(model)
 
     addHandler(EventSource.Timer(1.second, true)) { _ =>
-      model.set(model.read + 1)
+      model.update(_ + 1)
     }
 
     all.span(s"Showing for ${counter} seconds")
