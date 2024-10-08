@@ -11,7 +11,7 @@ class ContextualApiTest extends TestBase {
       username: String
   )
 
-  given p: ParamCodec[MyContext] with {
+  given p: ParamEncoder[MyContext] with ParamDecoder[MyContext] with {
     override def encode(name: String, value: MyContext, request: Request): Request = {
       val response = request.withHeader("username", value.username)
       response
