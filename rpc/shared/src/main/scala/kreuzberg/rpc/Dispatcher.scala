@@ -170,11 +170,11 @@ object Dispatcher {
           method.paramTypes.zip(method.paramNames).zipWithIndex.map { case ((dtype, paramName), idx) =>
             type X
             given Type[X]     = dtype.asType.asInstanceOf[Type[X]]
-            val paramCodec    = Expr.summon[ParamCodec[X]].getOrElse {
+            val paramDecoder    = Expr.summon[ParamDecoder[X]].getOrElse {
               throw new IllegalArgumentException(s"Could not find ParamCodec for type X: ${dtype.show}, Idx: ${idx}")
             }
             val idxExpression = Expr(idx)
-            val decodeTerm    = '{ $paramCodec.decode(${ Expr(paramName) }, $args) }.asTerm: Term
+            val decodeTerm    = '{ $paramDecoder.decode(${ Expr(paramName) }, $args) }.asTerm: Term
             decodeTerm
           }
 
