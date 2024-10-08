@@ -71,6 +71,13 @@ val logsettings = libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % logbackVersion
 )
 
+lazy val jsDomMock = (crossProject(JVMPlatform, NativePlatform) in file("js-dom-mock"))
+  .settings(
+    name := "kreuzberg-scalajs-dom-mock",
+    testSettings,
+    publishSettings
+  )
+
 /** Defines a component. */
 lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("lib"))
   .settings(
@@ -78,6 +85,8 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("l
     testSettings,
     publishSettings
   )
+  .jvmConfigure(_.dependsOn(jsDomMock.jvm))
+  .nativeConfigure(_.dependsOn(jsDomMock.native))
   .jsSettings(
     libraryDependencies ++= Seq(
       "org.scala-js"  %%% "scalajs-dom"            % scalaJsDomVersion,

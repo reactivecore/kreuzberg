@@ -1,9 +1,9 @@
 package kreuzberg.extras.forms
 
 import kreuzberg.*
-import kreuzberg.dom.ScalaJsInput
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
+import org.scalajs.dom.html.Input
 
 /** Responsible for displaying a form. */
 case class FormComponent[T](
@@ -65,7 +65,7 @@ object FormFieldComponent {
       )
     }
 
-    override type DomElement = ScalaJsInput
+    override type DomElement = Input
     def onChange     = jsEvent("change")
     def onInputEvent = jsEvent("input")
     val text         = jsProperty(_.value, (r, v) => r.value = v)

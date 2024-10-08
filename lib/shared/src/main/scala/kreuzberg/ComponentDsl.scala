@@ -1,6 +1,7 @@
 package kreuzberg
 
-import kreuzberg.dom.ScalaJsEvent
+import kreuzberg.Component
+import org.scalajs.dom.Event
 
 import scala.language.implicitConversions
 
@@ -26,7 +27,7 @@ trait ComponentDsl extends ContextDsl {
   }
 
   /** Implicitly convert JS Events into event sources. */
-  protected implicit def from[E](jsEvent: JsEvent[E]): EventSource.Js[E] = EventSource.Js(jsEvent)
+  protected implicit def from[E](jsEvent: JsEvent): EventSource.Js[E] = EventSource.Js(jsEvent)
 
   /** Implicitly convert Channels into event sources. */
   protected implicit def from[E](channel: Channel[E]): EventSource.ChannelSource[E] = EventSource.ChannelSource(channel)
@@ -34,18 +35,16 @@ trait ComponentDsl extends ContextDsl {
   /** Declare a Javascript event. */
   protected def jsEvent(
       name: String,
-      preventDefault: Boolean = false,
       capture: Boolean = false
-  ): JsEvent[ScalaJsEvent] =
-    JsEvent(Some(id), name, preventDefault, capture)
+  ): JsEvent =
+    JsEvent(Some(id), name, capture)
 
   /** Declare a Window JS Event. */
   protected def windowEvent(
       name: String,
-      preventDefault: Boolean = false,
       capture: Boolean = false
-  ): JsEvent[ScalaJsEvent] =
-    JsEvent(None, name, preventDefault, capture)
+  ): JsEvent =
+    JsEvent(None, name, capture)
 
   /** Declares a js runtime state. */
   protected def jsState[T](f: DomElement => T): RuntimeState.JsRuntimeState[DomElement, T] = {

@@ -2,9 +2,9 @@ package kreuzberg.engine.naive
 
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
-import kreuzberg.dom.*
 import kreuzberg.engine.common.UpdatePath.Change
-import kreuzberg.engine.common.{Assembler, UpdatePath, BrowserDrawer, TreeNode, ModelValues}
+import kreuzberg.engine.common.{Assembler, BrowserDrawer, ModelValues, TreeNode, UpdatePath}
+import org.scalajs.dom.{Element, Event}
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -15,7 +15,7 @@ object Binder {
   def runOnLoaded(component: Component, rootId: String)(using ServiceRepository): Unit = {
     org.scalajs.dom.document.addEventListener(
       "DOMContentLoaded",
-      { (e: ScalaJsEvent) =>
+      { (e: Event) =>
         Logger.info("Initializing naive Kreuzberg engine")
         val rootElement = org.scalajs.dom.document.getElementById(rootId)
         val binder      = Binder(rootElement, component)
@@ -26,7 +26,7 @@ object Binder {
 }
 
 /** Binds a root element to a Node. */
-class Binder(rootElement: ScalaJsElement, main: Component)(using serviceRepo: ServiceRepository)
+class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRepository)
     extends EventManagerDelegate {
   private var _modelValues: ModelValues = ModelValues()
   private var _tree: TreeNode           = TreeNode.empty
@@ -39,7 +39,7 @@ class Binder(rootElement: ScalaJsElement, main: Component)(using serviceRepo: Se
     redrawChanged(changedModels, before.toModelValueProvider)
   }
 
-  override def locate(componentId: Identifier): ScalaJsElement = {
+  override def locate(componentId: Identifier): Element = {
     browser.findElement(componentId)
   }
 

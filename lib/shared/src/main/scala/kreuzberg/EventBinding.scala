@@ -1,6 +1,6 @@
 package kreuzberg
 
-import kreuzberg.dom.ScalaJsEvent
+import org.scalajs.dom.Event
 
 import scala.concurrent.duration.FiniteDuration
 import scala.ref.WeakReference
@@ -48,16 +48,24 @@ sealed trait EventSource[+E] {
       }
     )
   }
+
+  /** Just hook in some code. */
+  def hook(f: E => Unit): EventSource[E] = {
+    map { x =>
+      f(x)
+      x
+    }
+  }
 }
 
 object EventSource {
 
   /** JS Event */
-  case class Js[E](jsEvent: JsEvent[E]) extends EventSource[E]
+  case class Js[E](jsEvent: JsEvent) extends EventSource[Event]
 
   object Js {
-    def window(name: String, preventDefault: Boolean = false, capture: Boolean = false): Js[ScalaJsEvent] = Js(
-      JsEvent(None, name, preventDefault, capture)
+    def window(name: String, capture: Boolean = false): Js[Event] = Js(
+      JsEvent(None, name, capture)
     )
   }
 

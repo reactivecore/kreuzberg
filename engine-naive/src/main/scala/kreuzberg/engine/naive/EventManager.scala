@@ -2,8 +2,8 @@ package kreuzberg.engine.naive
 
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
-import kreuzberg.dom.*
 import kreuzberg.engine.common.{ModelValues, TreeNode}
+import org.scalajs.dom.{Element, Event}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,7 +40,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
    * garbage collected / dereferenced components from it.
    */
   private case class WindowEventBinding(
-      handler: ScalaJsEvent => Unit,
+      handler: Event => Unit,
       owner: Identifier
   )
 
@@ -61,9 +61,9 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
   )
 
   /** Binding to not own object. */
-  private case class ForeignBinding[T](
-      jsEvent: JsEvent[T],
-      sink: T => Unit,
+  private case class ForeignBinding(
+      jsEvent: JsEvent,
+      sink: Event => Unit,
       owner: Identifier
   )
 
@@ -73,7 +73,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
   /**
    * Bindings for foreign components Key = affected component
    */
-  private val _foreignBindings = new MutableMultimap[Identifier, ForeignBinding[?]]()
+  private val _foreignBindings = new MutableMultimap[Identifier, ForeignBinding]()
 
   /** Bindings to Window Events. */
   private val _windowEventBindings = new MutableMultimap[String, WindowEventBinding]()
@@ -154,7 +154,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
       fetchStateUnsafe(state)
     }
 
-    override def setProperty[D <: ScalaJsElement, T](property: RuntimeState.JsProperty[D, T], value: T): Unit = {
+    override def setProperty[D <: Element, T](property: RuntimeState.JsProperty[D, T], value: T): Unit = {
       updateJsProperty(value, property)
     }
 
@@ -192,10 +192,9 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
       case j: EventSource.Js[_]             =>
         j.jsEvent.componentId match {
           case None              =>
-            val handler: ScalaJsEvent => Unit = { in =>
+            val handler: Event => Unit = { in =>
               try {
-                val transformed = j.jsEvent.fn(in)
-                sink(transformed)
+                sink(in)
               } catch {
                 case NonFatal(e) =>
                   Logger.warn(s"Exception during window JS Event by component ${ownNode.id}: ${e}")
@@ -205,13 +204,13 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
               j.jsEvent.name,
               WindowEventBinding(handler, ownNode.id)
             )
-            val existing                      = _registeredWindowEvents.contains(j.jsEvent.name)
+            val existing               = _registeredWindowEvents.contains(j.jsEvent.name)
             if (!existing) {
               // The only place to register it, we won't deregister yet
               // TODO: Window event deregistration, KRZ-124
               bindJsEvent(
                 org.scalajs.dom.window,
-                j.jsEvent.copy(fn = identity, capture = false),
+                j.jsEvent.copy(capture = false),
                 event => onWindowEvent(j.jsEvent.name, event)
               )
               _registeredWindowEvents.add(j.jsEvent.name)
@@ -288,11 +287,11 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
       }
   }
 
-  private def updateJsProperty[R <: ScalaJsElement, S](value: S, p: RuntimeState.JsProperty[R, S]): Unit = {
+  private def updateJsProperty[R <: Element, S](value: S, p: RuntimeState.JsProperty[R, S]): Unit = {
     p.setter(delegate.locate(p.componentId).asInstanceOf[R], value)
   }
 
-  private def fetchJsRuntimeStateUnsafe[R <: ScalaJsElement, S](s: RuntimeState.JsRuntimeStateBase[R, S]): S = {
+  private def fetchJsRuntimeStateUnsafe[R <: Element, S](s: RuntimeState.JsRuntimeStateBase[R, S]): S = {
     s.getter(delegate.locate(s.componentId).asInstanceOf[R])
   }
 
@@ -302,19 +301,17 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     }
   }
 
-  private def bindJsEvent[E](
+  private def bindJsEvent(
       source: org.scalajs.dom.EventTarget,
-      event: JsEvent[E],
-      sink: E => Unit
+      event: JsEvent,
+      sink: Event => Unit
   ): Unit = {
     source.addEventListener(
       event.name,
-      { (e: ScalaJsEvent) =>
+      { (e: Event) =>
         try {
-
           Logger.debug(s"Reacting to ${event.name} (capture=${event.capture})")
-          val transformed = event.fn(e)
-          sink(transformed)
+          sink(e)
         } catch {
           case NonFatal(e) => Logger.warn(s"Exception on JS Event ${event.name}: ${e}}")
         }
@@ -378,7 +375,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     }
   }
 
-  private def onWindowEvent(name: String, event: ScalaJsEvent): Unit = {
+  private def onWindowEvent(name: String, event: Event): Unit = {
     Logger.debug(s"OnWindowEvent ${name}: Handlers: ${_windowEventBindings.sizeForKey(name)}")
     _windowEventBindings.foreachKey(name) { binding =>
       binding.handler(event)
