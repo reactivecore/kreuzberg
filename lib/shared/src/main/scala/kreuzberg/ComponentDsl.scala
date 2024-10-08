@@ -1,10 +1,8 @@
 package kreuzberg
 
-import kreuzberg.Component
 import kreuzberg.dom.ScalaJsEvent
-import scala.language.implicitConversions
 
-import kreuzberg.dom.ScalaJsElement
+import scala.language.implicitConversions
 
 /** Common Methods for building [[Component]]-Implementations */
 trait ContextDsl {

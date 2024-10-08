@@ -1,6 +1,6 @@
 package kreuzberg
 
-import scala.concurrent.Future
+import scala.annotation.targetName
 
 /** Helpers for building imperative Components using [[SimpleContext]] */
 trait SimpleContextDsl extends ComponentDsl {
@@ -31,5 +31,10 @@ trait SimpleContextDsl extends ComponentDsl {
   /** Add an imperative handler. */
   protected def addHandler[E](source: EventSource[E])(f: E => HandlerContext ?=> Unit)(using c: SimpleContext): Unit = {
     add(source.handle(f))
+  }
+
+  /** Add an imperative handler (ignoring the argument) */
+  protected def addHandlerAny(source: EventSource[?])(f: HandlerContext ?=> Unit)(using c: SimpleContext): Unit = {
+    add(source.handleAny(f))
   }
 }

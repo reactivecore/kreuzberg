@@ -9,7 +9,7 @@ trait Route {
   def canHandle(resource: UrlResource): Boolean
 
   /** Title displayed while loading. */
-  def preTitle(resource: UrlResource): String
+  def preTitle(resource: UrlResource)(using AssemblerContext): String
 
   /** Execute the route, can load lazy. */
   def target(resource: UrlResource)(using AssemblerContext): Effect[RoutingTarget]
@@ -33,7 +33,7 @@ object Route {
       eagerTarget(resource)
     }
 
-    def eagerTarget(resource: UrlResource): RoutingTarget = {
+    def eagerTarget(resource: UrlResource)(using AssemblerContext): RoutingTarget = {
       val state = pathCodec.decode(resource).getOrElse {
         throw new IllegalStateException(s"Unmatched path ${resource}")
       }
@@ -43,10 +43,10 @@ object Route {
     /** Returns a title for that path. */
     def title(state: State): String
 
-    override def preTitle(resource: UrlResource): String = eagerTarget(resource).title
+    override def preTitle(resource: UrlResource)(using AssemblerContext): String = eagerTarget(resource).title
 
     /** Assembles a component for a given path. */
-    def component(state: State): Component
+    def component(state: State)(using AssemblerContext): Component
   }
 
   /** Simple Route without parameters. */
@@ -61,13 +61,13 @@ object Route {
 
     override def title(state: Unit): String = title
 
-    override def component(state: Unit): Component = component
+    override def component(state: Unit)(using AssemblerContext): Component = component
   }
 
   /** A Route whose target depends on a value. */
   case class DependentRoute[S](
       pathCodec: PathCodec[S],
-      fn: S => Component,
+      fn: S => AssemblerContext ?=> Component,
       titleFn: S => String
   ) extends EagerRoute {
 
@@ -75,7 +75,7 @@ object Route {
 
     override def title(state: S): String = titleFn(state)
 
-    override def component(state: S): Component = fn(state)
+    override def component(state: S)(using AssemblerContext): Component = fn(state)
   }
 
   /** A Lazy route which fetches data. */
@@ -91,7 +91,7 @@ object Route {
       routingTarget(pathCodec.forceDecode(resource))
     }
 
-    override def preTitle(resource: UrlResource): String = {
+    override def preTitle(resource: UrlResource)(using AssemblerContext): String = {
       eagerTitle(pathCodec.forceDecode(resource))
     }
   }
