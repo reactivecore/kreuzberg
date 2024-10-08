@@ -11,7 +11,7 @@ object XmlPage extends SimpleComponentBase {
     val scalaTagsLabel = Label(value)
     val xmlLabel       = XmlLabel(value)
 
-    addHandler(editor.onInputEvent) { _ =>
+    addHandlerAny(editor.onInputEvent) {
       val v = editor.text.read()
       value.set(v)
     }
