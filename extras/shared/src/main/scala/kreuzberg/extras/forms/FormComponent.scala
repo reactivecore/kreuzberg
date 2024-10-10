@@ -92,7 +92,7 @@ object FormFieldComponent {
     override def assemble(using c: SimpleContext): Html = {
       add(
         input.onInputEvent.handle { _ =>
-          val value   = input.text.read
+          val value   = input.text.read()
           val decoded = field.decodeAndValidate(value).fold(_.asList, _ => Nil)
           violations.set(decoded)
         }

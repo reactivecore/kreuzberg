@@ -36,7 +36,7 @@ case class ValidatingTextInput(
 
     add(
       textInput.onInputEvent.handle { _ =>
-        val value  = textInput.text.read
+        val value  = textInput.text.read()
         valueModel.set(value)
         val errors = validator(value)
         errorModel.set(errors)

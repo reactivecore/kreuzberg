@@ -26,14 +26,14 @@ object Generator {
     val formFields      = fields.map(buildFormField(_))
     val mergedValidator = mainValidator.foldLeft(fieldValidator) { (v, a) => v.chain(a.validator) }
     val formCodec       = Codec.fromEncoderAndDecoder(encoder, decoder)
-    new Form[T] {
-      override def fields: List[FormField[?]] = formFields
-
-      override def codec: Codec[T, List[String]] = formCodec
-
-      override def validator: Validator[T] = mergedValidator
-    }
+    FixedForm(formFields, formCodec, mergedValidator)
   }
+
+  private case class FixedForm[T](
+      fields: List[FormField[?]],
+      codec: Codec[T, List[String]],
+      validator: Validator[T]
+  ) extends Form[T]
 
   private inline def buildFormField[T](fieldDescription: FieldDescription[T]): FormField[T] = {
     def nonEmptyOr(candidate: UseField[T] => String, alternative: String): String = {

@@ -103,7 +103,7 @@ object Stub {
     def encodeArg(name: String, dtype: TypeRepr, arg: Tree, request: Expr[Request]): Expr[Request] = {
       type X
       given Type[X]  = dtype.asType.asInstanceOf[Type[X]]
-      val paramCodec = Expr.summon[ParamCodec[X]].getOrElse {
+      val paramCodec = Expr.summon[ParamEncoder[X]].getOrElse {
         throw new IllegalArgumentException(s"Could not find ParamCodec for ${dtype.show}")
       }
 

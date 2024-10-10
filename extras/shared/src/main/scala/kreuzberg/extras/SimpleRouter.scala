@@ -55,7 +55,7 @@ case class SimpleRouter(
             val effect = loading.route.target(loading.url)
             effect.runAndHandle { result =>
               // Otherwise the user is probably on the nxt screen
-              val stateAgain   = SimpleRouter.routingStateModel.read
+              val stateAgain   = SimpleRouter.routingStateModel.read()
               val continueHere = stateAgain match {
                 case l: RoutingState.Loading if l.invocation == loading.invocation => true
                 case _                                                             =>
@@ -119,7 +119,7 @@ case class SimpleRouter(
     routes.find(_.canHandle(url)).getOrElse(notFoundRoute)
   }
 
-  private def decideInitialState(url: UrlResource, route: Route): RoutingState = {
+  private def decideInitialState(url: UrlResource, route: Route)(using AssemblerContext): RoutingState = {
     route match {
       case eager: EagerRoute =>
         val state     = eager.pathCodec.forceDecode(url)
@@ -170,17 +170,17 @@ object SimpleRouter {
   }
 
   /** Event Sink for going to a specific route. */
-  def goto: EventSink[UrlResource] = EventSink { url => gotoChannel.trigger(url) }
+  def goto(url: UrlResource)(using hc: HandlerContext): Unit = gotoChannel(url)
 
   /** Force a reload. */
   val reloadChannel: Channel[Any] = Channel.create()
-  def reload: EventSink[Any]      = EventSink { _ => reloadChannel.trigger() }
+  def reload: EventSink[Any]      = EventSink { _ => reloadChannel() }
 
-  /** Event Sink for going to a specific fixed route. */
-  def gotoTarget(target: UrlResource): EventSink[Any] = EventSink { _ => gotoChannel.trigger(target) }
+  /** Go to a specific fixed route */
+  def gotoTarget(target: UrlResource)(using hc: HandlerContext): Unit = gotoChannel(target)
 
   /** Event sink for going to root (e.g. on logout) */
-  def gotoRoot(): EventSink[Any] = EventSink { _ => gotoChannel.trigger(UrlResource("/")) }
+  def gotoRoot()(using hc: HandlerContext): Unit = gotoTarget(UrlResource("/"))
 
   case object EmptyComponent extends SimpleComponentBase {
     override def assemble(using c: SimpleContext): Html = {

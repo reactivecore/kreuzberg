@@ -14,7 +14,7 @@ sealed trait RuntimeState[S] {
   }
 
   /** Read the state from Handler */
-  def read(using h: HandlerContext): S = {
+  def read()(using h: HandlerContext): S = {
     h.state(this)
   }
 }

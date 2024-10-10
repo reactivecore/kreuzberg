@@ -1,37 +1,27 @@
 package kreuzberg.extras
 
-import kreuzberg.{
-  AssemblerContext,
-  Effect,
-  EventSink,
-  EventSource,
-  Html,
-  Model,
-  ServiceRepository,
-  SimpleComponentBase,
-  SimpleContext,
-  SimpleHtml
-}
-import scala.util.{Success, Failure}
+import kreuzberg.*
+
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 /** A Base class for components which lazy load stuff from an external service. */
 abstract class LazyLoader[T] extends SimpleComponentBase {
-  import LazyLoader._
+  import LazyLoader.*
 
   val model = Model.create[LazyState[T]](LazyState.Init)
 
   /** Event sink for refreshing the loader. */
-  def refresh: EventSink[Any] = EventSink.apply { _ =>
+  def refresh()(using HandlerContext): Unit = {
     model.set(LazyState.Init)
   }
 
   /** Event sink for refreshing (silently) */
-  def silentRefresh(using a: AssemblerContext): EventSink[Any] = EventSink { _ =>
-    load()
-      .runAndHandle {
-        case Success(value) => model.set(LazyState.Ok(value))
-        case Failure(e)     => model.set(LazyState.Failed(e))
-      }
+  def silentRefresh()(using hc: HandlerContext): Unit = {
+    load().andThen {
+      case Success(value) => model.set(LazyState.Ok(value))
+      case Failure(e)     => model.set(LazyState.Failed(e))
+    }
   }
 
   override def assemble(using c: SimpleContext): Html = {
@@ -41,7 +31,7 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
         add(
           EventSource.Assembled.handle { _ =>
             model.set(LazyState.WaitResponse)
-            silentRefresh.trigger(())
+            silentRefresh()
           }
         )
         waiting()
@@ -55,7 +45,7 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
   }
 
   /** Load from external service. */
-  def load()(using c: AssemblerContext): Effect[T]
+  def load()(using handlerContext: HandlerContext): Future[T]
 
   /** Html which is rendered during loading. */
   def waiting()(using c: SimpleContext): Html = {

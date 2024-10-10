@@ -38,17 +38,15 @@ object UserServiceDummy extends UserService[Future] {
 
 class UserMock(backend: CallingBackend[Future])(implicit e: EffectSupport[Future]) extends UserService[Future] {
   override def authenticate(credentials: Credentials): Future[AuthenticateResult] = {
-    // Die aufrufe müssen alle irgendwie gleich aussehen.
-    // Wie werden multiple argumente kodiert?
-    val encoded  = ParamCodec[Credentials].encode("credentials", credentials, Request.empty)
+    val encoded  = ParamEncoder[Credentials].encode("credentials", credentials, Request.empty)
     val response = backend.call("UserService", "authenticate", encoded)
     e.decodeResponse(response)
   }
 
   override def logout(token: String, reason: String): Future[Boolean] = {
     var request  = Request.empty
-    request = ParamCodec[String].encode("token", token, request)
-    request = ParamCodec[String].encode("reason", reason, request)
+    request = ParamEncoder[String].encode("token", token, request)
+    request = ParamEncoder[String].encode("reason", reason, request)
     val response = backend.call("UserService", "logout", request)
     e.decodeResponse(response)
   }
@@ -78,7 +76,7 @@ class UserServiceDispatcher(backend: UserService[Future])(
   }
 
   private def callAuthenticate(input: Request): Future[Response] = {
-    val args = ParamCodec[Credentials].decode("credentials", input)
+    val args = ParamDecoder[Credentials].decode("credentials", input)
     effect.flatMap(backend.authenticate(args)) { result =>
       effect.success(Response(result.asJson))
     }

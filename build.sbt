@@ -24,14 +24,14 @@ ThisBuild / organization := "net.reactivecore"
 
 val scalaTagsVersion             = "0.13.1"
 val scalatestVersion             = "3.2.19"
-val logbackVersion               = "1.5.6"
-val slf4jVersion                 = "2.0.13"
+val logbackVersion               = "1.5.8"
+val slf4jVersion                 = "2.0.16"
 val scalaJsDomVersion            = "2.8.0"
 val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.3.0"
-val circeVersion                 = "0.14.9"
-val tapirVersion                 = "1.10.14"
+val circeVersion                 = "0.14.10"
+val tapirVersion                 = "1.11.5"
 val questVersion                 = "0.2.0"
 
 val isIntelliJ = {

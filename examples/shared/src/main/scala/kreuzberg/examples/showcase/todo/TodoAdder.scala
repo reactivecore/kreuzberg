@@ -19,7 +19,7 @@ case class TodoAdder(
       onSubmit
         .or(button.onClicked)
         .handleAny {
-          val entry = textInput.text.read
+          val entry = textInput.text.read()
           model.update(_.append(entry))
           textInput.text.set("")
         }

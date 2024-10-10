@@ -32,14 +32,6 @@ sealed trait EventSource[+E] {
     EventSource.Transformer(this, e => List(f(e)))
   }
 
-  /** Just hook in some code. */
-  def hook(f: E => Unit): EventSource[E] = {
-    map { e =>
-      f(e)
-      e
-    }
-  }
-
   def filter(f: E => Boolean): EventSource[E] = {
     EventSource.Transformer(this, e => if (f(e)) Nil else List(e))
   }
@@ -55,6 +47,14 @@ sealed trait EventSource[+E] {
         }
       }
     )
+  }
+
+  /** Just hook in some code. */
+  def hook(f: E => Unit): EventSource[E] = {
+    map { x =>
+      f(x)
+      x
+    }
   }
 }
 
@@ -99,8 +99,14 @@ object EventSource {
 /** A Sink of events */
 case class EventSink[E](f: (HandlerContext, E) => Unit) {
 
-  def trigger(value: E)(using h: HandlerContext): Unit = {
+  /** Trigger a sink */
+  def apply(value: E)(using h: HandlerContext): Unit = {
     h.triggerSink(this, value)
+  }
+
+  /** Trigger from Handler (Unit or Any) */
+  def apply()(using h: HandlerContext, ev: Unit => E): Unit = {
+    h.triggerSink(this, ev(()))
   }
 
 }

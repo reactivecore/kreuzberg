@@ -6,7 +6,7 @@ sealed trait Subscribeable[+T] {
   def initial(using ServiceRepository): T
 
   /** Read the current value. */
-  def read(using mvp: ModelValueProvider): T = mvp.value(this)
+  def read()(using mvp: ModelValueProvider): T = mvp.value(this)
 
   /** Subscribe to this Value, to be used in [[SimpleComponentBase]] */
   def subscribe()(using sc: SimpleContext): T = {
