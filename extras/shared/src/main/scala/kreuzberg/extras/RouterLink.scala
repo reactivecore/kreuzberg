@@ -10,7 +10,7 @@ case class PlainLink(
     target: String
 ) extends SimpleComponentBase {
 
-  val onClick: EventSource[Event] = jsEvent("click", true).hook(_.preventDefault())
+  val onClick: EventSource[Event] = jsEvent("click", true, true)
 
   override def assemble(implicit c: SimpleContext): Html = {
     a(name, href := target)

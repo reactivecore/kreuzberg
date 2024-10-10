@@ -35,16 +35,18 @@ trait ComponentDsl extends ContextDsl {
   /** Declare a Javascript event. */
   protected def jsEvent(
       name: String,
+      preventDefault: Boolean = false,
       capture: Boolean = false
   ): JsEvent =
-    JsEvent(Some(id), name, capture)
+    JsEvent(Some(id), name, preventDefault, capture)
 
   /** Declare a Window JS Event. */
   protected def windowEvent(
       name: String,
+      preventDefault: Boolean = false,
       capture: Boolean = false
   ): JsEvent =
-    JsEvent(None, name, capture)
+    JsEvent(None, name, preventDefault, capture)
 
   /** Declares a js runtime state. */
   protected def jsState[T](f: DomElement => T): RuntimeState.JsRuntimeState[DomElement, T] = {

@@ -311,6 +311,9 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
       { (e: Event) =>
         try {
           Logger.debug(s"Reacting to ${event.name} (capture=${event.capture})")
+          if (event.preventDefault) {
+            e.preventDefault()
+          }
           sink(e)
         } catch {
           case NonFatal(e) => Logger.warn(s"Exception on JS Event ${event.name}: ${e}}")
