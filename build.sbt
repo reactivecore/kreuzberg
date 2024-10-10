@@ -247,5 +247,7 @@ lazy val root = (project in file("."))
     examples.jvm,
     rpc.js,
     rpc.jvm,
-    rpc.native
+    rpc.native,
+    jsDomMock.jvm,
+    jsDomMock.native
   )
