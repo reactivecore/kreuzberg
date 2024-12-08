@@ -4,7 +4,7 @@ import kreuzberg.*
 import kreuzberg.examples.showcase.components.{Button, TextInput}
 import kreuzberg.examples.showcase.*
 import kreuzberg.examples.showcase.todo.TodoPageWithApi.provide
-import kreuzberg.extras.{LazyLoader, SimpleRouter}
+import kreuzberg.extras.{LazyLoader, SimpleRouter, SimpleRouted}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -56,7 +56,7 @@ object LazyTodoViewer extends LazyLoader[TodoList] {
   }
 }
 
-object TodoPageWithApi extends SimpleComponentBase {
+object TodoPageWithApi extends SimpleComponentBase with SimpleRouted {
 
   def assemble(implicit c: SimpleContext): Html = {
     val lister = provide[Api].todoApi
@@ -78,4 +78,7 @@ object TodoPageWithApi extends SimpleComponentBase {
       form.wrap
     )
   }
+
+  def path  = "/todoapi"
+  def title = "Todo App (API)"
 }

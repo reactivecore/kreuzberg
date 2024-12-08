@@ -1,9 +1,19 @@
 package kreuzberg.extras
 
 import kreuzberg._
+import language.implicitConversions
 
 /** A Route within [[SimpleRouter]] */
 trait Route {
+
+  /** The state of which the route depends of. */
+  type State
+
+  /** The path codec to map state and path */
+  def pathCodec: PathCodec[State]
+
+  /** Directly encode a state into a path. */
+  def url(state: State): UrlResource = pathCodec.encode(state)
 
   /** Returns true if the route can handle a given path. */
   def canHandle(resource: UrlResource): Boolean
@@ -20,11 +30,41 @@ case class RoutingTarget(
     component: Component
 )
 
+/** Marks something as being routed. */
+trait Routed[T] {
+  def route: Route.Aux[T]
+
+  /** Accessing the URL directly from a state. */
+  inline def url(state: T): UrlResource = route.url(state)
+
+  /** Accessing the URL directly if there is no state */
+  inline def url(implicit ev: Unit => T): UrlResource = url(ev(()))
+}
+
+/** Mark some component as simple routed without further state */
+trait SimpleRouted extends Routed[Unit] {
+  self: Component =>
+
+  /** The routing path */
+  def path: String
+
+  /** The page title */
+  def title: String
+
+  override val route: Route.Aux[Unit] = Route.SimpleRoute(path, title, this)
+}
+
 object Route {
+
+  type Aux[T] = Route {
+    type State = T
+  }
+
+  /** Simplification for building routing tables. */
+  implicit def routedToRoute[T](routed: Routed[T]): Route.Aux[T] = routed.route
 
   /** A Route which directly translates a path into a component */
   trait EagerRoute extends Route {
-    type State
     val pathCodec: PathCodec[State]
 
     override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
@@ -84,6 +124,7 @@ object Route {
       eagerTitle: S => String,
       routingTarget: S => AssemblerContext ?=> Effect[RoutingTarget]
   ) extends Route {
+    override type State = S
 
     override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
 
