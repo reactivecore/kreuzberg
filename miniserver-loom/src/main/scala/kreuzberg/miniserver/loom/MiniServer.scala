@@ -39,8 +39,6 @@ class MiniServer(config: MiniServerConfig[Identity]) {
       .startAndWait()
   }
 
-  private val indexHtml: String = Index(config.deployment).index.toString
-
   val assetEndpoint: PublicEndpoint[List[String], StatusCode, ByteBuffer, Any] = {
     endpoint.get
       .in("assets" / paths)
@@ -67,7 +65,7 @@ class MiniServer(config: MiniServerConfig[Identity]) {
   }
 
   private val indexHandler = indexEndpoint.serverLogicSuccess[Identity] { _ =>
-    indexHtml
+    makeIndexHtml()
   }
 
   val otherIndexEndpoint: PublicEndpoint[List[String], Unit, String, Any] = {
@@ -77,7 +75,12 @@ class MiniServer(config: MiniServerConfig[Identity]) {
   }
 
   private val otherIndexHandler = otherIndexEndpoint.serverLogicSuccess[Identity] { _ =>
-    indexHtml
+    makeIndexHtml()
+  }
+
+  private def makeIndexHtml(): String = {
+    val initData = config.init.map(_.apply())
+    Index(config.deployment).index(initData).toString
   }
 
   val apiEndpointHandler = config.api.map(ApiHandler(_).handler)

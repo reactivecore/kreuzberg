@@ -5,7 +5,9 @@ import kreuzberg.miniserver.loom.MiniServer
 import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, MiniServerConfig}
 import kreuzberg.rpc.{Dispatcher, Id, SecurityError}
 
+import java.util.UUID
 import scala.annotation.experimental
+import io.circe.syntax.*
 
 class TodoServiceLoom extends TodoApi[Id] {
   private var items: Vector[String] = Vector.empty
@@ -43,9 +45,17 @@ object ServerMainLoom extends App {
       }
     }
 
+  // Demonstrating initialization of JS Side with some data of the Server
+  val initializer: () => String = { () =>
+    val data   = InitData(code = UUID.randomUUID().toString)
+    val asJson = data.asJson.spaces2
+    asJson
+  }
+
   val config = MiniServerConfig[Id](
     deploymentConfig,
-    api = Some(todoDispatcher)
+    api = Some(todoDispatcher),
+    init = Some(initializer)
   )
 
   val miniServer = MiniServer(config)
