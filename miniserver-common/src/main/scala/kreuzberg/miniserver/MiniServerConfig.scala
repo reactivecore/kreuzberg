@@ -11,5 +11,6 @@ case class MiniServerConfig[F[_]](
     deployment: DeploymentConfig,
     host: String = "0.0.0.0",
     port: Int = 8090,
-    api: Option[F[Dispatcher[F]]] = None
+    api: Option[F[Dispatcher[F]]] = None,
+    init: Option[() => F[String]] = None
 )
