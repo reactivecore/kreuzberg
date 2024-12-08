@@ -2,7 +2,7 @@ package kreuzberg.examples.showcase.pages
 
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.Button
-import kreuzberg.extras.LocalStorage
+import kreuzberg.extras.{LocalStorage, Route, SimpleRouted}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -22,7 +22,7 @@ case object Counter extends SimpleComponentBase {
   }
 }
 
-object IndexPage extends SimpleComponentBase {
+object IndexPage extends SimpleComponentBase with SimpleRouted {
   val secondCounter = LocalStorage[Int](1, "local_storage_counter", _.toString, _.toInt)
   val count         = Model.create(0)
 
@@ -45,4 +45,7 @@ object IndexPage extends SimpleComponentBase {
       )
     )
   }
+
+  override def path  = "/"
+  override def title = "Welcome"
 }

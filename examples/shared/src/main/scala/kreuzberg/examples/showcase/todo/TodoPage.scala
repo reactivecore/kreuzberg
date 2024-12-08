@@ -4,8 +4,12 @@ import kreuzberg.*
 import kreuzberg.examples.showcase.todo.{TodoAdder, TodoList}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
+import kreuzberg.extras.SimpleRouted
 
-object TodoPage extends SimpleComponentBase {
+object TodoPage extends SimpleComponentBase with SimpleRouted {
+
+  def path  = "/todo"
+  def title = "Todo App"
 
   val model = Model.create(
     TodoList(

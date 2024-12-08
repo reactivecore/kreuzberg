@@ -5,8 +5,12 @@ import kreuzberg.extras.forms.{Codec, Form, FormComponent, FormField, Generator,
 import kreuzberg.{Html, Model, SimpleComponentBase, SimpleContext}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
+import kreuzberg.extras.SimpleRouted
 
-object ExtendedFormPage extends SimpleComponentBase {
+object ExtendedFormPage extends SimpleComponentBase with SimpleRouted {
+
+  def path  = "/form2"
+  def title = "Extended Form"
 
   @UseValidator(Validator.fromPredicate[Register](r => r.password == r.passwordRepeat, "Passwords do not match"))
   case class Register(

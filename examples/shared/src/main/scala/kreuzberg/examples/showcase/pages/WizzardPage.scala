@@ -4,6 +4,7 @@ import kreuzberg.*
 import kreuzberg.examples.showcase.components.Button
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
+import kreuzberg.extras.SimpleRouted
 
 case class SimpleText(text: String) extends SimpleComponentBase {
 
@@ -37,7 +38,10 @@ case class Wizzard(
   }
 }
 
-object WizzardPage extends SimpleComponentBase {
+object WizzardPage extends SimpleComponentBase with SimpleRouted {
+
+  def title = "Wizzard"
+  def path = "/wizzard"
 
   override def assemble(implicit c: SimpleContext): Html = {
     val page1   = SimpleText("This is page 1")

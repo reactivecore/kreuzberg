@@ -3,8 +3,12 @@ package kreuzberg.examples.showcase.pages
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.{Label, TextInput, XmlLabel}
 import kreuzberg.xml.*
+import kreuzberg.extras.SimpleRouted
 
-object XmlPage extends SimpleComponentBase {
+object XmlPage extends SimpleComponentBase with SimpleRouted {
+  def title = "XML"
+  def path  = "/xml"
+
   override def assemble(implicit c: SimpleContext): Html = {
     val value          = Model.create("")
     val editor         = TextInput("field")

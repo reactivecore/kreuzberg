@@ -4,10 +4,11 @@ import kreuzberg.*
 import kreuzberg.examples.showcase.components.{Button, ValidatingTextInput}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
+import kreuzberg.extras.SimpleRouted
 
 import scala.util.{Success, Try}
 
-object FormPage extends SimpleComponentBase {
+object FormPage extends SimpleComponentBase with SimpleRouted {
   def assemble(using context: SimpleContext): Html = {
     val nameInput = ValidatingTextInput(
       "name",
@@ -42,6 +43,8 @@ object FormPage extends SimpleComponentBase {
         ageInput.wrap
       )
     )
-
   }
+
+  def path  = "/form"
+  def title = "Form"
 }
