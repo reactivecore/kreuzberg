@@ -12,4 +12,7 @@ object DefaultFieldType {
   given DefaultFieldType[String] with {
     override def fieldType: String = "text"
   }
+  given DefaultFieldType[Boolean] with {
+    override def fieldType: String = "checkbox"
+  }
 }
