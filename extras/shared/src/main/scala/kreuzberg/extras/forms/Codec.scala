@@ -53,11 +53,15 @@ object Codec {
     override def encode(value: Int): String = value.toString
 
     override def decode(encoded: String): DecodingResult[Int] = {
-      try {
-        Right(encoded.toInt)
-      } catch {
-        case NonFatal(_) => Left(Error.DecodingError("Invalid Integer"))
-      }
+      encoded.toIntOption.toRight(Error.DecodingError("Invalid Integer"))
     }
+  }
+
+  given simpleBoolean: Codec[Boolean, String] with {
+    override def encode(value: Boolean): String = value.toString
+
+    override def decode(encoded: String): DecodingResult[Boolean] = encoded.toBooleanOption.toRight(
+      Error.DecodingError("Invalid Boolean")
+    )
   }
 }

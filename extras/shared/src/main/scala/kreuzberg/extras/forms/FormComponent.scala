@@ -1,6 +1,7 @@
 package kreuzberg.extras.forms
 
 import kreuzberg.*
+import kreuzberg.RuntimeState.JsProperty
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 import org.scalajs.dom.html.Input
@@ -68,7 +69,13 @@ object FormFieldComponent {
     override type DomElement = Input
     def onChange     = jsEvent("change")
     def onInputEvent = jsEvent("input")
-    val text         = jsProperty(_.value, (r, v) => r.value = v)
+
+    // Workaround to make it also usable with Checkboxes
+    val text: JsProperty[DomElement, String] = if (field.formType == "checkbox") {
+      jsProperty(_.checked.toString, (r, v) => r.checked = v.toBooleanOption.getOrElse(false))
+    } else {
+      jsProperty(_.value, (r, v) => r.value = v)
+    }
   }
 
   case class FormFieldViolationsComponent(violations: Subscribeable[List[String]]) extends SimpleComponentBase {
