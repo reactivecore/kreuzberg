@@ -3,6 +3,7 @@ import kreuzberg.{Html, Identifier, SimpleComponentBase, SimpleContext, SimpleHt
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 import kreuzberg.engine.common.Assembler
+import kreuzberg.testcore.TestBase
 
 class ScalaTagsHtmlTest extends TestBase {
   val simple = ScalaTagsHtml(

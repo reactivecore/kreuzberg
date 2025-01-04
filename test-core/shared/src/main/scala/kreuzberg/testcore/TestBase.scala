@@ -1,13 +1,14 @@
-package kreuzberg.rpc
+package kreuzberg.testcore
 
+import org.scalatest.{EitherValues, TryValues}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scala.concurrent.Future
-import scala.concurrent.Await
+
 import scala.concurrent.duration.*
+import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 
-class TestBase extends AnyFlatSpec with Matchers {
+abstract class TestBase extends AnyFlatSpec with Matchers with TryValues with EitherValues {
 
   def await[T](f: Future[T]): T = {
     Await.result(f, 1.minute)

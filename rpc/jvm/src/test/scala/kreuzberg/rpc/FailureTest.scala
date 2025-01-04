@@ -1,5 +1,7 @@
 package kreuzberg.rpc
 
+import kreuzberg.testcore.TestBase
+
 class FailureTest extends TestBase {
 
   val samples = Seq(

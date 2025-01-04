@@ -1,6 +1,7 @@
 package kreuzberg.engine.common
 
 import kreuzberg.*
+import kreuzberg.testcore.TestBase
 
 class TreeNodeTest extends TestBase {
 

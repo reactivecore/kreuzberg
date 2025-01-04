@@ -1,7 +1,7 @@
 package kreuzberg.engine.naive.utils
 
-import kreuzberg.engine.naive.TestBase
 import kreuzberg.engine.naive.utils.MutableMultimap
+import kreuzberg.testcore.TestBase
 
 class MutableMultimapTest extends TestBase {
 

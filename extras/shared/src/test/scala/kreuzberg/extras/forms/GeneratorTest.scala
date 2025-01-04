@@ -1,7 +1,7 @@
 package kreuzberg.extras.forms
 
-import kreuzberg.TestBase
 import kreuzberg.extras.forms.Error.DecodingError
+import kreuzberg.testcore.TestBase
 
 object nameValidator extends Validator[SampleForm] {
   override def validate(value: SampleForm): Option[Error.ValidationError] = {

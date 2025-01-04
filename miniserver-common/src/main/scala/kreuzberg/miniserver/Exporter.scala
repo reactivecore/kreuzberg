@@ -22,7 +22,7 @@ class Exporter(config: DeploymentConfig) {
   def exportAll(dir: Path): Unit = {
     println(s"Exporting into ${dir}...")
     Files.createDirectories(dir)
-    val renderedIndex = "<!DOCTYPE html>" + Index(config).index(None).toString
+    val renderedIndex = Index(config).pageHtml(None)
     Files.writeString(dir.resolve("index.html"), renderedIndex)
     val assetsDir     = dir.resolve("assets")
     config.assetPaths.assetPaths

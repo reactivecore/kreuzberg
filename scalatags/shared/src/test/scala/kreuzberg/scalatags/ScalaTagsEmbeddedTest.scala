@@ -3,8 +3,9 @@ package kreuzberg.scalatags
 import kreuzberg.*
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
+import kreuzberg.testcore.TestBase
 
-class ScalaTagsEmbeddedTest extends kreuzberg.scalatags.TestBase {
+class ScalaTagsEmbeddedTest extends TestBase {
   case class DummyComponent(i: Int) extends ComponentBase {
     def assemble(using context: AssemblerContext): Assembly = {
       div(s"Hello World ${i}")
