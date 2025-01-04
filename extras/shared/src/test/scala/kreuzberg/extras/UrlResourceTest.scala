@@ -1,6 +1,6 @@
 package kreuzberg.extras
 
-import kreuzberg.TestBase
+import kreuzberg.testcore.TestBase
 
 class UrlResourceTest extends TestBase {
   "encodeWithArgs" should "work" in {

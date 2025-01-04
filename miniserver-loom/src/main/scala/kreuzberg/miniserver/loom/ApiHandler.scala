@@ -1,13 +1,13 @@
 package kreuzberg.miniserver.loom
 
 import io.circe.Json
-import kreuzberg.rpc.{Dispatcher, Id, UnknownServiceError}
+import kreuzberg.rpc.{Dispatcher, Id, UnknownCallError, UnknownServiceError}
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
 
 import scala.util.control.NonFatal
-import quest._
+import quest.*
 
 case class ApiHandler(dispatcher: Dispatcher[Id]) {
 
@@ -42,6 +42,8 @@ case class ApiHandler(dispatcher: Dispatcher[Id]) {
         try {
           dispatcher.call(serviceName, callName, request)
         } catch {
+          case error@ UnknownCallError(serviceName, callName) =>
+            bail(Left(error.encodeToJson -> StatusCode.NotFound))
           case NonFatal(e) =>
             val decoded = kreuzberg.rpc.Failure.fromThrowable(e)
             bail(Left(decoded.encodeToJson -> StatusCode.InternalServerError))

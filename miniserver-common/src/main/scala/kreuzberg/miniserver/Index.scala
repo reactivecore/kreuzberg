@@ -1,5 +1,6 @@
 package kreuzberg.miniserver
 import kreuzberg.scalatags.*
+import scalatags.Text.TypedTag
 import scalatags.Text.all.*
 import scalatags.Text.tags2.noscript
 
@@ -8,7 +9,9 @@ import java.util.Base64
 
 /** Index page for MiniServer. */
 case class Index(config: DeploymentConfig) {
-  def index(initData: Option[String]) = html(
+
+  /** Rendered index page. */
+  def index(initData: Option[String]): TypedTag[String] = html(
     head(
       initData.map(encodeData),
       mainJs,
@@ -26,7 +29,11 @@ case class Index(config: DeploymentConfig) {
     )
   )
 
-  def encodeData(initData: String) = {
+  def pageHtml(initData: Option[String]): String = {
+    "<!DOCTYPE html>\n" + index(initData).toString
+  }
+
+  private def encodeData(initData: String): TypedTag[String] = {
     // We do not want to clash the namespace and do not want to make it trivial readable.
     // As this is on user side, the user can inspect it anyway.
     val encoded    = Base64.getEncoder.encodeToString(initData.getBytes(StandardCharsets.UTF_8))

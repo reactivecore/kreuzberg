@@ -1,7 +1,7 @@
 package kreuzberg.miniserver
 
 case class AssetPaths(
-    assetPaths: Seq[RestrictedAssetCandidatePath]
+    assetPaths: Seq[RestrictedAssetCandidatePath] = Nil
 ) {
 
   /** Locate an asset. */

@@ -1,5 +1,7 @@
 package kreuzberg
 
+import kreuzberg.testcore.TestBase
+
 class SimpleHtmlTest extends TestBase {
 
   it should "work for a trivial case" in {

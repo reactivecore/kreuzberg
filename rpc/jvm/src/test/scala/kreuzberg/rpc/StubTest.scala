@@ -1,6 +1,7 @@
 package kreuzberg.rpc
 
 import io.circe.Json
+import kreuzberg.testcore.TestBase
 
 import scala.annotation.experimental
 import scala.concurrent.ExecutionContext.Implicits.global

@@ -11,7 +11,7 @@ val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
 
-ThisBuild / scalaVersion := "3.5.1"
+ThisBuild / scalaVersion := "3.5.2"
 
 ThisBuild / scalacOptions += "-Xcheck-macros"
 ThisBuild / scalacOptions += "-feature"
@@ -31,7 +31,8 @@ val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.3.0"
 val circeVersion                 = "0.14.10"
-val tapirVersion                 = "1.11.5"
+val tapirVersion                 = "1.11.10"
+val sttpVersion                  = "3.10.2"
 val questVersion                 = "0.2.0"
 
 val isIntelliJ = {
@@ -62,28 +63,44 @@ def publishSettings = Seq(
 
 usePgpKeyHex("77D0E9E04837F8CBBCD56429897A43978251C225")
 
-val testSettings = libraryDependencies ++= Seq(
-  "org.scalatest" %%% "scalatest"          % scalatestVersion % Test,
-  "org.scalatest" %%% "scalatest-flatspec" % scalatestVersion % Test
-)
-
 val logsettings = libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % logbackVersion
 )
 
+lazy val testCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("test-core"))
+  .settings(
+    name            := "test-core",
+    libraryDependencies ++= Seq(
+      "org.scalatest" %%% "scalatest"          % scalatestVersion,
+      "org.scalatest" %%% "scalatest-flatspec" % scalatestVersion
+    ),
+    publishArtifact := false,
+    publish / skip  := true,
+    publishLocal    := {}
+  )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "ch.qos.logback" % "logback-classic" % logbackVersion
+    )
+  )
+
 lazy val jsDomMock = (crossProject(JVMPlatform, NativePlatform) in file("js-dom-mock"))
   .settings(
     name := "kreuzberg-scalajs-dom-mock",
-    testSettings,
     publishSettings
+  )
+  .dependsOn(
+    testCore % Test
   )
 
 /** Defines a component. */
 lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("lib"))
   .settings(
     name := "kreuzberg",
-    testSettings,
     publishSettings
+  )
+  .dependsOn(
+    testCore % Test
   )
   .jvmConfigure(_.dependsOn(jsDomMock.jvm))
   .nativeConfigure(_.dependsOn(jsDomMock.native))
@@ -98,18 +115,16 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("l
 lazy val engineCommon = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("engine-common"))
   .settings(
     name := "kreuzberg-engine-common",
-    testSettings,
     publishSettings
   )
-  .dependsOn(lib)
+  .dependsOn(lib, testCore % Test)
 
 /** Naive simple engine implementation (mutable like hell, but small in Size) */
 lazy val engineNaive = (project in file("engine-naive"))
   .enablePlugins(ScalaJSPlugin)
-  .dependsOn(lib.js, engineCommon.js)
+  .dependsOn(lib.js, engineCommon.js, testCore.js % Test)
   .settings(
     name := "kreuzberg-engine-naive",
-    testSettings,
     publishSettings
   )
 
@@ -120,10 +135,9 @@ lazy val xml = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("x
       "org.scala-lang.modules"  %% "scala-xml" % scalaXmlVersion,
       "org.scala-lang.modules" %%% "scala-xml" % scalaXmlVersion
     ),
-    testSettings,
     publishSettings
   )
-  .dependsOn(lib, engineCommon % Test)
+  .dependsOn(lib, engineCommon % Test, testCore % Test)
 
 lazy val scalatags = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("scalatags"))
   .settings(
@@ -131,10 +145,9 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in f
     libraryDependencies ++= Seq(
       "com.lihaoyi" %%% "scalatags" % scalaTagsVersion
     ),
-    testSettings,
     publishSettings
   )
-  .dependsOn(lib, engineCommon % Test)
+  .dependsOn(lib, engineCommon % Test, testCore % Test)
 
 // Note: rpc doesn't depend on lib (because we do not need it)
 lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("rpc"))
@@ -145,7 +158,6 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("r
       "io.circe" %%% "circe-parser" % circeVersion
     ),
     evictionErrorLevel := Level.Warn,
-    testSettings,
     publishSettings
   )
   .jsSettings(
@@ -153,47 +165,47 @@ lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("r
       "org.scala-js" %%% "scalajs-dom" % scalaJsDomVersion
     )
   )
+  .dependsOn(
+    testCore % Test
+  )
 
 lazy val extras = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("extras"))
   .settings(
     name := "kreuzberg-extras",
-    testSettings,
     publishSettings
   )
-  .dependsOn(lib % "compile->compile;test->test", scalatags)
+  .dependsOn(lib % "compile->compile;test->test", scalatags, testCore % Test)
 
 // Common Code for Server Side
 lazy val miniserverCommon = (project in file("miniserver-common"))
   .settings(
     name := "kreuzberg-miniserver-common",
-    testSettings,
     publishSettings
   )
-  .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm)
+  .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm, testCore.jvm % Test)
 
 // Tapir/Loom based Mini Server
 lazy val miniserverLoom = (project in file("miniserver-loom"))
   .settings(
     name := "kreuzberg-miniserver-loom",
     libraryDependencies ++= Seq(
-      "org.slf4j"                    % "slf4j-api"               % slf4jVersion,
-      "com.softwaremill.sttp.tapir" %% "tapir-netty-server-sync" % tapirVersion,
-      "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % tapirVersion,
-      "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % tapirVersion,
-      "net.reactivecore"            %% "quest"                   % questVersion
+      "org.slf4j"                      % "slf4j-api"               % slf4jVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-netty-server-sync" % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"        % tapirVersion,
+      "com.softwaremill.sttp.client3" %% "core"                    % sttpVersion % Test,
+      "net.reactivecore"              %% "quest"                   % questVersion
     ),
-    testSettings,
     publishSettings
   )
-  .dependsOn(miniserverCommon)
+  .dependsOn(miniserverCommon, testCore.jvm % Test)
 
 lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
     name            := "examples",
     publishArtifact := false,
     publish / skip  := true,
-    publishLocal    := {},
-    testSettings
+    publishLocal    := {}
   )
   .jsSettings(
     // Moving JavaScript to a place, where we can easily find it by the server
@@ -204,7 +216,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .jvmSettings(logsettings)
   .jvmConfigure(_.dependsOn(miniserverLoom))
   .jsConfigure(_.dependsOn(engineNaive))
-  .dependsOn(lib, xml, scalatags, extras, rpc)
+  .dependsOn(lib, xml, scalatags, extras, rpc, testCore % Test)
 
 lazy val runner = (project in file("runner"))
   .settings(
@@ -213,10 +225,9 @@ lazy val runner = (project in file("runner"))
     reStartArgs               := Seq("serve"),
     publishArtifact           := false,
     publish / skip            := true,
-    publishLocal              := {},
-    testSettings
+    publishLocal              := {}
   )
-  .dependsOn(examples.jvm)
+  .dependsOn(examples.jvm, testCore.jvm % Test)
 
 lazy val root = (project in file("."))
   .settings(
@@ -225,6 +236,9 @@ lazy val root = (project in file("."))
     test           := {}
   )
   .aggregate(
+    testCore.js,
+    testCore.jvm,
+    testCore.native,
     lib.js,
     lib.jvm,
     lib.native,

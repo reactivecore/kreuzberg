@@ -51,7 +51,7 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
 - `extras`: Contains various components, including a simple router.
 - `rpc`: An experimental RPC library for making calls between JavaScript and JVM. Needs `@experimental`-Annotation
 - `examples`: Sample applications.
-- `miniserver-loom`: A Simple Tapir/Virtual threads based server for starting the example application (Needs JVM >=21)
+- `miniserver-loom`: A Simple Tapir/Virtual threads based server for starting the example application
 - `engine-common`: Contains common engine code.
 - `engine-naive`: Contains the naive rendering engine.
 - `runner`: Wraps the naive engine with examples.
@@ -59,6 +59,7 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
  
 # How to
 
+- Use JVM >= 21
 - Compile JavaScript code, in SBT
 
   ```

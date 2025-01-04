@@ -73,10 +73,11 @@ object AssetCandidatePath {
    */
   case class Resource(name: String, prefix: String = "") extends AssetCandidatePath {
     override def locate(path: String): Option[Location] = {
-      if (!path.startsWith(prefix)) {
+      val normalized = Paths.get(path).normalize().toString
+      if (!normalized.startsWith(prefix)) {
         return None
       }
-      val candidate = name + path.stripPrefix(prefix)
+      val candidate  = name + normalized.stripPrefix(prefix)
       Option(getClass.getClassLoader.getResource(candidate)) match {
         case Some(_) =>
           Some(Location.ResourcePath(candidate))
