@@ -6,9 +6,7 @@ trait Event {
   def preventDefault(): Unit
 }
 
-trait Element {
-
-}
+trait Element {}
 
 trait Node {
   def addEventListener[T <: Event](`type`: String, listener: T => ?, useCapture: Boolean = false): Unit

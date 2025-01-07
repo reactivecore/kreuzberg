@@ -5,7 +5,7 @@ object BrowserRouting {
   def getCurrentResource(): UrlResource = {
     UrlResource("")
   }
-  
+
   def setDocumentTitle(title: String): Unit = {
     // empty
   }

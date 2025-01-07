@@ -24,7 +24,7 @@ class SimpleContext(underlying: AssemblerContext) extends AssemblerContext {
     _services += service
   }
 
-  def eventBindings(): Vector[EventBinding[?]]     = _eventBindings.result()
+  def eventBindings(): Vector[EventBinding[?]]  = _eventBindings.result()
   def subscriptions(): Vector[Subscribeable[?]] = _subscriptions.result()
   def services(): Vector[HeadlessComponent]     = _services.result()
 }
