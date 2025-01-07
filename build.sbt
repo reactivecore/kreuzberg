@@ -24,7 +24,7 @@ ThisBuild / organization := "net.reactivecore"
 
 val scalaTagsVersion             = "0.13.1"
 val scalatestVersion             = "3.2.19"
-val logbackVersion               = "1.5.8"
+val logbackVersion               = "1.5.16"
 val slf4jVersion                 = "2.0.16"
 val scalaJsDomVersion            = "2.8.0"
 val scalaJsWeakReferencesVersion = "1.0.0"
