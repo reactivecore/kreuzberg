@@ -6,12 +6,12 @@ import scala.annotation.experimental
 object Main {
   def main(args: Array[String]): Unit = {
     args.headOption match {
-      case None              =>
+      case None           =>
         println("Expected command")
         System.exit(1)
-      case Some("serve")     => ServerMainLoom.main(args.tail)
-      case Some("export")    => Exporter.main(args.tail)
-      case Some(other)       =>
+      case Some("serve")  => ServerMainLoom.main(args.tail)
+      case Some("export") => Exporter.main(args.tail)
+      case Some(other)    =>
         println("Undefined command")
         System.exit(1)
     }

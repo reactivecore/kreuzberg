@@ -6,10 +6,10 @@ trait DefaultFieldType[T] {
 }
 
 object DefaultFieldType {
-  given DefaultFieldType[Int] with       {
+  given DefaultFieldType[Int] with     {
     override def fieldType: String = "number"
   }
-  given DefaultFieldType[String] with {
+  given DefaultFieldType[String] with  {
     override def fieldType: String = "text"
   }
   given DefaultFieldType[Boolean] with {
