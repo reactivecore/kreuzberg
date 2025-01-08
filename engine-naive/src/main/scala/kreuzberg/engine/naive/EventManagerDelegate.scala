@@ -12,8 +12,8 @@ trait EventManagerDelegate {
 
   /** Update with a new state */
   def onIterationEnd(
-                      state: ModelValues,
-                      changedModels: Set[Identifier]
+      state: ModelValues,
+      changedModels: Set[Identifier]
   ): Unit
 
   def locate(componentId: Identifier): Element

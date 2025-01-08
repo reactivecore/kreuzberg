@@ -42,9 +42,9 @@ case class ApiHandler(dispatcher: Dispatcher[Id]) {
         try {
           dispatcher.call(serviceName, callName, request)
         } catch {
-          case error@ UnknownCallError(serviceName, callName) =>
+          case error @ UnknownCallError(serviceName, callName) =>
             bail(Left(error.encodeToJson -> StatusCode.NotFound))
-          case NonFatal(e) =>
+          case NonFatal(e)                                     =>
             val decoded = kreuzberg.rpc.Failure.fromThrowable(e)
             bail(Left(decoded.encodeToJson -> StatusCode.InternalServerError))
         }

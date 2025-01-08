@@ -41,7 +41,7 @@ case class Wizzard(
 object WizzardPage extends SimpleComponentBase with SimpleRouted {
 
   def title = "Wizzard"
-  def path = "/wizzard"
+  def path  = "/wizzard"
 
   override def assemble(implicit c: SimpleContext): Html = {
     val page1   = SimpleText("This is page 1")
