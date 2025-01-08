@@ -1,10 +1,12 @@
 package kreuzberg.miniserver
 
-import java.io.{File, FileInputStream, InputStream}
+import java.io.{File, FileInputStream, IOException, InputStream}
 import java.nio.file.{Files, Paths}
 import java.security.{DigestInputStream, MessageDigest}
+import java.util.Properties
 import scala.language.implicitConversions
 import scala.util.Using
+import scala.util.control.NonFatal
 
 sealed trait Location {
   def load(): InputStream
@@ -39,7 +41,11 @@ object Location {
 
   case class ResourcePath(path: String) extends Location {
     override def load(): InputStream = {
-      getClass.getClassLoader.getResourceAsStream(path)
+      val stream = getClass.getClassLoader.getResourceAsStream(path)
+      if (stream == null) {
+        throw new IOException(s"Could not load resource ${path}")
+      }
+      stream
     }
   }
 }
@@ -87,6 +93,13 @@ object AssetCandidatePath {
     }
   }
 
+  /**
+   * Look in a directory
+   * @param dir
+   *   directory base path
+   * @param prefix
+   *   prefix which will be removed from any search file
+   */
   case class Directory(dir: String, prefix: String = "") extends AssetCandidatePath {
     private val path   = Paths.get(dir)
     private val exists = Files.isDirectory(path)
@@ -109,6 +122,65 @@ object AssetCandidatePath {
         } else {
           None
         }
+      }
+    }
+  }
+
+  /**
+   * Look into Webjars using [webjarname]/webjar-resource
+   *
+   * @param prefix
+   *   prefix which will be removed from any search file
+   */
+  case class Webjar(prefix: String = "") extends AssetCandidatePath {
+    private var versionCache: Map[String, String] = Map.empty
+    private val classLoader                       = getClass.getClassLoader
+
+    override def locate(path: String): Option[Location] = {
+      if (!path.startsWith(prefix)) {
+        return None
+      }
+      val normalized = Paths.get(path.stripPrefix(prefix)).normalize()
+      if (normalized.isAbsolute) {
+        // We need a path like [component]/[artefact/path/path]
+        return None
+      }
+      if (normalized.getNameCount <= 1) {
+        // No component/sub path given
+        return None
+      }
+      val component  = normalized.getName(0).toString
+      val rest       = normalized.subpath(1, normalized.getNameCount).toString
+      for {
+        version <- fetchMaybeCachedVersion(component)
+        fullPath = s"META-INF/resources/webjars/${component}/${version}/$rest"
+        _       <- Option(classLoader.getResource(fullPath))
+      } yield {
+        Location.ResourcePath(fullPath)
+      }
+    }
+
+    private def fetchMaybeCachedVersion(componentName: String): Option[String] = {
+      versionCache.get(componentName).orElse {
+        val got = fetchVersion(componentName)
+        got.foreach { version => versionCache = versionCache + (componentName -> version) }
+        got
+      }
+    }
+
+    private def fetchVersion(componentName: String): Option[String] = {
+      try {
+        val pomFile = s"META-INF/maven/org.webjars/${componentName}/pom.properties"
+        Option(classLoader.getResourceAsStream(pomFile)).flatMap { stream =>
+          Using.resource(stream) { _ =>
+            val props = new Properties()
+            props.load(stream)
+            Option(props.getProperty("version"))
+          }
+        }
+      } catch {
+        case NonFatal(_) =>
+          None
       }
     }
   }

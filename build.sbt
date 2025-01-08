@@ -180,7 +180,10 @@ lazy val extras = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file
 lazy val miniserverCommon = (project in file("miniserver-common"))
   .settings(
     name := "kreuzberg-miniserver-common",
-    publishSettings
+    publishSettings,
+    libraryDependencies ++= Seq(
+      "org.webjars" % "jquery" % "3.7.1" % Test // For testing Webjar Loader
+    )
   )
   .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm, testCore.jvm % Test)
 

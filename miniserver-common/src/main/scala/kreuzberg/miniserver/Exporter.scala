@@ -56,6 +56,8 @@ class Exporter(config: DeploymentConfig) {
       case AssetCandidatePath.Directory(dir, prefix) =>
         val sourceDir = Paths.get(dir)
         copyPrefixedDirectory(sourceDir, assetDir, prefix)
+      case AssetCandidatePath.Webjar(prefix)         =>
+        throw new IllegalStateException(s"Webjars not yet supported")
   }
 
   private def copyPrefixedJar(jarFile: Path, pathInJar: String, to: Path, prefix: String): Unit = {
