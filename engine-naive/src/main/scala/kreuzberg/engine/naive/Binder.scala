@@ -26,8 +26,7 @@ object Binder {
 }
 
 /** Binds a root element to a Node. */
-class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRepository)
-    extends EventManagerDelegate {
+class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRepository) extends EventManagerDelegate {
   private var _modelValues: ModelValues = ModelValues()
   private var _tree: TreeNode           = TreeNode.empty
 

@@ -8,7 +8,7 @@ import org.scalajs.dom.html.Input
 case class TextInput(fieldName: String, initialValue: String = "") extends SimpleComponentBase {
 
   override type DomElement = Input
-  
+
   override def assemble(
       implicit c: SimpleContext
   ): Html = {
