@@ -65,10 +65,13 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
   ```
   examplesJS/fastOptJS
   ```
-- Start the Examples (naive engine)
+- Start the Examples
   ```
-  runner/run serve
+  runner/run
   ```
+- Buiding artefact: See [build.sbt](build.sbt).
+  * Debug build is done by adding the ScalaJS-Results as resource path into `runner`
+  * Release build is done using sbt-web with sbt-web-scalajs, including compression with brotli
 
 - Watching for changes
 

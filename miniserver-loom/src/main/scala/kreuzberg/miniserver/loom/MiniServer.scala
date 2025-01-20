@@ -1,20 +1,16 @@
 package kreuzberg.miniserver.loom
 
-import kreuzberg.miniserver.{AssetPaths, DeploymentType, Index, MiniServerConfig}
+import kreuzberg.miniserver.{DeploymentType, Index, MiniServerConfig}
 import org.slf4j.{Logger, LoggerFactory}
 import ox.Ox
-import sttp.model.{Header, MediaType, StatusCode}
+import sttp.model.{Header, Headers, MediaType, StatusCode}
 import sttp.shared.Identity
 import sttp.tapir.*
-import sttp.tapir.extension.MimeTypes
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.netty.{NettyConfig, NettySocketConfig}
 import sttp.tapir.server.netty.sync.{NettySyncServer, NettySyncServerBinding}
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import sttp.tapir.server.interceptor.decodefailure.DefaultDecodeFailureHandler.OnDecodeFailure.*
-
-import java.nio.ByteBuffer
-import scala.util.Using
 
 class MiniServer(config: MiniServerConfig[Identity]) {
   val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -65,51 +61,8 @@ class MiniServer(config: MiniServerConfig[Identity]) {
     server.start()
   }
 
-  val assetEndpoint: PublicEndpoint[List[String], StatusCode, (ByteBuffer, String), Any] = {
-    endpoint.get
-      .in("assets" / paths)
-      .errorOut(statusCode)
-      .out(byteBufferBody)
-      .out(header[String]("Content-Type"))
-  }
-
-  private val assetHandler = makeAssetHandler(assetEndpoint, config.deployment.assetPaths)
-
-  val rootAssetsEndpoint: PublicEndpoint[List[String], StatusCode, (ByteBuffer, String), Any] = {
-    endpoint
-      .in(paths)
-      .errorOut(statusCode)
-      .out(byteBufferBody)
-      .out(header[String]("Content-Type"))
-  }
-
-  private val rootAssetHandler = makeAssetHandler(rootAssetsEndpoint, config.deployment.rootAssets)
-
-  private def makeAssetHandler(
-      endpoint: PublicEndpoint[List[String], StatusCode, (ByteBuffer, String), Any],
-      assetPaths: AssetPaths
-  ): ServerEndpoint.Full[Unit, Unit, List[String], StatusCode, (ByteBuffer, String), Any, Identity] = {
-    endpoint.handle { paths =>
-      val fullName = paths.mkString("/")
-      if (config.deployment.isBlacklisted(fullName)) {
-        Left(StatusCode.NotFound)
-      } else {
-        assetPaths.locateAsset(fullName, Some(config.deployment.deploymentType)) match {
-          case None        => Left(StatusCode.NotFound)
-          case Some(value) =>
-            Using.resource(value.load()) { data =>
-              val bytes       = data.readAllBytes()
-              val contentType = MimeTypes
-                .contentTypeByFileName(fullName)
-                .getOrElse(
-                  MediaType.ApplicationOctetStream
-                )
-              Right(ByteBuffer.wrap(bytes) -> contentType.toString())
-            }
-        }
-      }
-    }
-  }
+  private val assetHandler     = AssetHandler(Some("assets"), config.deployment.assetPaths, config.deployment).assetHandler
+  private val rootAssetHandler = AssetHandler(None, config.deployment.rootAssets, config.deployment).assetHandler
 
   val indexEndpoint: PublicEndpoint[Unit, Unit, String, Any] = {
     endpoint.get

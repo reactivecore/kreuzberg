@@ -22,6 +22,8 @@ ThisBuild / Test / run / fork    := true
 
 ThisBuild / organization := "net.reactivecore"
 
+ThisBuild / scalaJSStage := FullOptStage
+
 val scalaTagsVersion             = "0.13.1"
 val scalatestVersion             = "3.2.19"
 val logbackVersion               = "1.5.16"
@@ -34,14 +36,6 @@ val circeVersion                 = "0.14.10"
 val tapirVersion                 = "1.11.13"
 val sttpVersion                  = "3.10.2"
 val questVersion                 = "0.2.0"
-
-val isIntelliJ = {
-  val isIdea = sys.props.get("idea.managed").contains("true")
-  if (isIdea) {
-    println("Using IntelliJ workarounds. Do not publish")
-  }
-  isIdea
-}
 
 def publishSettings = Seq(
   publishTo               := sonatypePublishToBundle.value,
@@ -69,14 +63,13 @@ val logsettings = libraryDependencies ++= Seq(
 
 lazy val testCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("test-core"))
   .settings(
-    name            := "test-core",
+    name           := "test-core",
     libraryDependencies ++= Seq(
       "org.scalatest" %%% "scalatest"          % scalatestVersion,
       "org.scalatest" %%% "scalatest-flatspec" % scalatestVersion
     ),
-    publishArtifact := false,
-    publish / skip  := true,
-    publishLocal    := {}
+    publish / skip := true,
+    publishLocal   := {}
   )
   .jvmSettings(
     libraryDependencies ++= Seq(
@@ -205,32 +198,44 @@ lazy val miniserverLoom = (project in file("miniserver-loom"))
 
 lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
-    name            := "examples",
-    publishArtifact := false,
-    publish / skip  := true,
-    publishLocal    := {}
+    name           := "examples",
+    publish / skip := true,
+    publishLocal   := {}
   )
   .jsSettings(
-    // Moving JavaScript to a place, where we can easily find it by the server
     Compile / fastOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/fast/main.js",
-    Compile / fullOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/opt/main.js",
-    scalaJSUseMainModuleInitializer    := true
+    scalaJSUseMainModuleInitializer := true,
+    // Important, no source maps on full link js
+    Compile / fullLinkJS / scalaJSLinkerConfig ~= (_.withSourceMap(false))
   )
   .jvmSettings(logsettings)
   .jvmConfigure(_.dependsOn(miniserverLoom))
   .jsConfigure(_.dependsOn(engineNaive))
   .dependsOn(lib, xml, scalatags, extras, rpc, testCore % Test)
+  .jsEnablePlugins(
+    ScalaJSWeb
+  )
 
 lazy val runner = (project in file("runner"))
   .settings(
-    Compile / compile         := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
-    Compile / run / mainClass := Some("kreuzberg.examples.showcase.Main"),
-    reStartArgs               := Seq("serve"),
-    publishArtifact           := false,
-    publish / skip            := true,
-    publishLocal              := {}
+    // Attaching to Debug Output
+    Compile / compile   := (Compile / compile).dependsOn(examples.js / Compile / fastOptJS).value,
+    Compile / mainClass := Some("kreuzberg.examples.showcase.DebugMain"),
+    publish / skip      := true,
+    publishLocal        := {}
   )
   .dependsOn(examples.jvm, testCore.jvm % Test)
+
+lazy val runnerProd = (project in file("runner-prod"))
+  .settings(
+    Compile / mainClass     := Some("kreuzberg.examples.showcase.ProdMain"),
+    publish / skip          := true,
+    Assets / pipelineStages := Seq(scalaJSPipeline, brotli),
+    scalaJSProjects         := Seq(examples.js),
+    (Runtime / managedClasspath) += (Assets / packageBin).value
+  )
+  .dependsOn(examples.jvm)
+  .enablePlugins(SbtWeb, JavaAppPackaging)
 
 lazy val root = (project in file("."))
   .settings(
@@ -266,5 +271,7 @@ lazy val root = (project in file("."))
     rpc.jvm,
     rpc.native,
     jsDomMock.jvm,
-    jsDomMock.native
+    jsDomMock.native,
+    runner,
+    runnerProd
   )
