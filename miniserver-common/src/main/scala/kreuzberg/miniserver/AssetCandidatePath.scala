@@ -9,7 +9,11 @@ import scala.util.Using
 import scala.util.control.NonFatal
 
 sealed trait Location {
+  /** Load the ressource. */
   def load(): InputStream
+
+  /** Try to load the resource with Brotli */
+  def brotli(): Option[InputStream]
 
   def hashSha256(): String = {
     Using(load()) { stream =>
@@ -37,15 +41,29 @@ object Location {
     override def load(): InputStream = {
       new FileInputStream(file)
     }
+
+    override def brotli(): Option[InputStream] = {
+      val candidate = new java.io.File(file.getPath + ".br")
+      if (candidate.exists()){
+        return Some(new FileInputStream(candidate))
+      } else {
+        None
+      }
+    }
   }
 
-  case class ResourcePath(path: String) extends Location {
+  case class ResourcePath(path: String, classLoader: ClassLoader) extends Location {
     override def load(): InputStream = {
-      val stream = getClass.getClassLoader.getResourceAsStream(path)
+      val stream = classLoader.getResourceAsStream(path)
       if (stream == null) {
         throw new IOException(s"Could not load resource ${path}")
       }
       stream
+    }
+
+    override def brotli(): Option[InputStream] = {
+      val candidate = path + ".br"
+      Option(classLoader.getResourceAsStream(candidate))
     }
   }
 }
@@ -78,15 +96,17 @@ object AssetCandidatePath {
    *   prefix which will be removed from any search file
    */
   case class Resource(name: String, prefix: String = "") extends AssetCandidatePath {
+    private val classLoader = getClass.getClassLoader
+
     override def locate(path: String): Option[Location] = {
       val normalized = Paths.get(path).normalize().toString
       if (!normalized.startsWith(prefix)) {
         return None
       }
       val candidate  = name + normalized.stripPrefix(prefix)
-      Option(getClass.getClassLoader.getResource(candidate)) match {
+      Option(classLoader.getResource(candidate)) match {
         case Some(_) =>
-          Some(Location.ResourcePath(candidate))
+          Some(Location.ResourcePath(candidate, classLoader))
         case None    =>
           None
       }
@@ -156,7 +176,7 @@ object AssetCandidatePath {
         fullPath = s"META-INF/resources/webjars/${component}/${version}/$rest"
         _       <- Option(classLoader.getResource(fullPath))
       } yield {
-        Location.ResourcePath(fullPath)
+        Location.ResourcePath(fullPath, classLoader)
       }
     }
 

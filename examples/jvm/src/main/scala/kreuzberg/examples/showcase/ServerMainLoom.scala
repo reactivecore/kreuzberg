@@ -2,7 +2,14 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.examples.showcase.todo.{ListItemResponse, TodoApi}
 import kreuzberg.miniserver.loom.MiniServer
-import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, MiniServerConfig}
+import kreuzberg.miniserver.{
+  AssetCandidatePath,
+  AssetPaths,
+  DeploymentConfig,
+  DeploymentType,
+  MiniServerConfig,
+  RestrictedAssetCandidatePath
+}
 import kreuzberg.rpc.{Dispatcher, Id, SecurityError}
 
 import java.util.UUID
@@ -30,8 +37,27 @@ class TodoServiceLoom extends TodoApi[Id] {
   }
 }
 
+val defaultDeploymentConfig = DeploymentConfig(
+  AssetPaths(
+    Seq(
+      RestrictedAssetCandidatePath(
+        deploymentType = Some(DeploymentType.Debug),
+        path =  AssetCandidatePath("../examples/js/target/client_bundle/client/fast"),
+      ),
+      RestrictedAssetCandidatePath(
+        deploymentType = Some(DeploymentType.Production),
+        AssetCandidatePath.Resource("examples-opt/")
+      ),
+      RestrictedAssetCandidatePath(
+        deploymentType = Some(DeploymentType.Production),
+        AssetCandidatePath.Resource("lib/")
+      )
+    )
+  )
+)
+
 @experimental
-object ServerMainLoom extends App {
+class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfig) extends App {
   val todoDispatcher: Dispatcher[Id] =
     Dispatcher.makeIdDispatcher[TodoApi[Id]](new TodoServiceLoom: TodoApi[Id]).preRequestFlatMap { request =>
       // Demonstrating adding a pre filter
@@ -58,6 +84,8 @@ object ServerMainLoom extends App {
     init = Some(initializer)
   )
 
-  val miniServer = MiniServer(config)
-  miniServer.run()
+  def run(): Unit = {
+    val miniServer = MiniServer(config)
+    miniServer.run()
+  }
 }
