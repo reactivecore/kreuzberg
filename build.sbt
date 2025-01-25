@@ -204,7 +204,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   )
   .jsSettings(
     Compile / fastOptJS / artifactPath := baseDirectory.value / "target/client_bundle/client/fast/main.js",
-    scalaJSUseMainModuleInitializer := true,
+    scalaJSUseMainModuleInitializer    := true,
     // Important, no source maps on full link js
     Compile / fullLinkJS / scalaJSLinkerConfig ~= (_.withSourceMap(false))
   )
