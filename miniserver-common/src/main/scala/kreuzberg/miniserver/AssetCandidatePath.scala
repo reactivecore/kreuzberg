@@ -9,6 +9,7 @@ import scala.util.Using
 import scala.util.control.NonFatal
 
 sealed trait Location {
+
   /** Load the ressource. */
   def load(): InputStream
 
@@ -44,7 +45,7 @@ object Location {
 
     override def brotli(): Option[InputStream] = {
       val candidate = new java.io.File(file.getPath + ".br")
-      if (candidate.exists()){
+      if (candidate.exists()) {
         return Some(new FileInputStream(candidate))
       } else {
         None

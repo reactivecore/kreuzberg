@@ -42,7 +42,7 @@ val defaultDeploymentConfig = DeploymentConfig(
     Seq(
       RestrictedAssetCandidatePath(
         deploymentType = Some(DeploymentType.Debug),
-        path =  AssetCandidatePath("../examples/js/target/client_bundle/client/fast"),
+        path = AssetCandidatePath("../examples/js/target/client_bundle/client/fast")
       ),
       RestrictedAssetCandidatePath(
         deploymentType = Some(DeploymentType.Production),
