@@ -33,7 +33,7 @@ val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.3.0"
 val circeVersion                 = "0.14.10"
-val tapirVersion                 = "1.11.13"
+val tapirVersion                 = "1.11.15"
 val sttpVersion                  = "3.10.2"
 val questVersion                 = "0.2.0"
 
