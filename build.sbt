@@ -11,7 +11,7 @@ val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
 
-ThisBuild / scalaVersion := "3.5.2"
+ThisBuild / scalaVersion := "3.6.3"
 
 ThisBuild / scalacOptions += "-Xcheck-macros"
 ThisBuild / scalacOptions += "-feature"
@@ -33,7 +33,7 @@ val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.3.0"
 val circeVersion                 = "0.14.10"
-val tapirVersion                 = "1.11.13"
+val tapirVersion                 = "1.11.15"
 val sttpVersion                  = "3.10.3"
 val questVersion                 = "0.2.0"
 
