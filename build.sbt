@@ -24,6 +24,15 @@ ThisBuild / organization := "net.reactivecore"
 
 ThisBuild / scalaJSStage := FullOptStage
 
+val isIntelliJ = {
+  val isIdea = sys.props.get("idea.managed").contains("true")
+  if (isIdea) {
+    println("Using IntelliJ workarounds. Do not publish")
+  }
+  isIdea
+}
+
+
 val scalaTagsVersion             = "0.13.1"
 val scalatestVersion             = "3.2.19"
 val logbackVersion               = "1.5.16"
@@ -226,16 +235,31 @@ lazy val runner = (project in file("runner"))
   )
   .dependsOn(examples.jvm, testCore.jvm % Test)
 
-lazy val runnerProd = (project in file("runner-prod"))
-  .settings(
-    Compile / mainClass     := Some("kreuzberg.examples.showcase.ProdMain"),
-    publish / skip          := true,
-    Assets / pipelineStages := Seq(scalaJSPipeline, brotli),
-    scalaJSProjects         := Seq(examples.js),
-    (Runtime / managedClasspath) += (Assets / packageBin).value
-  )
-  .dependsOn(examples.jvm)
-  .enablePlugins(SbtWeb, JavaAppPackaging)
+// SBT / JS Pipeline seems to break IntelliJs multi project workign
+// We need it for releasing or inside SBT anyway.
+// Perhaps related to https://github.com/vmunier/sbt-web-scalajs/issues/169
+def maybeEnableSbtWebPipeline(p: Project): Project = {
+  if (isIntelliJ) {
+    p
+  } else {
+    p
+      .enablePlugins(SbtWeb, JavaAppPackaging)
+      .settings(
+        Assets / pipelineStages := Seq(scalaJSPipeline, brotli),
+        scalaJSProjects         := Seq(examples.js),
+        (Runtime / managedClasspath) += (Assets / packageBin).value
+      )
+  }
+}
+
+lazy val runnerProd = maybeEnableSbtWebPipeline {
+  (project in file("runner-prod"))
+    .settings(
+      Compile / mainClass := Some("kreuzberg.examples.showcase.ProdMain"),
+      publish / skip := true,
+    )
+    .dependsOn(examples.jvm)
+}
 
 lazy val root = (project in file("."))
   .settings(
