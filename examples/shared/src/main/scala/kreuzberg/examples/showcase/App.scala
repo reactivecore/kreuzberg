@@ -7,6 +7,7 @@ import kreuzberg.examples.showcase.pages.{
   IndexPage,
   LazyPage,
   NotFoundPage,
+  TablePage,
   WizzardPage,
   XmlPage
 }
@@ -41,6 +42,7 @@ object App extends SimpleComponentBase {
     ExtendedFormPage,
     WizzardPage,
     XmlPage,
-    LazyPage
+    LazyPage,
+    TablePage
   )
 }

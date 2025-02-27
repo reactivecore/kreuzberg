@@ -17,6 +17,7 @@ case object Menu extends SimpleComponentBase {
     "/wizzard"                    -> "Wizzard",
     "/xml"                        -> "XML",
     "/notfound"                   -> "Not Found",
+    "/table"                      -> "Table",
     LazyPage.route.url("123").str -> "Lazy"
   )
 

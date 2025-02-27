@@ -14,6 +14,11 @@ sealed trait Subscribeable[+T] {
     sc.value(this)
   }
 
+  /** Map a subscribable value to something else. */
+  def map[U](fn: T => U): Subscribeable[U] = {
+    Model.Mapped(this, fn)
+  }
+
   def dependencies: Seq[Identifier]
 }
 
@@ -45,11 +50,6 @@ final class Model[T] private (initialValue: ServiceRepository ?=> T) extends Sub
 
   override def toString: String = {
     s"M${id.value}"
-  }
-
-  /** Map a model value to something else. */
-  def map[U](fn: T => U): Subscribeable[U] = {
-    Model.Mapped(this, fn)
   }
 
   override def initial(using ServiceRepository): T = initialValue
