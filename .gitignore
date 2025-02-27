@@ -7,5 +7,6 @@ target
 *.sc
 dist/
 metals.sbt
+.DS_Store
 
 

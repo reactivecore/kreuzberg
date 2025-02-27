@@ -42,5 +42,5 @@ trait Form[T] {
 object Form {
 
   /** Generate a form using macros. */
-  inline def generate[T]: Form[T] = Generator.generate[T]
+  inline def derived[T]: Form[T] = Generator.generate[T]
 }
