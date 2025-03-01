@@ -32,7 +32,6 @@ val isIntelliJ = {
   isIdea
 }
 
-
 val scalaTagsVersion             = "0.13.1"
 val scalatestVersion             = "3.2.19"
 val logbackVersion               = "1.5.17"
@@ -42,7 +41,7 @@ val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.3.0"
 val circeVersion                 = "0.14.10"
-val tapirVersion                 = "1.11.15"
+val tapirVersion                 = "1.11.16"
 val sttpVersion                  = "3.10.3"
 val questVersion                 = "0.2.0"
 
@@ -256,7 +255,7 @@ lazy val runnerProd = maybeEnableSbtWebPipeline {
   (project in file("runner-prod"))
     .settings(
       Compile / mainClass := Some("kreuzberg.examples.showcase.ProdMain"),
-      publish / skip := true,
+      publish / skip      := true
     )
     .dependsOn(examples.jvm)
 }
