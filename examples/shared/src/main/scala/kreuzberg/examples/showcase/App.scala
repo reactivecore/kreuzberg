@@ -29,7 +29,8 @@ object App extends SimpleComponentBase {
           PathCodec.all,
           s => NotFoundPage(s),
           s => "Not Found"
-        )
+        ),
+        titlePrefix = "Example - "
       )
     )
   }

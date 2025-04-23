@@ -66,7 +66,7 @@ case class SimpleRouter(
               }
               if (continueHere) {
                 result.foreach { routingTarget =>
-                  BrowserRouting.setDocumentTitle(routingTarget.title)
+                  BrowserRouting.setDocumentTitle(titlePrefix + routingTarget.title)
                 }
                 val translated = result match {
                   case Failure(exception) => RoutingState.Failed(loading.url, loading.route, exception)
