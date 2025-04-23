@@ -11,16 +11,16 @@ case class TodoItemShower(item: String) extends SimpleComponentBase {
   }
 }
 
-case class TodoShower(todoList: Subscribeable[TodoList]) extends SimpleComponentBase {
+case class TodoShower(todoList: Subscribeable[TodoList]) extends TemplatingComponentBase {
 
-  def assemble(implicit c: SimpleContext): Html = {
-    val value = subscribe(todoList)
-    val parts = value.elements.map { element =>
-      li(
-        TodoItemShower(element).wrap
-      )
-    }
-    ul(parts)
+  def assemble(implicit c: SimpleContext): ScalaTagsHtml = {
+    ul(
+      todoList.map(_.elements).iter { elem =>
+        li(
+          TodoItemShower(elem)
+        )
+      }
+    )
   }
 
   override def update(before: ModelValueProvider)(using context: AssemblerContext): UpdateResult = {
@@ -31,7 +31,7 @@ case class TodoShower(todoList: Subscribeable[TodoList]) extends SimpleComponent
       if valueAfter == valueBefore.append(last)
     } yield {
       // Just one element added, lets patch it
-      val itemShower = li(TodoItemShower(last).wrap)
+      val itemShower = li(TodoItemShower(last))
       UpdateResult.Append(
         Assembly(
           html = itemShower
