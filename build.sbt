@@ -50,9 +50,10 @@ val tapirVersion                 = "1.11.34"
 val sttpVersion                  = "3.11.0"
 val questVersion                 = "0.2.0"
 
+ThisBuild / sonatypeCredentialHost := sonatypeCentralHost
+
 def publishSettings = Seq(
   publishTo               := sonatypePublishToBundle.value,
-  sonatypeCredentialHost  := sonatypeCentralHost,
   sonatypeBundleDirectory := (ThisBuild / baseDirectory).value / "target" / "sonatype-staging" / s"${version.value}",
   licenses                := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
   homepage                := Some(url("https://github.com/reactivecore/kreuzberg")),
