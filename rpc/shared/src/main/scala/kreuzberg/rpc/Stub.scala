@@ -92,16 +92,19 @@ object Stub {
 
     def makeDecode(method: analyzer.Method)(inner: Expr[F[Response]]): Term = {
       type R
+
       given Type[R]     = method.returnType.typeArgs.head.asType.asInstanceOf[Type[R]]
-      val returnDecoder = Expr.summon[Decoder[R]].getOrElse {
-        throw new IllegalArgumentException("Could not find codec for type R" + method.returnType)
+      val returnDecoder = Expr.summon[ResponseDecoder[R]].getOrElse {
+        throw new IllegalArgumentException("Could not find codec for type R " + method.returnType)
       }
-      val x             = '{ ${ effect }.decodeResponse[R](${ inner })(${ returnDecoder }) }
+
+      val x = '{ ${ effect }.decodeResponse[R](${ inner })(using $returnDecoder) }
       x.asTerm
     }
 
     def encodeArg(name: String, dtype: TypeRepr, arg: Tree, request: Expr[Request]): Expr[Request] = {
       type X
+
       given Type[X]  = dtype.asType.asInstanceOf[Type[X]]
       val paramCodec = Expr.summon[ParamEncoder[X]].getOrElse {
         throw new IllegalArgumentException(s"Could not find ParamCodec for ${dtype.show}")

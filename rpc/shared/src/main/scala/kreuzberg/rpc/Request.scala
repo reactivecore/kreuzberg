@@ -5,7 +5,8 @@ import io.circe.{Json, JsonObject}
 /** A serialized request which is transferred using a POST-Request. */
 case class Request(
     payload: JsonObject,
-    headers: Seq[(String, String)] = Nil
+    headers: Seq[(String, String)] = Nil,
+    cookies: Seq[(String, String)] = Nil
 ) {
   def withHeader(name: String, value: String): Request = {
     copy(headers = headers :+ (name, value))
