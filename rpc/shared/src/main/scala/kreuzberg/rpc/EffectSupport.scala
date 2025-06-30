@@ -37,16 +37,16 @@ trait EffectSupport[F[_]] {
 
   // Helpers to make implementation of Macros easier.
 
-  def decodeResponse[A](in: F[Response])(implicit decoder: Decoder[A]): F[A] = {
+  def decodeResponse[A](in: F[Response])(using decoder: ResponseDecoder[A]): F[A] = {
     flatMap(in) { transport =>
-      decoder.decodeJson(transport.json) match {
-        case Left(bad) => failure(Failure.fromDecodingFailure(bad))
+      decoder.decode(transport) match {
+        case Left(bad) => failure(bad)
         case Right(ok) => success(ok)
       }
     }
   }
 
-  def encodeResponse[R](in: F[R])(using encoder: Encoder[R]): F[Response] = {
+  def encodeResponse[R](in: F[R])(using encoder: ResponseEncoder[R]): F[Response] = {
     map(in) { resultValue =>
       Response.build(resultValue)
     }

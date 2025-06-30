@@ -1,6 +1,7 @@
 package kreuzberg.rpc
 
 import io.circe.{Decoder, Encoder, Json}
+import kreuzberg.rpc.Response.StatusCodeExtractor
 
 /**
  * A Response from a dispatcher.
@@ -12,14 +13,53 @@ import io.circe.{Decoder, Encoder, Json}
  */
 case class Response(
     json: Json,
-    statusCode: Int = 200
+    statusCode: Int = 200,
+    setCookies: List[String] = Nil
 )
+
+/** Builds responses from arbitrary types. */
+trait ResponseEncoder[T] {
+  def build(value: T): Response
+}
+
+object ResponseEncoder {
+
+  /** Derive from JSON Encoder. */
+  given fromEncoder[T](using e: Encoder[T]): ResponseEncoder[T] with {
+    override def build(value: T): Response = {
+      val json       = e(value)
+      val statusCode = json.as[StatusCodeExtractor].toOption.map(_.statusCode).getOrElse(200)
+      Response(
+        json,
+        statusCode,
+        Nil
+      )
+    }
+  }
+}
+
+/** Decodes responses into arbitrary types. */
+trait ResponseDecoder[T] {
+  def decode(response: Response): Either[CodecError, T]
+}
+
+object ResponseDecoder {
+
+  /** Derive from JSON Decoder. */
+  given fromDecoder[T](using d: Decoder[T]): ResponseDecoder[T] with {
+    override def decode(response: Response): Either[CodecError, T] = {
+      d.decodeJson(response.json) match {
+        case Left(bad) => Left(Failure.fromDecodingFailure(bad))
+        case Right(ok) => Right(ok)
+      }
+    }
+  }
+}
 
 object Response {
 
   def fromJson(json: Json): Response = {
-    val statusCode = json.as[StatusCodeExtractor].toOption.map(_.statusCode).getOrElse(200)
-    Response(json, statusCode)
+    build(json)
   }
 
   def fromJsonString(json: String): Either[CodecError, Response] = {
@@ -36,8 +76,7 @@ object Response {
   case class StatusCodeExtractor(statusCode: Int) derives Decoder
 
   /** Build a response from a value. StatusCode will be set, if field `statusCode` is set. */
-  def build[T](in: T)(using e: Encoder[T]): Response = {
-    val json = e.apply(in)
-    fromJson(json)
+  def build[T](in: T)(using r: ResponseEncoder[T]): Response = {
+    r.build(in)
   }
 }

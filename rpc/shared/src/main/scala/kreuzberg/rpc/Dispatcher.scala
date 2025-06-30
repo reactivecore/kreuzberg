@@ -181,12 +181,12 @@ object Dispatcher {
         ValDef.let(parent, decodingTerms) { values =>
           type R
           given Type[R]     = method.returnType.typeArgs.head.asType.asInstanceOf[Type[R]]
-          val returnEncoder = Expr.summon[Encoder[R]].getOrElse {
+          val responseBuilder = Expr.summon[ResponseEncoder[R]].getOrElse {
             throw new IllegalArgumentException("Could not find codec for type R" + method.returnType)
           }
           val called        = synthetisizeCall(values, method).asExprOf[F[R]]
           '{
-            $effect.encodeResponse($called)(using $returnEncoder)
+            $effect.encodeResponse($called)(using $responseBuilder)
           }.asTerm
         }
       }
