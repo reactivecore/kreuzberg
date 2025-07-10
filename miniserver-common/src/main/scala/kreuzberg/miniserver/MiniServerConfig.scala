@@ -12,5 +12,10 @@ case class MiniServerConfig[F[_]](
     host: String = "0.0.0.0",
     port: Int = 8090,
     api: Option[F[Dispatcher[F]]] = None,
-    init: Option[() => F[String]] = None
+    init: Option[InitRequest => F[String]] = None
+)
+
+case class InitRequest(
+    headers: Seq[(String, String)],
+    cookies: Seq[(String, String)]
 )
