@@ -2,14 +2,7 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.examples.showcase.todo.{ListItemResponse, TodoApi}
 import kreuzberg.miniserver.loom.MiniServer
-import kreuzberg.miniserver.{
-  AssetCandidatePath,
-  AssetPaths,
-  DeploymentConfig,
-  DeploymentType,
-  MiniServerConfig,
-  RestrictedAssetCandidatePath
-}
+import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, DeploymentConfig, DeploymentType, InitRequest, MiniServerConfig, RestrictedAssetCandidatePath}
 import kreuzberg.rpc.{Dispatcher, Id, SecurityError}
 
 import java.util.UUID
@@ -66,13 +59,13 @@ class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfi
         case (key, value) if key == "x-client-id" => value
       }
       id match {
-        case None => throw new SecurityError("Missing client id")
+        case None => throw SecurityError("Missing client id")
         case _    => request
       }
     }
 
   // Demonstrating initialization of JS Side with some data of the Server
-  val initializer: () => String = { () =>
+  val initializer: InitRequest => String = { request =>
     val data   = InitData(code = UUID.randomUUID().toString)
     val asJson = data.asJson.spaces2
     asJson

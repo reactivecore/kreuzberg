@@ -1,8 +1,9 @@
 package kreuzberg.miniserver.loom
 
-import kreuzberg.miniserver.{DeploymentType, Index, MiniServerConfig}
+import kreuzberg.miniserver.{DeploymentType, Index, InitRequest, MiniServerConfig}
 import org.slf4j.{Logger, LoggerFactory}
 import ox.Ox
+import sttp.model.headers.Cookie
 import sttp.model.{Header, Headers, MediaType, StatusCode}
 import sttp.shared.Identity
 import sttp.tapir.*
@@ -64,18 +65,20 @@ class MiniServer(config: MiniServerConfig[Identity]) {
   private val assetHandler     = AssetHandler(Some("assets"), config.deployment.assetPaths, config.deployment).assetHandler
   private val rootAssetHandler = AssetHandler(None, config.deployment.rootAssets, config.deployment).assetHandler
 
-  val indexEndpoint: PublicEndpoint[Unit, Unit, String, Any] = {
+  val indexEndpoint: PublicEndpoint[(List[Header], List[Cookie]), Unit, String, Any] = {
     endpoint.get
       .in("")
+      .in(headers)
+      .in(cookies)
       .out(htmlBodyUtf8)
       .out(header(Header.contentType(MediaType.TextHtml)))
   }
 
-  private val indexHandler = indexEndpoint.handleSuccess { _ =>
-    makeIndexHtml()
+  private val indexHandler = indexEndpoint.handleSuccess { case (headers, cookies) =>
+    makeIndexHtml(headers, cookies)
   }
 
-  val otherIndexEndpoint: PublicEndpoint[List[String], StatusCode, String, Any] = {
+  val otherIndexEndpoint: PublicEndpoint[(List[String], List[Header], List[Cookie]), StatusCode, String, Any] = {
     endpoint.get
       .in(
         paths
@@ -90,17 +93,23 @@ class MiniServer(config: MiniServerConfig[Identity]) {
           })
           .onDecodeFailureNextEndpoint
       )
+      .in(headers)
+      .in(cookies)
       .errorOut(statusCode)
       .out(htmlBodyUtf8)
       .out(header(Header.contentType(MediaType.TextHtml)))
   }
 
-  private val otherIndexHandler = otherIndexEndpoint.handle { _ =>
-    Right(makeIndexHtml())
+  private val otherIndexHandler = otherIndexEndpoint.handle { case (_, headers, cookies) =>
+    Right(makeIndexHtml(headers, cookies))
   }
 
-  private def makeIndexHtml(): String = {
-    val initData = config.init.map(_.apply())
+  private def makeIndexHtml(headers: List[Header], cookies: List[Cookie]): String = {
+    val initRequest = InitRequest(
+      headers = headers.map(h => h.name -> h.value),
+      cookies = cookies.map(c => c.name -> c.value)
+    )
+    val initData    = config.init.map(_.apply(initRequest))
     Index(config.deployment).pageHtml(initData)
   }
 
