@@ -3,28 +3,41 @@ package kreuzberg
 import org.scalajs.dom.Element
 
 /** Encapsulates a runtime state field. */
-sealed trait RuntimeState[S] {
-
-  def zip[S2](other: RuntimeState[S2]): RuntimeState[(S, S2)] = {
-    RuntimeState.And(this, other)
-  }
+trait RuntimeState[S] {
 
   def map[S2](f: S => S2): RuntimeState[S2] = {
     RuntimeState.Mapping(this, f)
   }
 
   /** Read the state from Handler */
-  def read()(using h: HandlerContext): S = {
-    h.state(this)
-  }
+  def read()(using h: HandlerContext): S
+}
+
+/** A State which can also be set. */
+trait RuntimeProperty[S] extends RuntimeState[S] {
+
+  /** Sets the value. */
+  def set(value: S)(using h: HandlerContext): Unit
+
+  /** Maps and Contra Maps the value. */
+  def xmap[U](mapFn: S => U, contraMapFn: U => S): RuntimeProperty[U] =
+    RuntimeState.CrossMapping(this, mapFn, contraMapFn)
 }
 
 object RuntimeState {
 
   /** Base for runtime state. */
-  sealed trait JsRuntimeStateBase[D <: Element, S] extends RuntimeState[S] {
+  trait JsRuntimeStateBase[D <: Element, S] extends RuntimeState[S] {
     def componentId: Identifier
     def getter: D => S
+
+    protected def getElement()(using hc: HandlerContext): D = {
+      hc.locate(componentId).asInstanceOf[D]
+    }
+
+    override def read()(using h: HandlerContext): S = {
+      getter(getElement())
+    }
   }
 
   /**
@@ -49,25 +62,37 @@ object RuntimeState {
       componentId: Identifier,
       getter: D => S,
       setter: (D, S) => Unit
-  ) extends JsRuntimeStateBase[D, S] {
-    def set(value: S)(using h: HandlerContext): Unit = {
-      h.setProperty(this, value)
+  ) extends JsRuntimeStateBase[D, S]
+      with RuntimeProperty[S] {
+
+    override def set(value: S)(using h: HandlerContext): Unit = {
+      setter(getElement(), value)
     }
   }
-
-  case class And[S1, S2](
-      left: RuntimeState[S1],
-      right: RuntimeState[S2]
-  ) extends RuntimeState[(S1, S2)]
 
   case class Mapping[S1, S2](
       from: RuntimeState[S1],
       mapFn: S1 => S2
-  ) extends RuntimeState[S2]
+  ) extends RuntimeState[S2] {
+    override def read()(using h: HandlerContext): S2 = mapFn(from.read())
+  }
+
+  case class CrossMapping[S1, S2](
+      from: RuntimeProperty[S1],
+      mapFn: S1 => S2,
+      contraMap: S2 => S1
+  ) extends RuntimeProperty[S2] {
+    override def read()(using h: HandlerContext): S2 = {
+      mapFn(from.read())
+    }
+
+    override def set(value: S2)(using h: HandlerContext): Unit = {
+      from.set(contraMap(value))
+    }
+  }
 
   /** A constant pseudo state. */
-  case class Const[S](value: S) extends RuntimeState[S]
-
-  /** Collect multiple states */
-  case class Collect[S](from: Seq[RuntimeState[S]]) extends RuntimeState[Seq[S]]
+  case class Const[S](value: S) extends RuntimeState[S] {
+    override def read()(using h: HandlerContext): S = value
+  }
 }

@@ -150,12 +150,8 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
       transformSink(sink)(value)
     }
 
-    override def state[T](state: RuntimeState[T]): T = {
-      fetchStateUnsafe(state)
-    }
-
-    override def setProperty[D <: Element, T](property: RuntimeState.JsProperty[D, T], value: T): Unit = {
-      updateJsProperty(value, property)
+    override def locate(identifier: Identifier): Element = {
+      delegate.locate(identifier)
     }
 
     override def value[M](model: Subscribeable[M]): M = {
@@ -266,33 +262,6 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
       transformed.foreach(sink)
     }
     bindEventSource(ownNode, transformer.from, updatedSink)
-  }
-
-  private def fetchStateUnsafe[S](s: RuntimeState[S]): S = {
-    s match
-      case js: RuntimeState.JsRuntimeStateBase[_, _] => {
-        fetchJsRuntimeStateUnsafe(js)
-      }
-      case RuntimeState.And(left, right)             => {
-        (fetchStateUnsafe(left), fetchStateUnsafe(right))
-      }
-      case RuntimeState.Mapping(from, mapFn)         => {
-        mapFn(fetchStateUnsafe(from))
-      }
-      case RuntimeState.Const(value)                 => {
-        value
-      }
-      case RuntimeState.Collect(from)                => {
-        from.map(fetchStateUnsafe)
-      }
-  }
-
-  private def updateJsProperty[R <: Element, S](value: S, p: RuntimeState.JsProperty[R, S]): Unit = {
-    p.setter(delegate.locate(p.componentId).asInstanceOf[R], value)
-  }
-
-  private def fetchJsRuntimeStateUnsafe[R <: Element, S](s: RuntimeState.JsRuntimeStateBase[R, S]): S = {
-    s.getter(delegate.locate(s.componentId).asInstanceOf[R])
   }
 
   private def bindChannel[T](ownNode: TreeNode, event: EventSource.ChannelSource[T], sink: T => Unit): Unit = {

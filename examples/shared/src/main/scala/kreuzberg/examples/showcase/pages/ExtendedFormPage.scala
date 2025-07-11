@@ -80,6 +80,7 @@ object ExtendedFormPage extends SimpleComponentBase with SimpleRouted {
 
   val formComponent = FormComponent(registerForm, Register())
   val okButton      = Button("Ok")
+  val resetButton   = Button("Reset")
   val state         = Model.create[String]("")
   val label         = Label(state)
 
@@ -91,11 +92,17 @@ object ExtendedFormPage extends SimpleComponentBase with SimpleRouted {
         state.set(s)
       }
     )
+
+    addHandlerAny(resetButton.onClicked) {
+      formComponent.reset()
+    }
+
     div(
       h2("Generated Form Example"),
       form(
         formComponent,
         okButton,
+        resetButton,
         "Current State: ",
         label
       )
