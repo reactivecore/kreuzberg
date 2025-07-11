@@ -13,8 +13,8 @@ case class FormComponent[T](
     fieldBuilder: FormFieldComponentBuilder = FormFieldComponentBuilder.Default
 ) extends SimpleComponentBase {
 
-  val splitDefault = form.codec.encode(default)
-  val components   = form.fields.zip(splitDefault).map { (formElement, value) =>
+  val splitDefault: List[String]           = form.codec.encode(default)
+  val components: List[FormFieldComponent] = form.fields.zip(splitDefault).map { (formElement, value) =>
     fieldBuilder.build(formElement, value)
   }
 
@@ -25,8 +25,17 @@ case class FormComponent[T](
   }
 
   /** State of the fields. */
-  def fieldsState: RuntimeState[Seq[String]] = {
-    RuntimeState.Collect(components.map(_.text))
+  def fieldsState: RuntimeState[Seq[String]] = fieldsProperty
+
+  /** Property State of the fields. */
+  val fieldsProperty: RuntimeProperty[Seq[String]] = new RuntimeProperty[Seq[String]] {
+    override def set(value: Seq[String])(using h: HandlerContext): Unit = {
+      components.zip(value).foreach { case (c, v) => c.text.set(v) }
+    }
+
+    override def read()(using h: HandlerContext): Seq[String] = {
+      components.map(_.text.read())
+    }
   }
 
   /** Decoded state, without validation */
@@ -34,6 +43,23 @@ case class FormComponent[T](
     fieldsState.map { fields =>
       form.codec.decode(fields.toList)
     }
+  }
+
+  /** Set a value. */
+  def setValue(value: T)(using hc: HandlerContext): Unit = {
+    val split = form.codec.encode(value)
+    fieldsProperty.set(split)
+  }
+
+  /** Clear shown Violations */
+  def clearViolations()(using hc: HandlerContext): Unit = {
+    components.foreach(_.violations.set(Nil))
+  }
+
+  /** Reset the Form State to the default. */
+  def reset()(using hc: HandlerContext): Unit = {
+    setValue(default)
+    clearViolations()
   }
 
   /** Full validated state. */
@@ -50,7 +76,12 @@ case class FormComponent[T](
 }
 
 trait FormFieldComponent extends Component {
-  def text: RuntimeState[String]
+
+  /** The text of this field component. */
+  def text: RuntimeProperty[String]
+
+  /** The current displayed violations, should update automatically on changing content */
+  def violations: Model[List[String]]
 }
 
 object FormFieldComponent {
@@ -114,7 +145,7 @@ object FormFieldComponent {
       )
     }
 
-    override def text: RuntimeState[String] = input.text
+    override def text: RuntimeProperty[String] = input.text
   }
 }
 

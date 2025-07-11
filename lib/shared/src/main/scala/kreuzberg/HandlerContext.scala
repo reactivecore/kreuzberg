@@ -22,9 +22,6 @@ trait HandlerContext extends ModelValueProvider with ServiceRepository with Exec
   /** Call another Event sink */
   def triggerSink[E](sink: EventSink[E], value: E): Unit
 
-  /** Read some JavaScript state. */
-  def state[T](state: RuntimeState[T]): T
-
-  /** Set some JavaScript property. */
-  def setProperty[D <: Element, T](property: JsProperty[D, T], value: T): Unit
+  /** Locate an Element. */
+  def locate(identifier: Identifier): org.scalajs.dom.Element
 }

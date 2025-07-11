@@ -9,5 +9,5 @@ case class Button(caption: Subscribeable[String]) extends TemplatingComponentBas
     button(`type` := "button", caption)
   }
 
-  def onClicked = jsEvent("click")
+  def onClicked: JsEvent = jsEvent("click")
 }
