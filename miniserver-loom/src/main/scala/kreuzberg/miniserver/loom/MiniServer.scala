@@ -3,17 +3,20 @@ package kreuzberg.miniserver.loom
 import kreuzberg.miniserver.{DeploymentType, Index, InitRequest, MiniServerConfig}
 import org.slf4j.{Logger, LoggerFactory}
 import ox.Ox
+import sttp.capabilities.WebSockets
 import sttp.model.headers.Cookie
 import sttp.model.{Header, Headers, MediaType, StatusCode}
 import sttp.shared.Identity
 import sttp.tapir.*
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.netty.{NettyConfig, NettySocketConfig}
-import sttp.tapir.server.netty.sync.{NettySyncServer, NettySyncServerBinding}
+import sttp.tapir.server.netty.sync.{NettySyncServer, NettySyncServerBinding, OxStreams}
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import sttp.tapir.server.interceptor.decodefailure.DefaultDecodeFailureHandler.OnDecodeFailure.*
+import MiniServer.*
 
-class MiniServer(config: MiniServerConfig[Identity]) {
+/** Tapir/Netty Based small HTTP Server */
+class MiniServer(config: MiniServerConfig[Identity], extraEndpoints: List[MiniServerEndpoint] = Nil) {
   val logger: Logger = LoggerFactory.getLogger(getClass)
 
   /** Run and block forever. */
@@ -28,13 +31,6 @@ class MiniServer(config: MiniServerConfig[Identity]) {
 
   /** Just start the server. */
   def start(fastShutdown: Boolean = false)(using Ox): NettySyncServerBinding = {
-    val endpoints = List(
-      assetHandler,
-      indexHandler
-    ) ++ apiEndpointHandler.toList
-
-    val docEndpoints: List[ServerEndpoint[Any, Identity]] = SwaggerInterpreter()
-      .fromServerEndpoints[Identity](endpoints, "MiniServer", "0.1")
 
     val socketConfig = NettySocketConfig.default.withReuseAddress
 
@@ -51,20 +47,41 @@ class MiniServer(config: MiniServerConfig[Identity]) {
       .modifyConfig(_.socketConfig(socketConfig))
       .modifyConfig(maybeFastshutdownNettyConfig)
       .addEndpoints(endpoints)
-      .addEndpoints(if (config.deployment.deploymentType == DeploymentType.Debug) docEndpoints else Nil)
-      .addEndpoints(
-        List(
-          otherIndexHandler,
-          rootAssetHandler
-        )
-      )
 
     server.start()
   }
 
-  private val assetHandler     = AssetHandler(Some("assets"), config.deployment.assetPaths, config.deployment).assetHandler
-  private val rootAssetHandler = AssetHandler(None, config.deployment.rootAssets, config.deployment).assetHandler
+  /** All Endpoints. */
+  protected def endpoints: List[MiniServerEndpoint] = primaryEndpoints ++ extraEndpoints ++ docEndpoints ++ secondaryEndpoints
 
+  /** All Standard Endpoints. */
+  protected def primaryEndpoints: List[MiniServerEndpoint] = List(
+    assetHandler,
+    indexHandler
+  ) ++ apiEndpointHandler.toList
+
+  /** Documentation Endpoints. */
+  def docEndpoints: List[MiniServerEndpoint] = if (config.deployment.deploymentType == DeploymentType.Debug) {
+    SwaggerInterpreter()
+      .fromServerEndpoints[Identity](primaryEndpoints ++ extraEndpoints, "MiniServer", "0.1")
+  } else {
+    Nil
+  }
+
+  /** Endpoints which may have some kind of catch-all semantics. */
+  protected def secondaryEndpoints: List[MiniServerEndpoint] = List(
+    otherIndexHandler,
+    rootAssetHandler
+  )
+
+  /** Handler for Assets inside assets-Path */
+  val assetHandler =
+    AssetHandler(Some("assets"), config.deployment.assetPaths, config.deployment).assetHandler
+
+  /** Handler for Assets inside root Path */
+  val rootAssetHandler = AssetHandler(None, config.deployment.rootAssets, config.deployment).assetHandler
+
+  /** Endpoint for Root Page */
   val indexEndpoint: PublicEndpoint[(List[Header], List[Cookie]), Unit, String, Any] = {
     endpoint.get
       .in("")
@@ -74,10 +91,12 @@ class MiniServer(config: MiniServerConfig[Identity]) {
       .out(header(Header.contentType(MediaType.TextHtml)))
   }
 
-  private val indexHandler = indexEndpoint.handleSuccess { case (headers, cookies) =>
+  /** Handler For Index */
+  val indexHandler = indexEndpoint.handleSuccess { case (headers, cookies) =>
     makeIndexHtml(headers, cookies)
   }
 
+  /** Endpoint for index page from other locations (for reloading). */
   val otherIndexEndpoint: PublicEndpoint[(List[String], List[Header], List[Cookie]), StatusCode, String, Any] = {
     endpoint.get
       .in(
@@ -100,11 +119,13 @@ class MiniServer(config: MiniServerConfig[Identity]) {
       .out(header(Header.contentType(MediaType.TextHtml)))
   }
 
-  private val otherIndexHandler = otherIndexEndpoint.handle { case (_, headers, cookies) =>
+  /** Handler for index page from other locations. */
+  val otherIndexHandler = otherIndexEndpoint.handle { case (_, headers, cookies) =>
     Right(makeIndexHtml(headers, cookies))
   }
 
-  private def makeIndexHtml(headers: List[Header], cookies: List[Cookie]): String = {
+  /** Generate the Index HTML Page. */
+  def makeIndexHtml(headers: List[Header], cookies: List[Cookie]): String = {
     val initRequest = InitRequest(
       headers = headers.map(h => h.name -> h.value),
       cookies = cookies.map(c => c.name -> c.value)
@@ -113,5 +134,10 @@ class MiniServer(config: MiniServerConfig[Identity]) {
     Index(config.deployment).pageHtml(initData)
   }
 
+  /** Endpoint handler for API-Calls. */
   val apiEndpointHandler = config.api.map(ApiHandler(_).handler)
+}
+
+object MiniServer {
+  type MiniServerEndpoint = ServerEndpoint[OxStreams & WebSockets, Identity]
 }
