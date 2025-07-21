@@ -60,7 +60,7 @@ case class SimpleRouter(
                 case l: RoutingState.Loading if l.invocation == loading.invocation => true
                 case _                                                             =>
                   Logger.debug(
-                    s"Discarding response of loading, not yet on the same loading page"
+                    s"Discarding response of loading, not anymore on the same loading page"
                   )
                   false
               }
@@ -126,7 +126,8 @@ case class SimpleRouter(
         val component = eager.component(state)
         RoutingState.Loaded(url, route, component)
       case otherwise         =>
-        RoutingState.Loading(url, route, Identifier.next())
+        val loadingId = Identifier.next()
+        RoutingState.Loading(url, route, loadingId)
     }
   }
 }
