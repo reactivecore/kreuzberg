@@ -20,6 +20,9 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
 
   private case class PendingModelChange[M](model: Model[M], fn: M => M) extends PendingChange
 
+  /** A Pending Callback. */
+  private case class Callback(fn: HandlerContext => Unit) extends PendingChange
+
   /** There is a next iteration triggered yet */
   private var _hasNextIteration: Boolean = false
 
@@ -163,11 +166,17 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     }
 
     override def execute(runnable: Runnable): Unit = {
-      implicitly[ExecutionContext].execute(runnable)
+      call(runnable.run())
     }
 
     override def reportFailure(cause: Throwable): Unit = {
       implicitly[ExecutionContext].reportFailure(cause)
+    }
+
+    override def call(callback: HandlerContext ?=> Unit): Unit = {
+      val cb = Callback(hc => callback(using hc))
+      _pending.append(cb)
+      ensureNextIteration()
     }
   }
 
@@ -332,6 +341,8 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     change match {
       case p: PendingModelChange[_] =>
         handlePendingModelChange(p)
+      case p: Callback =>
+        p.fn(eventHandlerContext)
     }
   }
 

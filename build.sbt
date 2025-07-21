@@ -269,7 +269,8 @@ lazy val root = (project in file("."))
   .settings(
     name           := "kreuzberg-root",
     publish / skip := true,
-    test           := {}
+    test           := {},
+    run            := (runner / Compile / run).evaluated
   )
   .aggregate(
     testCore.js,
