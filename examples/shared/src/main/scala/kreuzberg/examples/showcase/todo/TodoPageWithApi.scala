@@ -43,7 +43,7 @@ object TodoAdderForm extends SimpleComponentBase {
 }
 
 object LazyTodoViewer extends LazyLoader[TodoList] {
-  override def load()(using handlerContext: HandlerContext): Future[TodoList] = {
+  override def load()(using KreuzbergContext): Future[TodoList] = {
     provide[Api].todoApi.listItems().map { response =>
       TodoList(response.items)
     }

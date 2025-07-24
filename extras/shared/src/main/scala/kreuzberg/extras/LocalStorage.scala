@@ -14,14 +14,10 @@ case class LocalStorage[M](initial: M, key: String, serializer: M => String, des
   /** The model contains the current value. */
   val model = Model.create(readValue())
 
-  override def assemble(using context: AssemblerContext): HeadlessAssembly = {
+  override def assemble(using context: KreuzbergContext): HeadlessAssembly = {
     val current = read(model)
+    writeValue(current)
     HeadlessAssembly(
-      handlers = Vector(
-        EventSource.Assembled.handle { _ =>
-          writeValue(current)
-        }
-      ),
       subscriptions = Vector(model)
     )
   }

@@ -45,13 +45,24 @@ class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRe
   private val browser      = new BrowserDrawer(rootElement)
   private val eventManager = new EventManager(this)
 
+  object modelValueProvider extends ModelValueProvider {
+    override def value[M](model: Subscribeable[M]): M = modelValues.value(model)
+  }
+
+  private val contextImpl: KreuzbergContext = new ContextImpl(
+    browser,
+    eventManager,
+    serviceRepo,
+    modelValueProvider
+  )
+
   def run(): Unit = {
     redraw()
   }
 
   private def redraw(): Unit = {
     Logger.debug("Starting Redraw")
-    val tree = Assembler.tree(main)
+    val tree = Assembler.tree(main)(using contextImpl)
     browser.drawRoot(tree)
     _tree = tree
     eventManager.clear()
@@ -60,14 +71,16 @@ class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRe
     Logger.debug("End Redraw")
   }
 
-  private given assemblerContext: AssemblerContext = new AssemblerContext {
+  /*
+  private given KreuzbergContext: KreuzbergContext = new KreuzbergContext {
     override def value[M](model: Subscribeable[M]): M = _modelValues.value(model)
 
     override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = serviceRepo.serviceOption
   }
+   */
 
   private def redrawChanged(changedModels: Set[Identifier], before: ModelValueProvider): Unit = {
-    val path = UpdatePath.build(_tree, changedModels, before)
+    val path = UpdatePath.build(_tree, changedModels, before)(using contextImpl)
     if (path.isEmpty) {
       return
     }

@@ -2,7 +2,7 @@ package kreuzberg.engine.common
 
 import kreuzberg.engine.common.UpdatePath.Change
 import kreuzberg.{
-  AssemblerContext,
+  KreuzbergContext,
   Assembly,
   Component,
   Html,
@@ -46,7 +46,7 @@ object UpdatePath {
 
   /** Figures out changes after some models changed. */
   def build(treeNode: TreeNode, changedModels: Set[Identifier], before: ModelValueProvider)(
-      using AssemblerContext
+      using KreuzbergContext
   ): UpdatePath = {
 
     val builder = new Builder(
@@ -62,7 +62,7 @@ object UpdatePath {
       rootNode: TreeNode,
       changedModels: Set[Identifier],
       before: ModelValueProvider
-  )(using AssemblerContext) {
+  )(using KreuzbergContext) {
 
     val changedComponents = rootNode.allSubscriptions.collect {
       case (modelId, containerId) if changedModels.contains(modelId) => containerId

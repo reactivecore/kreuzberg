@@ -1,22 +1,30 @@
 package kreuzberg.engine.common
 
-import kreuzberg.{AssemblerContext, Assembly, Component, Html, IdentifierFactory, HeadlessComponent, HeadlessAssembly}
+import kreuzberg.{
+  Assembly,
+  Component,
+  KreuzbergContext,
+  HeadlessAssembly,
+  HeadlessComponent,
+  Html,
+  IdentifierFactory
+}
 
 import scala.language.implicitConversions
 
 object Assembler {
 
-  def tree(component: Component)(using AssemblerContext): TreeNode = {
+  def tree(component: Component)(using KreuzbergContext): TreeNode = {
     treeFromAssembly(component, component.assemble)
   }
 
   def treeFromAssembly(
       component: Component,
       assembly: Assembly
-  )(using ctx: AssemblerContext): TreeNode = {
+  )(using ctx: KreuzbergContext): TreeNode = {
     val withId    = assembly.html.withId(component.id)
     val comment   = component.comment
-    val htmlToUse = if (comment.isEmpty()) {
+    val htmlToUse = if (comment.isEmpty) {
       withId
     } else {
       withId.addComment(comment)
@@ -31,14 +39,14 @@ object Assembler {
     )
   }
 
-  def treeFromHeadless(headless: HeadlessComponent)(using AssemblerContext): TreeNode = {
+  def treeFromHeadless(headless: HeadlessComponent)(using KreuzbergContext): TreeNode = {
     treeFromHeadlessAssembly(headless, headless.assemble)
   }
 
   def treeFromHeadlessAssembly(
       headless: HeadlessComponent,
       assembly: HeadlessAssembly
-  )(using ctx: AssemblerContext): TreeNode = {
+  )(using ctx: KreuzbergContext): TreeNode = {
     val children = assembly.children.map(treeFromHeadless)
     TreeNode(
       component = headless,
@@ -55,7 +63,7 @@ object Assembler {
   def single(component: () => Component): Assembly = {
     IdentifierFactory.withFresh {
       val c = component()
-      c.assemble(using AssemblerContext.empty)
+      c.assemble(using KreuzbergContext.empty)
     }
   }
 
@@ -65,7 +73,7 @@ object Assembler {
   def singleTree(component: () => Component): TreeNode = {
     IdentifierFactory.withFresh {
       val c = component()
-      tree(c)(using AssemblerContext.empty)
+      tree(c)(using KreuzbergContext.empty)
     }
   }
 }

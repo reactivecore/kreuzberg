@@ -7,7 +7,7 @@ package kreuzberg
 trait HeadlessComponent extends Identified {
   final val id: Identifier = Identifier.next()
 
-  def assemble(using context: AssemblerContext): HeadlessAssembly
+  def assemble(using context: KreuzbergContext): HeadlessAssembly
 }
 
 /** Assembled service. */

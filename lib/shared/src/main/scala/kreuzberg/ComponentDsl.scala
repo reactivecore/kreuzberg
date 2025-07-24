@@ -8,13 +8,13 @@ import scala.language.implicitConversions
 /** Common Methods for building [[Component]]-Implementations */
 trait ContextDsl {
 
-  /** Retrieves something from a [[ServiceRepository]] (usually an [[AssemblerContext]]) */
+  /** Retrieves something from a [[ServiceRepository]] (usually an [[KreuzbergContext]]) */
   protected def provide[T: ServiceNameProvider](using c: ServiceRepository): T = {
     c.service[T]
   }
 
-  /** Read the value of a model from an [[AssemblerContext]] */
-  protected def read[M](model: Subscribeable[M])(using c: AssemblerContext): M = {
+  /** Read the value of a model from an [[KreuzbergContext]] */
+  protected def read[M](model: Subscribeable[M])(using c: ModelValueProvider): M = {
     c.value(model)
   }
 }

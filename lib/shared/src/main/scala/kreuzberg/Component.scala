@@ -16,7 +16,7 @@ trait Component extends Identified {
   type DomElement <: Element
 
   /** Assemble the object. */
-  def assemble(using context: AssemblerContext): Assembly
+  def assemble(using context: KreuzbergContext): Assembly
 
   /**
    * Update the component into a new state. By default components are re-rendered.
@@ -24,7 +24,7 @@ trait Component extends Identified {
    * Overriding this method can improve performance, if a component generates large sub-trees and we do not want to
    * rebuild everything (e.g. List-Components).
    */
-  def update(before: ModelValueProvider)(using context: AssemblerContext): UpdateResult = {
+  def update(before: ModelValueProvider)(using context: KreuzbergContext): UpdateResult = {
     UpdateResult.Build(assemble)
   }
 }
