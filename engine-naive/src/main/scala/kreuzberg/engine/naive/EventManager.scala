@@ -2,7 +2,6 @@ package kreuzberg.engine.naive
 
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
-import kreuzberg.engine.common.{ModelValues, TreeNode}
 import org.scalajs.dom.{Element, Event}
 
 import scala.collection.mutable
@@ -13,7 +12,7 @@ import scala.util.control.NonFatal
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Encapsulate the highly stateful event handling. */
-class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) {
+private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) {
 
   /** A Pending change. */
   private sealed trait PendingChange

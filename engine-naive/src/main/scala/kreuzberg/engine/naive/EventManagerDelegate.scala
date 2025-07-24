@@ -1,7 +1,6 @@
 package kreuzberg.engine.naive
 
 import kreuzberg.*
-import kreuzberg.engine.common.ModelValues
 import org.scalajs.dom.Element
 
 /** Callback for EventManager. */

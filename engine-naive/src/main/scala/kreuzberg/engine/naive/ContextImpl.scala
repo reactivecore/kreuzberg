@@ -1,6 +1,5 @@
 package kreuzberg.engine.naive
 
-import kreuzberg.engine.common.{BrowserDrawer, ModelValues}
 import kreuzberg.{
   Channel,
   Identifier,
@@ -15,7 +14,7 @@ import kreuzberg.{
 import org.scalajs.dom.Element
 
 /** Context for naive Implementation. */
-class ContextImpl(
+private[kreuzberg] class ContextImpl(
     browserDrawer: BrowserDrawer,
     eventManager: EventManager,
     serviceRepository: ServiceRepository,

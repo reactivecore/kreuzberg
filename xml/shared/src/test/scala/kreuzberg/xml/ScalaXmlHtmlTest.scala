@@ -1,7 +1,6 @@
 package kreuzberg.xml
 
 import kreuzberg.*
-import kreuzberg.engine.common.Assembler
 import kreuzberg.testcore.TestBase
 
 class ScalaXmlHtmlTest extends TestBase {
