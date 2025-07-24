@@ -58,7 +58,7 @@ final class Model[T] private (initialValue: ServiceRepository ?=> T) extends Sub
 
   /** Set a value from an Handler. */
   def set(value: T)(using h: HandlerContext): Unit = {
-    h.setModel(this, value)
+    h.updateModel(this, _ => value)
   }
 
   /** Update a model from handler. */

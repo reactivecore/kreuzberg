@@ -10,9 +10,6 @@ import scala.concurrent.ExecutionContext
 @implicitNotFound("HandlerContext not found, are you inside an EventHandler?")
 trait HandlerContext extends ModelValueProvider with ServiceRepository with ExecutionContext {
 
-  /** Issue a model change. */
-  def setModel[T](model: Model[T], value: T): Unit
-
   /** Update model, existing to new state */
   def updateModel[T](model: Model[T], updateFn: T => T): Unit
 

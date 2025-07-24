@@ -135,10 +135,6 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
   }
 
   private object eventHandlerContext extends HandlerContext {
-    override def setModel[T](model: Model[T], value: T): Unit = {
-      updateModel(model, _ => value)
-    }
-
     override def updateModel[T](model: Model[T], updateFn: T => T): Unit = {
       val change = PendingModelChange(model, fn = updateFn)
       _pending.append(change)
