@@ -77,7 +77,7 @@ object TreeNode {
 
   object emptyComponent extends Component {
     type Runtime = Unit
-    def assemble(using c: AssemblerContext): Assembly = {
+    def assemble(using c: KreuzbergContext): Assembly = {
       Assembly(emptyRootHtml)
     }
   }

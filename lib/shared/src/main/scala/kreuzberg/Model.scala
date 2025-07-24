@@ -57,13 +57,13 @@ final class Model[T] private (initialValue: ServiceRepository ?=> T) extends Sub
   override def dependencies: Seq[Identifier] = Seq(id)
 
   /** Set a value from an Handler. */
-  def set(value: T)(using h: HandlerContext): Unit = {
-    h.updateModel(this, _ => value)
+  def set(value: T)(using c: Changer): Unit = {
+    c.updateModel(this, _ => value)
   }
 
   /** Update a model from handler. */
-  def update(f: T => T)(using h: HandlerContext): Unit = {
-    h.updateModel(this, f)
+  def update(f: T => T)(using c: Changer): Unit = {
+    c.updateModel(this, f)
   }
 }
 

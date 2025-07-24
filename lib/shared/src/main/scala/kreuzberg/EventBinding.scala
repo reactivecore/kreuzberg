@@ -12,30 +12,29 @@ sealed trait EventSource[+E] {
   def or[T >: E](source: EventSource[T]): EventSource[T] = EventSource.OrSource(this, source)
 
   /** Attach a handler */
-  def handle[T >: E](f: T => HandlerContext ?=> Unit): EventBinding[T] = {
+  def handle[T >: E](f: T => Unit): EventBinding[T] = {
     EventBinding(
       this,
-      EventSink(f)
+      f
     )
   }
 
-  def handleAny(f: HandlerContext ?=> Unit): EventBinding[Any] = {
+  /** Attach a handler, discarding the value. */
+  def handleAny(f: => Unit): EventBinding[Any] = {
     handle(_ => f)
   }
 
-  /** Attach a handler. */
-  def to[T >: E](sink: EventSink[T]): EventBinding[T] = {
-    EventBinding(this, sink)
-  }
-
+  /** Map the value */
   def map[F](f: E => F): EventSource[F] = {
     EventSource.Transformer(this, e => List(f(e)))
   }
 
+  /** Filters the value */
   def filter(f: E => Boolean): EventSource[E] = {
     EventSource.Transformer(this, e => if (f(e)) Nil else List(e))
   }
 
+  /** Collect values. */
   def collect[F](f: PartialFunction[E, F]): EventSource[F] = {
     EventSource.Transformer(
       this,
@@ -69,9 +68,6 @@ object EventSource {
     )
   }
 
-  /** Object got assembled. */
-  case object Assembled extends EventSource[Unit]
-
   case class ChannelSource[E](channel: WeakReference[Channel[E]]) extends EventSource[E]
 
   object ChannelSource {
@@ -96,26 +92,5 @@ object EventSource {
   ) extends EventSource[F]
 }
 
-/** A Sink of events */
-case class EventSink[E](f: (HandlerContext, E) => Unit) {
-
-  /** Trigger a sink */
-  def apply(value: E)(using h: HandlerContext): Unit = {
-    h.triggerSink(this, value)
-  }
-
-  /** Trigger from Handler (Unit or Any) */
-  def apply()(using h: HandlerContext, ev: Unit => E): Unit = {
-    h.triggerSink(this, ev(()))
-  }
-
-}
-
-object EventSink {
-  def apply[E](f: E => HandlerContext ?=> Unit): EventSink[E] = {
-    EventSink((c, v) => f(v)(using c))
-  }
-}
-
 /** An event binding. */
-case class EventBinding[E](source: EventSource[E], sink: EventSink[E])
+case class EventBinding[E](source: EventSource[E], sink: E => Unit)

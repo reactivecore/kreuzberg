@@ -23,7 +23,7 @@ case class TodoShower(todoList: Subscribeable[TodoList]) extends TemplatingCompo
     )
   }
 
-  override def update(before: ModelValueProvider)(using context: AssemblerContext): UpdateResult = {
+  override def update(before: ModelValueProvider)(using context: KreuzbergContext): UpdateResult = {
     val valueBefore = before.value(todoList)
     val valueAfter  = read(todoList)
     (for {

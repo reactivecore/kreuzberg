@@ -21,7 +21,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
   private case class PendingModelChange[M](model: Model[M], fn: M => M) extends PendingChange
 
   /** A Pending Callback. */
-  private case class Callback(fn: HandlerContext => Unit) extends PendingChange
+  private case class Callback(fn: () => Unit) extends PendingChange
 
   /** There is a next iteration triggered yet */
   private var _hasNextIteration: Boolean = false
@@ -124,56 +124,19 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
   }
 
   private def activateEvent[E](node: TreeNode, eventBinding: EventBinding[E]): Unit = {
-    val transformedSink = transformSink(eventBinding.sink)
-    bindEventSource(node, eventBinding.source, transformedSink)
+    bindEventSource(node, eventBinding.source, eventBinding.sink)
   }
 
-  private def transformSink[T](eventSink: EventSink[T]): T => Unit = { value =>
-    {
-      eventSink.f(eventHandlerContext, value)
-    }
+  def updateModel[T](model: Model[T], updateFn: T => T): Unit = {
+    val change = PendingModelChange(model, fn = updateFn)
+    _pending.append(change)
+    ensureNextIteration()
   }
 
-  private object eventHandlerContext extends HandlerContext {
-    override def updateModel[T](model: Model[T], updateFn: T => T): Unit = {
-      val change = PendingModelChange(model, fn = updateFn)
-      _pending.append(change)
-      ensureNextIteration()
-    }
-
-    override def triggerChannel[T](channel: Channel[T], value: T): Unit = {
-      EventManager.this.triggerChannel(channel, value)
-    }
-
-    override def triggerSink[E](sink: EventSink[E], value: E): Unit = {
-      transformSink(sink)(value)
-    }
-
-    override def locate(identifier: Identifier): Element = {
-      delegate.locate(identifier)
-    }
-
-    override def value[M](model: Subscribeable[M]): M = {
-      _currentState.value(model)
-    }
-
-    override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = {
-      sp.serviceOption
-    }
-
-    override def execute(runnable: Runnable): Unit = {
-      call(runnable.run())
-    }
-
-    override def reportFailure(cause: Throwable): Unit = {
-      implicitly[ExecutionContext].reportFailure(cause)
-    }
-
-    override def call(callback: HandlerContext ?=> Unit): Unit = {
-      val cb = Callback(hc => callback(using hc))
-      _pending.append(cb)
-      ensureNextIteration()
-    }
+  def call(callback: () => Unit): Unit = {
+    val cb = Callback(callback)
+    _pending.append(cb)
+    ensureNextIteration()
   }
 
   private def triggerWeakChannel[T](ref: WeakReference[Channel[T]], data: T): Unit = {
@@ -184,7 +147,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     }
   }
 
-  private def triggerChannel[T](channel: Channel[T], data: T): Unit = {
+  def triggerChannel[T](channel: Channel[T], data: T): Unit = {
     _channelBindings.foreachKey(channel.id) { _.asInstanceOf[ChannelBinding[T]].handler(data) }
   }
 
@@ -230,10 +193,6 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
               )
             }
             bindJsEvent(source, j.jsEvent, sink)
-        }
-      case EventSource.Assembled            =>
-        scalajs.js.timers.setTimeout(0) {
-          sink(())
         }
       case c: EventSource.ChannelSource[_]  =>
         bindChannel(ownNode, c, sink)
@@ -337,8 +296,8 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     change match {
       case p: PendingModelChange[_] =>
         handlePendingModelChange(p)
-      case p: Callback =>
-        p.fn(eventHandlerContext)
+      case p: Callback              =>
+        p.fn.apply()
     }
   }
 

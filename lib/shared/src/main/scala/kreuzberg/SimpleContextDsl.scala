@@ -29,12 +29,12 @@ trait SimpleContextDsl extends ComponentDsl {
   }
 
   /** Add an imperative handler. */
-  protected def addHandler[E](source: EventSource[E])(f: E => HandlerContext ?=> Unit)(using c: SimpleContext): Unit = {
+  protected def addHandler[E](source: EventSource[E])(f: E => Unit)(using c: SimpleContext): Unit = {
     add(source.handle(f))
   }
 
   /** Add an imperative handler (ignoring the argument) */
-  protected def addHandlerAny(source: EventSource[?])(f: HandlerContext ?=> Unit)(using c: SimpleContext): Unit = {
+  protected def addHandlerAny(source: EventSource[?])(f: => Unit)(using c: SimpleContext): Unit = {
     add(source.handleAny(f))
   }
 }

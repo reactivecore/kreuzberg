@@ -29,11 +29,11 @@ case class FormComponent[T](
 
   /** Property State of the fields. */
   val fieldsProperty: RuntimeProperty[Seq[String]] = new RuntimeProperty[Seq[String]] {
-    override def set(value: Seq[String])(using h: HandlerContext): Unit = {
+    override def set(value: Seq[String])(using h: Changer): Unit = {
       components.zip(value).foreach { case (c, v) => c.text.set(v) }
     }
 
-    override def read()(using h: HandlerContext): Seq[String] = {
+    override def read()(using h: Changer): Seq[String] = {
       components.map(_.text.read())
     }
   }
@@ -46,18 +46,18 @@ case class FormComponent[T](
   }
 
   /** Set a value. */
-  def setValue(value: T)(using hc: HandlerContext): Unit = {
+  def setValue(value: T)(using hc: Changer): Unit = {
     val split = form.codec.encode(value)
     fieldsProperty.set(split)
   }
 
   /** Clear shown Violations */
-  def clearViolations()(using hc: HandlerContext): Unit = {
+  def clearViolations()(using hc: Changer): Unit = {
     components.foreach(_.violations.set(Nil))
   }
 
   /** Reset the Form State to the default. */
-  def reset()(using hc: HandlerContext): Unit = {
+  def reset()(using hc: Changer): Unit = {
     setValue(default)
     clearViolations()
   }

@@ -19,13 +19,13 @@ final class Channel[T] private {
   }
 
   /** Trigger from Handler. */
-  def apply(value: T)(using h: HandlerContext): Unit = {
-    h.triggerChannel(this, value)
+  def apply(value: T)(using c: Changer): Unit = {
+    c.triggerChannel(this, value)
   }
 
   /** Trigger from Handler (Unit or Any) */
-  def apply()(using h: HandlerContext, ev: Unit => T): Unit = {
-    h.triggerChannel(this, ev(()))
+  def apply()(using c: Changer, ev: Unit => T): Unit = {
+    c.triggerChannel(this, ev(()))
   }
 }
 
