@@ -2,8 +2,7 @@ package kreuzberg.engine.naive
 
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
-import kreuzberg.engine.common.UpdatePath.Change
-import kreuzberg.engine.common.{Assembler, BrowserDrawer, ModelValues, TreeNode, UpdatePath}
+import UpdatePath.Change
 import org.scalajs.dom.{Element, Event}
 
 import scala.collection.mutable
