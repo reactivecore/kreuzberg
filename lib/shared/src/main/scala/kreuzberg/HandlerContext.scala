@@ -24,7 +24,7 @@ trait HandlerContext extends ModelValueProvider with ServiceRepository with Exec
 
   /** Locate an Element. */
   def locate(identifier: Identifier): org.scalajs.dom.Element
-  
+
   /** Call something (stateful) on next iteration. */
   def call(callback: HandlerContext ?=> Unit): Unit
 }

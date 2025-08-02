@@ -341,7 +341,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     change match {
       case p: PendingModelChange[_] =>
         handlePendingModelChange(p)
-      case p: Callback =>
+      case p: Callback              =>
         p.fn(eventHandlerContext)
     }
   }
