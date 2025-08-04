@@ -2,7 +2,15 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.examples.showcase.todo.{ListItemResponse, TodoApi}
 import kreuzberg.miniserver.loom.MiniServer
-import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, DeploymentConfig, DeploymentType, InitRequest, MiniServerConfig, RestrictedAssetCandidatePath}
+import kreuzberg.miniserver.{
+  AssetCandidatePath,
+  AssetPaths,
+  DeploymentConfig,
+  DeploymentType,
+  InitRequest,
+  MiniServerConfig,
+  RestrictedAssetCandidatePath
+}
 import kreuzberg.rpc.{Dispatcher, Id, SecurityError}
 
 import java.util.UUID
