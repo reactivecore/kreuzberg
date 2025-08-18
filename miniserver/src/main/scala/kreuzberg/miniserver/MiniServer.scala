@@ -51,7 +51,8 @@ class MiniServer(config: MiniServerConfig, extraEndpoints: List[MiniServerEndpoi
   }
 
   /** All Endpoints. */
-  protected def endpoints: List[MiniServerEndpoint] = primaryEndpoints ++ extraEndpoints ++ docEndpoints ++ secondaryEndpoints
+  protected def endpoints: List[MiniServerEndpoint] =
+    primaryEndpoints ++ extraEndpoints ++ docEndpoints ++ secondaryEndpoints
 
   /** All Standard Endpoints. */
   protected def primaryEndpoints: List[MiniServerEndpoint] = List(
