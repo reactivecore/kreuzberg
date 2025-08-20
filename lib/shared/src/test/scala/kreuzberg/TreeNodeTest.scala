@@ -6,7 +6,7 @@ import kreuzberg.testcore.TestBase
 class TreeNodeTest extends TestBase {
 
   case class Inner(title: Model[String]) extends SimpleComponentBase {
-    def assemble(implicit c: SimpleContext): Html = {
+    def assemble(using sc: SimpleContext): Html = {
       subscribe(title)
       SimpleHtml("div", children = Vector(SimpleHtmlNode.Text(s"Hi ${title}")))
     }
@@ -21,7 +21,7 @@ class TreeNodeTest extends TestBase {
     val child1 = Inner(a)
     val child2 = Inner(b)
 
-    def assemble(implicit c: SimpleContext): Html = {
+    def assemble(using sc: SimpleContext): Html = {
       val header = subscribe(headerModel)
       val footer = subscribe(footerModel)
       SimpleHtml(

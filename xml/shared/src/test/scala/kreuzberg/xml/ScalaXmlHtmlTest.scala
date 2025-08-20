@@ -23,13 +23,13 @@ class ScalaXmlHtmlTest extends TestBase {
 
   import kreuzberg.xml._
   case class Child(name: String) extends SimpleComponentBase {
-    override def assemble(implicit c: SimpleContext): Html = {
+    override def assemble(using sc: SimpleContext): Html = {
       <div>This is a child of {name}</div>
     }
   }
 
   case class Text() extends SimpleComponentBase {
-    override def assemble(implicit c: SimpleContext): Html = {
+    override def assemble(using sc: SimpleContext): Html = {
       // Note: you have to use wrap
       val c1 = Child("Hello")
       val c2 = Child("World")

@@ -1,7 +1,5 @@
 package kreuzberg
 
-import java.io.Writer
-import scala.collection.mutable
 import scala.language.implicitConversions
 
 /** Abstract HTML Code which can contain other HTML Snippets and embedded Components. */

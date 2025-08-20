@@ -7,14 +7,14 @@ import scala.language.implicitConversions
 /** Converts Components into TreeNodes. */
 private[kreuzberg] object Assembler {
 
-  def tree(component: Component)(using KreuzbergContext): TreeNode = {
+  def tree(component: Component): TreeNode = {
     treeFromAssembly(component, component.assemble)
   }
 
   def treeFromAssembly(
       component: Component,
       assembly: Assembly
-  )(using ctx: KreuzbergContext): TreeNode = {
+  ): TreeNode = {
     val withId    = assembly.html.withId(component.id)
     val comment   = component.comment
     val htmlToUse = if (comment.isEmpty) {
@@ -32,14 +32,14 @@ private[kreuzberg] object Assembler {
     )
   }
 
-  def treeFromHeadless(headless: HeadlessComponent)(using KreuzbergContext): TreeNode = {
+  def treeFromHeadless(headless: HeadlessComponent): TreeNode = {
     treeFromHeadlessAssembly(headless, headless.assemble)
   }
 
   def treeFromHeadlessAssembly(
       headless: HeadlessComponent,
       assembly: HeadlessAssembly
-  )(using ctx: KreuzbergContext): TreeNode = {
+  ): TreeNode = {
     val children = assembly.children.map(treeFromHeadless)
     TreeNode(
       component = headless,
@@ -56,7 +56,9 @@ private[kreuzberg] object Assembler {
   def single(component: () => Component): Assembly = {
     IdentifierFactory.withFresh {
       val c = component()
-      c.assemble(using KreuzbergContext.empty)
+      KreuzbergContext.threadLocal.withInstance(KreuzbergContext.empty) {
+        c.assemble
+      }
     }
   }
 
@@ -66,7 +68,9 @@ private[kreuzberg] object Assembler {
   def singleTree(component: () => Component): TreeNode = {
     IdentifierFactory.withFresh {
       val c = component()
-      tree(c)(using KreuzbergContext.empty)
+      KreuzbergContext.threadLocal.withInstance(KreuzbergContext.empty){
+        tree(c)
+      }
     }
   }
 }

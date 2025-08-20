@@ -33,9 +33,7 @@ private[kreuzberg] object UpdatePath {
   }
 
   /** Figures out changes after some models changed. */
-  def build(treeNode: TreeNode, changedModels: Set[Identifier], before: ModelValueProvider)(
-      using KreuzbergContext
-  ): UpdatePath = {
+  def build(treeNode: TreeNode, changedModels: Set[Identifier], before: ModelValueProvider): UpdatePath = {
 
     val builder = new Builder(
       rootNode = treeNode,
@@ -50,7 +48,7 @@ private[kreuzberg] object UpdatePath {
       rootNode: TreeNode,
       changedModels: Set[Identifier],
       before: ModelValueProvider
-  )(using KreuzbergContext) {
+  ) {
 
     val changedComponents = rootNode.allSubscriptions.collect {
       case (modelId, containerId) if changedModels.contains(modelId) => containerId

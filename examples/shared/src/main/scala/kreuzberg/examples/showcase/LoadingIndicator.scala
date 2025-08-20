@@ -7,7 +7,7 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 object LoadingIndicator extends SimpleComponentBase {
-  override def assemble(using c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val loading = subscribe(SimpleRouter.loading)
     div(
       if (loading) {

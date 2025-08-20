@@ -12,7 +12,7 @@ class TableComponent(
     options: TableComponent.Options = TableComponent.Options()
 ) extends SimpleComponentBase {
 
-  override def assemble(using c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val data  = dataSource.subscribe()
     val state = stateModel.subscribe()
 
@@ -86,7 +86,7 @@ object TableComponent {
       options: Options,
       clickable: Boolean
   ) extends SimpleComponentBase {
-    override def assemble(using c: SimpleContext): Html = {
+    def assemble(using sc: SimpleContext): Html = {
       val state                       = stateSubscribable.subscribe()
       val icon: Modifier              = if (state.orderBy.contains(columnIdx)) {
         if (state.descending) {

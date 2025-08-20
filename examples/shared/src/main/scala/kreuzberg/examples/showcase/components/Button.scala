@@ -5,7 +5,7 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 case class Button(caption: Subscribeable[String]) extends TemplatingComponentBase {
-  def assemble(using context: SimpleContext): ScalaTagsHtml = {
+  def assemble(using sc: SimpleContext): ScalaTagsHtml = {
     button(`type` := "button", caption)
   }
 

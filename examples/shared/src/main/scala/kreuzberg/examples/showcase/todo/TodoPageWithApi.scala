@@ -3,19 +3,17 @@ package kreuzberg.examples.showcase.todo
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.{Button, TextInput}
 import kreuzberg.examples.showcase.*
-import kreuzberg.examples.showcase.todo.TodoPageWithApi.provide
 import kreuzberg.extras.{LazyLoader, SimpleRouter, SimpleRouted}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 import scala.concurrent.Future
-import scala.util.Try
 
 object TodoAdderForm extends SimpleComponentBase {
 
   private val onSubmit = jsEvent("submit", true)
 
-  def assemble(implicit c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val textInput = TextInput("name")
     val button    = Button("Add")
     add(
@@ -43,7 +41,7 @@ object TodoAdderForm extends SimpleComponentBase {
 }
 
 object LazyTodoViewer extends LazyLoader[TodoList] {
-  override def load()(using KreuzbergContext): Future[TodoList] = {
+  override def load(): Future[TodoList] = {
     provide[Api].todoApi.listItems().map { response =>
       TodoList(response.items)
     }
@@ -58,7 +56,7 @@ object LazyTodoViewer extends LazyLoader[TodoList] {
 
 object TodoPageWithApi extends SimpleComponentBase with SimpleRouted {
 
-  def assemble(implicit c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val lister = provide[Api].todoApi
     val form   = TodoAdderForm
 

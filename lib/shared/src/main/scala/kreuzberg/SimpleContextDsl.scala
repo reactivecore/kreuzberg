@@ -1,19 +1,12 @@
 package kreuzberg
 
-import scala.annotation.targetName
-
 /** Helpers for building imperative Components using [[SimpleContext]] */
 trait SimpleContextDsl extends ComponentDsl {
   self: Component =>
 
   /** Subscribe some model and read at the same time. */
   protected def subscribe[M](model: Subscribeable[M])(using c: SimpleContext): M = {
-    model match {
-      case Model.Constant(value) => value
-      case _                     =>
-        c.addSubscription(model)
-        c.value(model)
-    }
+    model.subscribe()
   }
 
   /** Add a child service. */

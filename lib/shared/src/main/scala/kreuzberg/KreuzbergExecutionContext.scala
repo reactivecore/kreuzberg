@@ -3,11 +3,9 @@ package kreuzberg
 import java.io.{PrintWriter, StringWriter}
 import scala.concurrent.ExecutionContext
 
-trait KreuzbergExecutionContext extends ExecutionContext {
-  self: Changer =>
-
+class KreuzbergExecutionContext(changer: Changer) extends ExecutionContext {
   final override def execute(runnable: Runnable): Unit = {
-    call(() => runnable.run())
+    changer.call(() => runnable.run())
   }
 
   final override def reportFailure(cause: Throwable): Unit = {

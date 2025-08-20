@@ -30,7 +30,7 @@ case class SimpleRouter(
     loadingHandler: Option[Route] => Component = SimpleRouter.DefaultLoadingHandler
 ) extends SimpleComponentBase {
 
-  override def assemble(using context: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     val routingState = subscribe(SimpleRouter.routingStateModel)
     Logger.debug(s"Assembling SimpleRouter with value ${routingState} on model ${SimpleRouter.routingStateModel.id}")
 
@@ -111,7 +111,7 @@ case class SimpleRouter(
     routes.find(_.canHandle(url)).getOrElse(notFoundRoute)
   }
 
-  private def decideInitialState(url: UrlResource, route: Route)(using KreuzbergContext): RoutingState = {
+  private def decideInitialState(url: UrlResource, route: Route): RoutingState = {
     route match {
       case eager: EagerRoute =>
         val state     = eager.pathCodec.forceDecode(url)
@@ -163,30 +163,30 @@ object SimpleRouter {
   }
 
   /** Event Sink for going to a specific route. */
-  def goto(url: UrlResource)(using hc: KreuzbergContext): Unit = gotoChannel(url)
+  def goto(url: UrlResource): Unit = gotoChannel(url)
 
   /** Force a reload. */
   val reloadChannel: Channel[Any] = Channel.create()
 
-  def reload()(using KreuzbergContext): Unit = {
+  def reload(): Unit = {
     reloadChannel()
   }
 
   /** Go to a specific fixed route */
-  def gotoTarget(target: UrlResource)(using hc: KreuzbergContext): Unit = gotoChannel(target)
+  def gotoTarget(target: UrlResource): Unit = gotoChannel(target)
 
   /** Event sink for going to root (e.g. on logout) */
-  def gotoRoot()(using hc: KreuzbergContext): Unit = gotoTarget(UrlResource("/"))
+  def gotoRoot(): Unit = gotoTarget(UrlResource("/"))
 
   case object EmptyComponent extends SimpleComponentBase {
-    override def assemble(using c: SimpleContext): Html = {
+    def assemble(using sc: SimpleContext): Html = {
       div("Loading...")
     }
   }
 
   val DefaultErrorHandler: (UrlResource, Throwable) => Component = { (url, error) =>
     new SimpleComponentBase {
-      override def assemble(using c: SimpleContext): Html = {
+      def assemble(using sc: SimpleContext): Html = {
         h2("Error")
         div(s"An unrecoverable error handled on loading route ${url}: ${error.getMessage}")
       }

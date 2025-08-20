@@ -14,7 +14,7 @@ case class TodoAdder(
   val button    = Button("Add")
   val onSubmit  = jsEvent("submit", true)
 
-  def assemble(using context: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     add(
       onSubmit
         .or(button.onClicked)

@@ -84,7 +84,7 @@ object ExtendedFormPage extends SimpleComponentBase with SimpleRouted {
   val state         = Model.create[String]("")
   val label         = Label(state)
 
-  override def assemble(using c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
 
     add(
       okButton.onClicked.handleAny {

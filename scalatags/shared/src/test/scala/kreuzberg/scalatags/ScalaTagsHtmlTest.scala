@@ -25,13 +25,13 @@ class ScalaTagsHtmlTest extends TestBase {
   }
 
   case class Foo() extends SimpleComponentBase {
-    override def assemble(implicit c: SimpleContext): Html = {
+    override def assemble(using sc: SimpleContext): Html = {
       span("Boom!")
     }
   }
 
   case class Bar() extends SimpleComponentBase {
-    override def assemble(implicit c: SimpleContext): Html = {
+    override def assemble(using sc: SimpleContext): Html = {
       div(
         "Hello World",
         Foo().wrap
@@ -47,7 +47,7 @@ class ScalaTagsHtmlTest extends TestBase {
   }
 
   case class Nested() extends SimpleComponentBase {
-    override def assemble(implicit c: SimpleContext): Html = {
+    override def assemble(using sc: SimpleContext): Html = {
       val a = Foo().wrap
       val b = Foo().wrap
       div(

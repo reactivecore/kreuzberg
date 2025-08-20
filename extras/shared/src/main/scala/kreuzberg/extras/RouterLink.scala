@@ -12,7 +12,7 @@ case class PlainLink(
 
   val onClick: EventSource[Event] = jsEvent("click", true, true)
 
-  override def assemble(implicit c: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     a(name, href := target)
   }
 }
@@ -23,7 +23,7 @@ case class RouterLink(
     deco: Boolean = false
 ) extends SimpleComponentBase {
 
-  override def assemble(implicit c: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     val link = PlainLink(name, target)
     add(
       link.onClick.handleAny {

@@ -9,7 +9,7 @@ object XmlPage extends SimpleComponentBase with SimpleRouted {
   def title = "XML"
   def path  = "/xml"
 
-  override def assemble(implicit c: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     val value          = Model.create("")
     val editor         = TextInput("field")
     val scalaTagsLabel = Label(value)

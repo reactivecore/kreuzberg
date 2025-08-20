@@ -19,7 +19,7 @@ import kreuzberg.scalatags.all.*
 /** Sample Application. */
 object App extends SimpleComponentBase {
 
-  def assemble(using context: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     div(
       Menu.wrap,
       LoadingIndicator,

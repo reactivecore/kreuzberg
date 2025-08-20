@@ -1,55 +1,51 @@
 package kreuzberg
 
-import org.scalajs.dom.Element
-
 import scala.concurrent.ExecutionContext
 
 /** Main Kreuzberg Context - Responsible retrieving state and scheduling changes. */
-trait KreuzbergContext extends ModelValueProvider with ServiceRepository with ExecutionContext with Changer
+private[kreuzberg] trait KreuzbergContext {
 
-object KreuzbergContext {
+  /** Access to model values. */
+  def mvp: ModelValueProvider
 
-  /** Empty Context (for Tests) */
-  object empty extends KreuzbergContext {
-    override def updateModel[T](model: Model[T], updateFn: T => T): Unit = {}
+  /** Access to service repository */
+  def sr: ServiceRepository
 
-    override def triggerChannel[T](channel: Channel[T], value: T): Unit = {}
+  /** Access to ExecutionContext */
+  def ec: ExecutionContext
 
-    override def locate(identifier: Identifier): Element = throw new IllegalStateException("Empty Context")
+  /** Access to mutable changes. */
+  def changer: Changer
 
-    override def call(callback: () => Unit): Unit = {}
+  /** Use this context within an asynchronously claled method. */
+  inline def use[T](f: => T): T = KreuzbergContext.threadLocal.withInstance(this)(f)
+}
 
-    override def execute(runnable: Runnable): Unit = {}
-
-    override def reportFailure(cause: Throwable): Unit = {}
-
-    override def value[M](model: Subscribeable[M]): M = model.initial(using this)
-
-    override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = None
-  }
+private[kreuzberg] object KreuzbergContext {
 
   /** Combines different parts into one Context */
   class Compound(
-      modelValueProvider: ModelValueProvider,
-      serviceRepository: ServiceRepository,
-      executionContext: ExecutionContext,
-      changer: Changer
+      override val mvp: ModelValueProvider,
+      override val sr: ServiceRepository,
+      override val changer: Changer
   ) extends KreuzbergContext {
-    override def updateModel[T](model: Model[T], updateFn: T => T): Unit = changer.updateModel(model, updateFn)
-
-    override def triggerChannel[T](channel: Channel[T], value: T): Unit = changer.triggerChannel(channel, value)
-
-    override def locate(identifier: Identifier): Element = changer.locate(identifier)
-
-    override def call(callback: () => Unit): Unit = changer.call(callback)
-
-    override def execute(runnable: Runnable): Unit = executionContext.execute(runnable)
-
-    override def reportFailure(cause: Throwable): Unit = executionContext.reportFailure(cause)
-
-    override def value[M](model: Subscribeable[M]): M = modelValueProvider.value(model)
-
-    override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = serviceRepository.serviceOption[S]
+    override lazy val ec: ExecutionContext = new KreuzbergExecutionContext(changer)
   }
 
+  /** Empty Context (for Tests) */
+  object empty extends Compound(ModelValueProvider.empty, ServiceRepository.empty, Changer.empty)
+
+  private[kreuzberg] val threadLocal = new SimpleThreadLocal[KreuzbergContext](null)
+
+  def get(): KreuzbergContext = {
+    val value = threadLocal.get()
+    if (value == null) {
+      throw new IllegalStateException(
+        s"""KreuzbergContext is only available within Components and Kreuzberg provided Callbacks.
+           |You should use the ExecutionContext of a component to run a JavaScript callback.
+           |""".stripMargin
+      )
+    }
+    value
+  }
 }

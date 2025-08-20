@@ -1,6 +1,8 @@
 package kreuzberg
 
-import scala.ref.WeakReference
+import kreuzberg.EventSource.ChannelSource
+
+import scala.language.implicitConversions
 
 /**
  * A Channel is something where you can send data to and can subscribe in event bindings. They are allowed to be
@@ -19,13 +21,13 @@ final class Channel[T] private {
   }
 
   /** Trigger from Handler. */
-  def apply(value: T)(using c: Changer): Unit = {
-    c.triggerChannel(this, value)
+  def apply(value: T): Unit = {
+    KreuzbergContext.get().changer.triggerChannel(this, value)
   }
 
   /** Trigger from Handler (Unit or Any) */
-  def apply()(using c: Changer, ev: Unit => T): Unit = {
-    c.triggerChannel(this, ev(()))
+  def apply()(using ev: Unit => T): Unit = {
+    KreuzbergContext.get().changer.triggerChannel(this, ev(()))
   }
 }
 
@@ -33,4 +35,6 @@ object Channel {
 
   /** Create a channel of a given type. */
   def create[T](): Channel[T] = Channel()
+
+  implicit def toEventSource[T](channel: Channel[T]): ChannelSource[T] = ChannelSource(channel)
 }

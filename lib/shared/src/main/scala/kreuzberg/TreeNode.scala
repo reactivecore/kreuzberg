@@ -78,7 +78,7 @@ private[kreuzberg] object TreeNode {
 
   object emptyComponent extends Component {
     type Runtime = Unit
-    def assemble(using c: KreuzbergContext): Assembly = {
+    def assemble: Assembly = {
       Assembly(emptyRootHtml)
     }
   }
