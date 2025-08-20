@@ -22,7 +22,7 @@ object TablePage extends SimpleComponentBase with SimpleRouted {
     User(2, "Bob", false)
   )
 
-  override def assemble(using c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val data          = Model.create[Seq[User]](initialValues)
     val tableView     = GenericTableComponent(data)
     val formComponent = FormComponent(User.derived$Form, User(0, "", false))

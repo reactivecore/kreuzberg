@@ -9,9 +9,7 @@ case class TextInput(fieldName: String, initialValue: String = "") extends Simpl
 
   override type DomElement = Input
 
-  override def assemble(
-      implicit c: SimpleContext
-  ): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     input(name := fieldName, value := initialValue)
   }
 

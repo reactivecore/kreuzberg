@@ -2,6 +2,8 @@ package kreuzberg
 
 import kreuzberg.Identifier
 
+import scala.language.implicitConversions
+
 /**
  * A JavaScript DOM Event
  *
@@ -20,3 +22,7 @@ case class JsEvent(
     preventDefault: Boolean = false,
     capture: Boolean = false
 )
+
+object JsEvent {
+  implicit def toJsEventSource(event: JsEvent): EventSource.Js = EventSource.Js(event)
+}

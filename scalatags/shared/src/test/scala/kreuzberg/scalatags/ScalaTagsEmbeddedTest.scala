@@ -7,7 +7,7 @@ import kreuzberg.testcore.TestBase
 
 class ScalaTagsEmbeddedTest extends TestBase {
   case class DummyComponent(i: Int) extends ComponentBase {
-    def assemble(using context: KreuzbergContext): Assembly = {
+    def assemble: Assembly = {
       div(s"Hello World ${i}")
     }
   }

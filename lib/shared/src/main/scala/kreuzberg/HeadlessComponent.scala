@@ -1,5 +1,7 @@
 package kreuzberg
 
+import scala.concurrent.ExecutionContext
+
 /**
  * A Headless is like a component, but without an HTML-Representation. However it can define EventHandlers and
  * Subscriptions.
@@ -7,7 +9,9 @@ package kreuzberg
 trait HeadlessComponent extends Identified {
   final val id: Identifier = Identifier.next()
 
-  def assemble(using context: KreuzbergContext): HeadlessAssembly
+  protected implicit def ec: ExecutionContext = KreuzbergContext.get().ec
+
+  def assemble: HeadlessAssembly
 }
 
 /** Assembled service. */

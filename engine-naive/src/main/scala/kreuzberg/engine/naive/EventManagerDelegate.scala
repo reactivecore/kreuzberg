@@ -16,4 +16,6 @@ trait EventManagerDelegate {
   ): Unit
 
   def locate(componentId: Identifier): Element
+  
+  def context: KreuzbergContext
 }

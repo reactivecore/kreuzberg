@@ -48,12 +48,23 @@ class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRe
     override def value[M](model: Subscribeable[M]): M = modelValues.value(model)
   }
 
-  private val contextImpl: KreuzbergContext = new ContextImpl(
-    browser,
-    eventManager,
-    serviceRepo,
-    modelValueProvider
-  )
+  object changer extends Changer {
+    override def updateModel[T](model: Model[T], updateFn: T => T): Unit = {
+      eventManager.updateModel(model, updateFn)
+    }
+
+    override def triggerChannel[T](channel: Channel[T], value: T): Unit = {
+      eventManager.triggerChannel(channel, value)
+    }
+
+    override def locate(identifier: Identifier): Element = {
+      browser.findElement(identifier)
+    }
+
+    override def call(callback: () => Unit): Unit = eventManager.call(callback)
+  }
+
+  override val context: KreuzbergContext = KreuzbergContext.Compound(modelValueProvider, serviceRepo, changer)
 
   def run(): Unit = {
     redraw()
@@ -61,7 +72,9 @@ class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRe
 
   private def redraw(): Unit = {
     Logger.debug("Starting Redraw")
-    val tree = Assembler.tree(main)(using contextImpl)
+    val tree = context.use {
+      Assembler.tree(main)
+    }
     browser.drawRoot(tree)
     _tree = tree
     eventManager.clear()
@@ -70,16 +83,10 @@ class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRe
     Logger.debug("End Redraw")
   }
 
-  /*
-  private given KreuzbergContext: KreuzbergContext = new KreuzbergContext {
-    override def value[M](model: Subscribeable[M]): M = _modelValues.value(model)
-
-    override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = serviceRepo.serviceOption
-  }
-   */
-
   private def redrawChanged(changedModels: Set[Identifier], before: ModelValueProvider): Unit = {
-    val path = UpdatePath.build(_tree, changedModels, before)(using contextImpl)
+    val path = context.use {
+      UpdatePath.build(_tree, changedModels, before)
+    }
     if (path.isEmpty) {
       return
     }

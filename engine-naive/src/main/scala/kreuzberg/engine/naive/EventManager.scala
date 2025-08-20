@@ -152,7 +152,7 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
 
   private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
     eventSource match
-      case j: EventSource.Js[_]             =>
+      case j: EventSource.Js                =>
         j.jsEvent.componentId match {
           case None              =>
             val handler: Event => Unit = { in =>
@@ -200,12 +200,20 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
         bindEventSource(ownNode, o.right, sink)
       case t: EventSource.Timer             =>
         val timer = if (t.periodic) {
-          val handle = scalajs.js.timers.setInterval(t.duration) { sink(()) }
+          val handle = scalajs.js.timers.setInterval(t.duration) {
+            delegate.context.use {
+              sink(())
+            }
+          }
           RegisteredTimer(
             stopper = () => scalajs.js.timers.clearInterval(handle)
           )
         } else {
-          val handle = scalajs.js.timers.setTimeout(t.duration) { sink(()) }
+          val handle = scalajs.js.timers.setTimeout(t.duration) {
+            delegate.context.use {
+              sink(())
+            }
+          }
           RegisteredTimer(
             stopper = () => scalajs.js.timers.clearTimeout(handle)
           )
@@ -246,7 +254,9 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
           if (event.preventDefault) {
             e.preventDefault()
           }
-          sink(e)
+          delegate.context.use {
+            sink(e)
+          }
         } catch {
           case NonFatal(e) => Logger.warn(s"Exception on JS Event ${event.name}: ${e}}")
         }
@@ -273,20 +283,22 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
     _changedModel.clear()
     val max = 10000
     var it  = 0
-    while (_pending.nonEmpty && it < max) {
-      val first = _pending.dequeue()
-      try {
-        handlePendingChange(first)
-      } catch {
-        case NonFatal(e) =>
-          Logger.debug(s"Error in iteration: ${e.getMessage}")
+    delegate.context.use {
+      while (_pending.nonEmpty && it < max) {
+        val first = _pending.dequeue()
+        try {
+          handlePendingChange(first)
+        } catch {
+          case NonFatal(e) =>
+            Logger.debug(s"Error in iteration: ${e.getMessage}")
+        }
+        it += 1
       }
-      it += 1
+      if (it >= max) {
+        Logger.debug(s"Got more than ${max} iterations, giving up")
+      }
+      Logger.debug(s"End Iteration, changed models: ${_changedModel}")
     }
-    if (it >= max) {
-      Logger.debug(s"Got more than ${max} iterations, giving up")
-    }
-    Logger.debug(s"End Iteration, changed models: ${_changedModel}")
     _inIteration = false
     delegate.onIterationEnd(_currentState, _changedModel.toSet)
   }

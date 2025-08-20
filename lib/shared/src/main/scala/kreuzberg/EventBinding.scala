@@ -60,10 +60,10 @@ sealed trait EventSource[+E] {
 object EventSource {
 
   /** JS Event */
-  case class Js[E](jsEvent: JsEvent) extends EventSource[Event]
+  case class Js(jsEvent: JsEvent) extends EventSource[Event]
 
   object Js {
-    def window(name: String, capture: Boolean = false): Js[Event] = Js(
+    def window(name: String, capture: Boolean = false): Js = Js(
       JsEvent(None, name, capture)
     )
   }

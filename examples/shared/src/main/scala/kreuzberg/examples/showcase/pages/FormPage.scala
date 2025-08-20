@@ -9,7 +9,7 @@ import kreuzberg.extras.SimpleRouted
 import scala.util.{Success, Try}
 
 object FormPage extends SimpleComponentBase with SimpleRouted {
-  def assemble(using context: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val nameInput = ValidatingTextInput(
       "name",
       s => {

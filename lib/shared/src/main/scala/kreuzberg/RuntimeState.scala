@@ -10,14 +10,14 @@ trait RuntimeState[S] {
   }
 
   /** Read the state from Handler */
-  def read()(using c: Changer): S
+  def read(): S
 }
 
 /** A State which can also be set. */
 trait RuntimeProperty[S] extends RuntimeState[S] {
 
   /** Sets the value. */
-  def set(value: S)(using c: Changer): Unit
+  def set(value: S): Unit
 
   /** Maps and Contra Maps the value. */
   def xmap[U](mapFn: S => U, contraMapFn: U => S): RuntimeProperty[U] =
@@ -31,11 +31,11 @@ object RuntimeState {
     def componentId: Identifier
     def getter: D => S
 
-    protected def getElement()(using c: Changer): D = {
-      c.locate(componentId).asInstanceOf[D]
+    protected def getElement(): D = {
+      KreuzbergContext.get().changer.locate(componentId).asInstanceOf[D]
     }
 
-    override def read()(using c: Changer): S = {
+    override def read(): S = {
       getter(getElement())
     }
   }
@@ -65,7 +65,7 @@ object RuntimeState {
   ) extends JsRuntimeStateBase[D, S]
       with RuntimeProperty[S] {
 
-    override def set(value: S)(using Changer): Unit = {
+    override def set(value: S): Unit = {
       setter(getElement(), value)
     }
   }
@@ -74,7 +74,7 @@ object RuntimeState {
       from: RuntimeState[S1],
       mapFn: S1 => S2
   ) extends RuntimeState[S2] {
-    override def read()(using Changer): S2 = mapFn(from.read())
+    override def read(): S2 = mapFn(from.read())
   }
 
   case class CrossMapping[S1, S2](
@@ -82,17 +82,17 @@ object RuntimeState {
       mapFn: S1 => S2,
       contraMap: S2 => S1
   ) extends RuntimeProperty[S2] {
-    override def read()(using Changer): S2 = {
+    override def read(): S2 = {
       mapFn(from.read())
     }
 
-    override def set(value: S2)(using Changer): Unit = {
+    override def set(value: S2): Unit = {
       from.set(contraMap(value))
     }
   }
 
   /** A constant pseudo state. */
   case class Const[S](value: S) extends RuntimeState[S] {
-    override def read()(using Changer): S = value
+    override def read(): S = value
   }
 }

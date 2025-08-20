@@ -8,7 +8,7 @@ import kreuzberg.extras.SimpleRouted
 
 case class SimpleText(text: String) extends SimpleComponentBase {
 
-  override def assemble(implicit c: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     div(text)
   }
 }
@@ -19,7 +19,7 @@ case class Wizzard(
 
   val pageModel = Model.create(0)
 
-  override def assemble(implicit c: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     val currentPage = subscribe(pageModel)
     val selected    = pages(currentPage)
     val prevButton  = Button("previous")
@@ -43,7 +43,7 @@ object WizzardPage extends SimpleComponentBase with SimpleRouted {
   def title = "Wizzard"
   def path  = "/wizzard"
 
-  override def assemble(implicit c: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     val page1   = SimpleText("This is page 1")
     val page2   = SimpleText("This is page 2")
     val page3   = SimpleText("This is page 3")

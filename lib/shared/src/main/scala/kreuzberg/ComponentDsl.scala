@@ -9,13 +9,13 @@ import scala.language.implicitConversions
 trait ContextDsl {
 
   /** Retrieves something from a [[ServiceRepository]] (usually an [[KreuzbergContext]]) */
-  protected def provide[T: ServiceNameProvider](using c: ServiceRepository): T = {
-    c.service[T]
+  protected def provide[T: ServiceNameProvider]: T = {
+    KreuzbergContext.get().sr.service[T]
   }
 
-  /** Read the value of a model from an [[KreuzbergContext]] */
-  protected def read[M](model: Subscribeable[M])(using c: ModelValueProvider): M = {
-    c.value(model)
+  /** Read the value of a model */
+  protected def read[M](model: Subscribeable[M]): M = {
+    model.read()
   }
 }
 
@@ -25,12 +25,6 @@ trait ComponentDsl extends ContextDsl {
   protected implicit def htmlToAssemblyResult(in: Html): Assembly = {
     Assembly(in)
   }
-
-  /** Implicitly convert JS Events into event sources. */
-  protected implicit def from[E](jsEvent: JsEvent): EventSource.Js[E] = EventSource.Js(jsEvent)
-
-  /** Implicitly convert Channels into event sources. */
-  protected implicit def from[E](channel: Channel[E]): EventSource.ChannelSource[E] = EventSource.ChannelSource(channel)
 
   /** Declare a Javascript event. */
   protected def jsEvent(

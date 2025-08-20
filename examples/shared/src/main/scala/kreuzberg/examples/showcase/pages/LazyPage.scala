@@ -10,7 +10,7 @@ import scala.concurrent.duration.*
 
 /** Page which is lazy loaded. */
 case class LazyPage(result: String) extends SimpleComponentBase {
-  override def assemble(using c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     div(s"This page was lazy loaded with this result: ${result}")
   }
 }

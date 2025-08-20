@@ -7,7 +7,7 @@ import kreuzberg.scalatags.all.*
 
 case class NotFoundPage(resource: UrlResource) extends ComponentBase {
 
-  override def assemble(using context: KreuzbergContext): Assembly = {
+  override def assemble: Assembly = {
     div(
       s"Path ${resource} not found"
     )

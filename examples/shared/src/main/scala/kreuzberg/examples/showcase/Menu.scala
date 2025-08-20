@@ -21,7 +21,7 @@ case object Menu extends SimpleComponentBase {
     LazyPage.route.url("123").str -> "Lazy"
   )
 
-  override def assemble(implicit c: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     val items = links.map { case (link, name) => RouterLink(link, name, deco = true).wrap }
     div(items*)
   }
