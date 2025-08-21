@@ -2,7 +2,7 @@ package kreuzberg.examples.showcase.pages
 
 import kreuzberg.examples.showcase.SlowApiMock
 import kreuzberg.extras.{PathCodec, Route, Routed, RoutingTarget}
-import kreuzberg.{Effect, Html, SimpleComponentBase, SimpleContext}
+import kreuzberg.{Html, SimpleComponentBase, SimpleContext}
 import kreuzberg.scalatags.all.*
 import kreuzberg.scalatags.*
 
@@ -20,15 +20,13 @@ object LazyPage extends Routed[String] {
     PathCodec.prefix("/lazy/"),
     eagerTitle = path => s"Lazy...",
     routingTarget = path => {
-      Effect.future {
-        SlowApiMock.timer(
-          1.second,
-          RoutingTarget(
-            s"Lazy ${path}",
-            LazyPage(path)
-          )
+      SlowApiMock.timer(
+        1.second,
+        RoutingTarget(
+          s"Lazy ${path}",
+          LazyPage(path)
         )
-      }
+      )
     }
   )
 }

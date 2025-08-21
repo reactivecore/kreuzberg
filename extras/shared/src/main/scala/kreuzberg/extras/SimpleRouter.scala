@@ -6,7 +6,6 @@ import kreuzberg.extras.SimpleRouter.RoutingState
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 /**
@@ -51,8 +50,7 @@ case class SimpleRouter(
 
       initialState match {
         case loading: RoutingState.Loading =>
-          val effect = loading.route.target(loading.url)
-          effect.runAndHandle { result =>
+          loading.route.target(loading.url).onComplete { result =>
             // Otherwise the user is probably on the nxt screen
             val stateAgain   = SimpleRouter.routingStateModel.read()
             val continueHere = stateAgain match {
