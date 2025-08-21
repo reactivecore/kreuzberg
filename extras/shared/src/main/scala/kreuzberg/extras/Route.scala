@@ -1,7 +1,9 @@
 package kreuzberg.extras
 
-import kreuzberg._
+import kreuzberg.*
+
 import language.implicitConversions
+import scala.concurrent.Future
 
 /** A Route within [[SimpleRouter]] */
 trait Route {
@@ -22,7 +24,7 @@ trait Route {
   def preTitle(resource: UrlResource): String
 
   /** Execute the route, can load lazy. */
-  def target(resource: UrlResource): Effect[RoutingTarget]
+  def target(resource: UrlResource): Future[RoutingTarget]
 }
 
 case class RoutingTarget(
@@ -69,7 +71,7 @@ object Route {
 
     override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
 
-    override def target(resource: UrlResource): Effect[RoutingTarget] = Effect.const {
+    override def target(resource: UrlResource): Future[RoutingTarget] = Future.successful {
       eagerTarget(resource)
     }
 
@@ -122,13 +124,13 @@ object Route {
   case class LazyRoute[S](
       pathCodec: PathCodec[S],
       eagerTitle: S => String,
-      routingTarget: S => Effect[RoutingTarget]
+      routingTarget: S => Future[RoutingTarget]
   ) extends Route {
     override type State = S
 
     override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
 
-    override def target(resource: UrlResource): Effect[RoutingTarget] = {
+    override def target(resource: UrlResource): Future[RoutingTarget] = {
       routingTarget(pathCodec.forceDecode(resource))
     }
 
