@@ -1,7 +1,5 @@
 package kreuzberg
 
-import scala.collection.mutable
-
 sealed trait FlatHtmlElement
 
 object FlatHtmlElement {

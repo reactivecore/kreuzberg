@@ -14,21 +14,16 @@ case class LocalStorage[M](initial: M, key: String, serializer: M => String, des
   /** The model contains the current value. */
   val model = Model.create(readValue())
 
-  override def assemble(using context: AssemblerContext): HeadlessAssembly = {
+  override def assemble: HeadlessAssembly = {
     val current = read(model)
+    writeValue(current)
     HeadlessAssembly(
-      handlers = Vector(
-        EventSource.Assembled.handle { _ =>
-          writeValue(current)
-        }
-      ),
       subscriptions = Vector(model)
     )
   }
 
-  private def readValue()(using serviceRepository: ServiceRepository): M = {
-    serviceRepository
-      .service[Backend]
+  private def readValue(): M = {
+    provide[Backend]
       .get(key)
       .flatMap { serialized =>
         Try(deserializer(serialized)).toOption
@@ -36,9 +31,8 @@ case class LocalStorage[M](initial: M, key: String, serializer: M => String, des
       .getOrElse(initial)
   }
 
-  private def writeValue(value: M)(using serviceRepository: ServiceRepository): Unit = {
-    serviceRepository
-      .service[Backend]
+  private def writeValue(value: M): Unit = {
+    provide[Backend]
       .set(key, serializer(value))
   }
 }

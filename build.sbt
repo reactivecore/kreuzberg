@@ -11,7 +11,7 @@ val versionTag = gitTag
   .filter(_.startsWith("v"))
   .map(_.stripPrefix("v"))
 
-val snapshotVersion = "0.10-SNAPSHOT"
+val snapshotVersion = "0.11-SNAPSHOT"
 val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
@@ -117,18 +117,10 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("l
     )
   )
 
-/** Common codes for Engine */
-lazy val engineCommon = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("engine-common"))
-  .settings(
-    name := "kreuzberg-engine-common",
-    publishSettings
-  )
-  .dependsOn(lib, testCore % Test)
-
 /** Naive simple engine implementation (mutable like hell, but small in Size) */
 lazy val engineNaive = (project in file("engine-naive"))
   .enablePlugins(ScalaJSPlugin)
-  .dependsOn(lib.js, engineCommon.js, testCore.js % Test)
+  .dependsOn(lib.js, testCore.js % Test)
   .settings(
     name := "kreuzberg-engine-naive",
     publishSettings
@@ -143,7 +135,7 @@ lazy val xml = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("x
     ),
     publishSettings
   )
-  .dependsOn(lib, engineCommon % Test, testCore % Test)
+  .dependsOn(lib, testCore % Test)
 
 lazy val scalatags = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("scalatags"))
   .settings(
@@ -153,7 +145,7 @@ lazy val scalatags = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in f
     ),
     publishSettings
   )
-  .dependsOn(lib, engineCommon % Test, testCore % Test)
+  .dependsOn(lib, testCore % Test)
 
 // Note: rpc doesn't depend on lib (because we do not need it)
 lazy val rpc = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("rpc"))
@@ -182,32 +174,22 @@ lazy val extras = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file
   )
   .dependsOn(lib % "compile->compile;test->test", scalatags, testCore % Test)
 
-// Common Code for Server Side
-lazy val miniserverCommon = (project in file("miniserver-common"))
-  .settings(
-    name := "kreuzberg-miniserver-common",
-    publishSettings,
-    libraryDependencies ++= Seq(
-      "org.webjars" % "jquery" % "3.7.1" % Test // For testing Webjar Loader
-    )
-  )
-  .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm, testCore.jvm % Test)
-
 // Tapir/Loom based Mini Server
-lazy val miniserverLoom = (project in file("miniserver-loom"))
+lazy val miniserver = (project in file("miniserver"))
   .settings(
-    name := "kreuzberg-miniserver-loom",
+    name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
       "org.slf4j"                      % "slf4j-api"               % slf4jVersion,
       "com.softwaremill.sttp.tapir"   %% "tapir-netty-server-sync" % tapirVersion,
       "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % tapirVersion,
       "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"        % tapirVersion,
       "com.softwaremill.sttp.client3" %% "core"                    % sttpVersion % Test,
-      "net.reactivecore"              %% "quest"                   % questVersion
+      "net.reactivecore"              %% "quest"                   % questVersion,
+      "org.webjars"                    % "jquery"                  % "3.7.1"     % Test // For testing Webjar Loader
     ),
     publishSettings
   )
-  .dependsOn(miniserverCommon, testCore.jvm % Test)
+  .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm, testCore.jvm % Test)
 
 lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
@@ -222,7 +204,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     Compile / fullLinkJS / scalaJSLinkerConfig ~= (_.withSourceMap(false))
   )
   .jvmSettings(logsettings)
-  .jvmConfigure(_.dependsOn(miniserverLoom))
+  .jvmConfigure(_.dependsOn(miniserver))
   .jsConfigure(_.dependsOn(engineNaive))
   .dependsOn(lib, xml, scalatags, extras, rpc, testCore % Test)
   .jsEnablePlugins(
@@ -280,9 +262,6 @@ lazy val root = (project in file("."))
     lib.jvm,
     lib.native,
     engineNaive,
-    engineCommon.js,
-    engineCommon.jvm,
-    engineCommon.native,
     xml.js,
     xml.jvm,
     xml.native,
@@ -292,8 +271,7 @@ lazy val root = (project in file("."))
     extras.js,
     extras.jvm,
     extras.native,
-    miniserverLoom,
-    miniserverCommon,
+    miniserver,
     examples.js,
     examples.jvm,
     rpc.js,

@@ -2,7 +2,6 @@ package kreuzberg.engine.naive
 
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
-import kreuzberg.engine.common.{ModelValues, TreeNode}
 import org.scalajs.dom.{Element, Event}
 
 import scala.collection.mutable
@@ -13,7 +12,7 @@ import scala.util.control.NonFatal
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Encapsulate the highly stateful event handling. */
-class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) {
+private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) {
 
   /** A Pending change. */
   private sealed trait PendingChange
@@ -21,7 +20,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
   private case class PendingModelChange[M](model: Model[M], fn: M => M) extends PendingChange
 
   /** A Pending Callback. */
-  private case class Callback(fn: HandlerContext => Unit) extends PendingChange
+  private case class Callback(fn: () => Unit) extends PendingChange
 
   /** There is a next iteration triggered yet */
   private var _hasNextIteration: Boolean = false
@@ -124,60 +123,19 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
   }
 
   private def activateEvent[E](node: TreeNode, eventBinding: EventBinding[E]): Unit = {
-    val transformedSink = transformSink(eventBinding.sink)
-    bindEventSource(node, eventBinding.source, transformedSink)
+    bindEventSource(node, eventBinding.source, eventBinding.sink)
   }
 
-  private def transformSink[T](eventSink: EventSink[T]): T => Unit = { value =>
-    {
-      eventSink.f(eventHandlerContext, value)
-    }
+  def updateModel[T](model: Model[T], updateFn: T => T): Unit = {
+    val change = PendingModelChange(model, fn = updateFn)
+    _pending.append(change)
+    ensureNextIteration()
   }
 
-  private object eventHandlerContext extends HandlerContext {
-    override def setModel[T](model: Model[T], value: T): Unit = {
-      updateModel(model, _ => value)
-    }
-
-    override def updateModel[T](model: Model[T], updateFn: T => T): Unit = {
-      val change = PendingModelChange(model, fn = updateFn)
-      _pending.append(change)
-      ensureNextIteration()
-    }
-
-    override def triggerChannel[T](channel: Channel[T], value: T): Unit = {
-      EventManager.this.triggerChannel(channel, value)
-    }
-
-    override def triggerSink[E](sink: EventSink[E], value: E): Unit = {
-      transformSink(sink)(value)
-    }
-
-    override def locate(identifier: Identifier): Element = {
-      delegate.locate(identifier)
-    }
-
-    override def value[M](model: Subscribeable[M]): M = {
-      _currentState.value(model)
-    }
-
-    override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = {
-      sp.serviceOption
-    }
-
-    override def execute(runnable: Runnable): Unit = {
-      call(runnable.run())
-    }
-
-    override def reportFailure(cause: Throwable): Unit = {
-      implicitly[ExecutionContext].reportFailure(cause)
-    }
-
-    override def call(callback: HandlerContext ?=> Unit): Unit = {
-      val cb = Callback(hc => callback(using hc))
-      _pending.append(cb)
-      ensureNextIteration()
-    }
+  def call(callback: () => Unit): Unit = {
+    val cb = Callback(callback)
+    _pending.append(cb)
+    ensureNextIteration()
   }
 
   private def triggerWeakChannel[T](ref: WeakReference[Channel[T]], data: T): Unit = {
@@ -188,13 +146,13 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     }
   }
 
-  private def triggerChannel[T](channel: Channel[T], data: T): Unit = {
+  def triggerChannel[T](channel: Channel[T], data: T): Unit = {
     _channelBindings.foreachKey(channel.id) { _.asInstanceOf[ChannelBinding[T]].handler(data) }
   }
 
   private def bindEventSource[E](ownNode: TreeNode, eventSource: EventSource[E], sink: E => Unit): Unit = {
     eventSource match
-      case j: EventSource.Js[_]             =>
+      case j: EventSource.Js                =>
         j.jsEvent.componentId match {
           case None              =>
             val handler: Event => Unit = { in =>
@@ -235,10 +193,6 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
             }
             bindJsEvent(source, j.jsEvent, sink)
         }
-      case EventSource.Assembled            =>
-        scalajs.js.timers.setTimeout(0) {
-          sink(())
-        }
       case c: EventSource.ChannelSource[_]  =>
         bindChannel(ownNode, c, sink)
       case o: EventSource.OrSource[_]       =>
@@ -246,12 +200,20 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
         bindEventSource(ownNode, o.right, sink)
       case t: EventSource.Timer             =>
         val timer = if (t.periodic) {
-          val handle = scalajs.js.timers.setInterval(t.duration) { sink(()) }
+          val handle = scalajs.js.timers.setInterval(t.duration) {
+            delegate.context.use {
+              sink(())
+            }
+          }
           RegisteredTimer(
             stopper = () => scalajs.js.timers.clearInterval(handle)
           )
         } else {
-          val handle = scalajs.js.timers.setTimeout(t.duration) { sink(()) }
+          val handle = scalajs.js.timers.setTimeout(t.duration) {
+            delegate.context.use {
+              sink(())
+            }
+          }
           RegisteredTimer(
             stopper = () => scalajs.js.timers.clearTimeout(handle)
           )
@@ -292,7 +254,9 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
           if (event.preventDefault) {
             e.preventDefault()
           }
-          sink(e)
+          delegate.context.use {
+            sink(e)
+          }
         } catch {
           case NonFatal(e) => Logger.warn(s"Exception on JS Event ${event.name}: ${e}}")
         }
@@ -319,20 +283,22 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
     _changedModel.clear()
     val max = 10000
     var it  = 0
-    while (_pending.nonEmpty && it < max) {
-      val first = _pending.dequeue()
-      try {
-        handlePendingChange(first)
-      } catch {
-        case NonFatal(e) =>
-          Logger.debug(s"Error in iteration: ${e.getMessage}")
+    delegate.context.use {
+      while (_pending.nonEmpty && it < max) {
+        val first = _pending.dequeue()
+        try {
+          handlePendingChange(first)
+        } catch {
+          case NonFatal(e) =>
+            Logger.debug(s"Error in iteration: ${e.getMessage}")
+        }
+        it += 1
       }
-      it += 1
+      if (it >= max) {
+        Logger.debug(s"Got more than ${max} iterations, giving up")
+      }
+      Logger.debug(s"End Iteration, changed models: ${_changedModel}")
     }
-    if (it >= max) {
-      Logger.debug(s"Got more than ${max} iterations, giving up")
-    }
-    Logger.debug(s"End Iteration, changed models: ${_changedModel}")
     _inIteration = false
     delegate.onIterationEnd(_currentState, _changedModel.toSet)
   }
@@ -342,7 +308,7 @@ class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) 
       case p: PendingModelChange[_] =>
         handlePendingModelChange(p)
       case p: Callback              =>
-        p.fn(eventHandlerContext)
+        p.fn.apply()
     }
   }
 

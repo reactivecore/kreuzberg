@@ -22,8 +22,14 @@ object ServiceRepository {
 
   /** Get something from the Service Repository. */
   @throws[ServiceNotFoundException]("If a service is not found")
-  def get[T](using snp: ServiceNameProvider[T], repo: ServiceRepository): T = {
-    repo.service
+  def get[T: ServiceNameProvider]: T = {
+    KreuzbergContext.get().sr.service[T]
+  }
+
+  object empty extends ServiceRepository {
+    override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = {
+      None
+    }
   }
 }
 

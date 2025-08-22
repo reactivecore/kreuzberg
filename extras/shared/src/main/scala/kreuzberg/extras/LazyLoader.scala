@@ -12,28 +12,24 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
   val model = Model.create[LazyState[T]](LazyState.Init)
 
   /** Event sink for refreshing the loader. */
-  def refresh()(using HandlerContext): Unit = {
+  def refresh(): Unit = {
     model.set(LazyState.Init)
   }
 
   /** Event sink for refreshing (silently) */
-  def silentRefresh()(using hc: HandlerContext): Unit = {
+  def silentRefresh(): Unit = {
     load().andThen {
       case Success(value) => model.set(LazyState.Ok(value))
       case Failure(e)     => model.set(LazyState.Failed(e))
     }
   }
 
-  override def assemble(using c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val data = subscribe(model)
     data match {
       case LazyState.Init            =>
-        add(
-          EventSource.Assembled.handle { _ =>
-            model.set(LazyState.WaitResponse)
-            silentRefresh()
-          }
-        )
+        model.set(LazyState.WaitResponse)
+        silentRefresh()
         waiting()
       case LazyState.WaitResponse    =>
         waiting()
@@ -45,7 +41,7 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
   }
 
   /** Load from external service. */
-  def load()(using handlerContext: HandlerContext): Future[T]
+  def load(): Future[T]
 
   /** Html which is rendered during loading. */
   def waiting()(using c: SimpleContext): Html = {

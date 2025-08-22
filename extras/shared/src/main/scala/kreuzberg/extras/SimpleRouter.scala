@@ -6,7 +6,6 @@ import kreuzberg.extras.SimpleRouter.RoutingState
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 /**
@@ -30,64 +29,57 @@ case class SimpleRouter(
     loadingHandler: Option[Route] => Component = SimpleRouter.DefaultLoadingHandler
 ) extends SimpleComponentBase {
 
-  override def assemble(using context: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     val routingState = subscribe(SimpleRouter.routingStateModel)
     Logger.debug(s"Assembling SimpleRouter with value ${routingState} on model ${SimpleRouter.routingStateModel.id}")
 
-    def handlePath(pushState: Boolean): EventSink[UrlResource] = {
-      EventSink[UrlResource] { url =>
-        val nextRoute = decideRoute(url)
+    def handlePath(pushState: Boolean, url: UrlResource): Unit = {
+      val nextRoute = decideRoute(url)
 
-        Logger.debug(s"Going to ${url} (route=${nextRoute}, pushState=${pushState})")
-        val currentPath = BrowserRouting.getCurrentResource()
-        val title       = nextRoute.preTitle(url)
-        if (pushState && url != currentPath) {
-          Logger.debug(s"Push state ${title}/${url}")
-          BrowserRouting.pushState(title, url.str)
-        }
-        BrowserRouting.setDocumentTitle(titlePrefix + title)
+      Logger.debug(s"Going to ${url} (route=${nextRoute}, pushState=${pushState})")
+      val currentPath = BrowserRouting.getCurrentResource()
+      val title       = nextRoute.preTitle(url)
+      if (pushState && url != currentPath) {
+        Logger.debug(s"Push state ${title}/${url}")
+        BrowserRouting.pushState(title, url.str)
+      }
+      BrowserRouting.setDocumentTitle(titlePrefix + title)
 
-        val initialState = decideInitialState(url, nextRoute)
-        SimpleRouter.routingStateModel.set(initialState)
+      val initialState = decideInitialState(url, nextRoute)
+      SimpleRouter.routingStateModel.set(initialState)
 
-        initialState match {
-          case loading: RoutingState.Loading =>
-            val effect = loading.route.target(loading.url)
-            effect.runAndHandle { result =>
-              // Otherwise the user is probably on the nxt screen
-              val stateAgain   = SimpleRouter.routingStateModel.read()
-              val continueHere = stateAgain match {
-                case l: RoutingState.Loading if l.invocation == loading.invocation => true
-                case _                                                             =>
-                  Logger.debug(
-                    s"Discarding response of loading, not anymore on the same loading page"
-                  )
-                  false
-              }
-              if (continueHere) {
-                result.foreach { routingTarget =>
-                  BrowserRouting.setDocumentTitle(titlePrefix + routingTarget.title)
-                }
-                val translated = result match {
-                  case Failure(exception) => RoutingState.Failed(loading.url, loading.route, exception)
-                  case Success(v)         => RoutingState.Loaded(loading.url, loading.route, v.component)
-                }
-                SimpleRouter.routingStateModel.set(translated)
-              }
+      initialState match {
+        case loading: RoutingState.Loading =>
+          loading.route.target(loading.url).onComplete { result =>
+            // Otherwise the user is probably on the nxt screen
+            val stateAgain   = SimpleRouter.routingStateModel.read()
+            val continueHere = stateAgain match {
+              case l: RoutingState.Loading if l.invocation == loading.invocation => true
+              case _                                                             =>
+                Logger.debug(
+                  s"Discarding response of loading, not anymore on the same loading page"
+                )
+                false
             }
-          case _                             => /* nothing */
-        }
+            if (continueHere) {
+              result.foreach { routingTarget =>
+                BrowserRouting.setDocumentTitle(titlePrefix + routingTarget.title)
+              }
+              val translated = result match {
+                case Failure(exception) => RoutingState.Failed(loading.url, loading.route, exception)
+                case Success(v)         => RoutingState.Loaded(loading.url, loading.route, v.component)
+              }
+              SimpleRouter.routingStateModel.set(translated)
+            }
+          }
+        case _                             => /* nothing */
       }
     }
 
     val (component: Component, url: UrlResource) = routingState match {
       case RoutingState.Empty                         =>
         val url = BrowserRouting.getCurrentResource()
-        add(
-          EventSource.Assembled
-            .map { _ => url }
-            .to(handlePath(false))
-        )
+        handlePath(false, url)
         (loadingHandler(None), url)
       case RoutingState.Loading(url, route, _)        =>
         (loadingHandler(Some(route)), url)
@@ -97,20 +89,18 @@ case class SimpleRouter(
         (component, url)
     }
 
-    add(
-      SimpleRouter.gotoChannel.to(handlePath(true))
-    )
+    addHandler(SimpleRouter.gotoChannel) { url =>
+      handlePath(true, url)
+    }
 
-    add(
-      SimpleRouter.reloadChannel.map(_ => url).to(handlePath(false))
-    )
+    addHandlerAny(SimpleRouter.reloadChannel) {
+      handlePath(false, url)
+    }
 
-    add(
-      EventSource.Js
-        .window("popstate")
-        .map(_ => BrowserRouting.getCurrentResource())
-        .to(handlePath(false))
-    )
+    addHandlerAny(EventSource.Js.window("popstate")) {
+      val url = BrowserRouting.getCurrentResource()
+      handlePath(false, url)
+    }
 
     div(component.wrap)
   }
@@ -119,7 +109,7 @@ case class SimpleRouter(
     routes.find(_.canHandle(url)).getOrElse(notFoundRoute)
   }
 
-  private def decideInitialState(url: UrlResource, route: Route)(using AssemblerContext): RoutingState = {
+  private def decideInitialState(url: UrlResource, route: Route): RoutingState = {
     route match {
       case eager: EagerRoute =>
         val state     = eager.pathCodec.forceDecode(url)
@@ -171,27 +161,30 @@ object SimpleRouter {
   }
 
   /** Event Sink for going to a specific route. */
-  def goto(url: UrlResource)(using hc: HandlerContext): Unit = gotoChannel(url)
+  def goto(url: UrlResource): Unit = gotoChannel(url)
 
   /** Force a reload. */
   val reloadChannel: Channel[Any] = Channel.create()
-  def reload: EventSink[Any]      = EventSink { _ => reloadChannel() }
+
+  def reload(): Unit = {
+    reloadChannel()
+  }
 
   /** Go to a specific fixed route */
-  def gotoTarget(target: UrlResource)(using hc: HandlerContext): Unit = gotoChannel(target)
+  def gotoTarget(target: UrlResource): Unit = gotoChannel(target)
 
   /** Event sink for going to root (e.g. on logout) */
-  def gotoRoot()(using hc: HandlerContext): Unit = gotoTarget(UrlResource("/"))
+  def gotoRoot(): Unit = gotoTarget(UrlResource("/"))
 
   case object EmptyComponent extends SimpleComponentBase {
-    override def assemble(using c: SimpleContext): Html = {
+    def assemble(using sc: SimpleContext): Html = {
       div("Loading...")
     }
   }
 
   val DefaultErrorHandler: (UrlResource, Throwable) => Component = { (url, error) =>
     new SimpleComponentBase {
-      override def assemble(using c: SimpleContext): Html = {
+      def assemble(using sc: SimpleContext): Html = {
         h2("Error")
         div(s"An unrecoverable error handled on loading route ${url}: ${error.getMessage}")
       }

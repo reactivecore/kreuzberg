@@ -18,7 +18,7 @@ case class FormComponent[T](
     fieldBuilder.build(formElement, value)
   }
 
-  override def assemble(using c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     div(
       components.map(_.wrap)
     )
@@ -29,11 +29,11 @@ case class FormComponent[T](
 
   /** Property State of the fields. */
   val fieldsProperty: RuntimeProperty[Seq[String]] = new RuntimeProperty[Seq[String]] {
-    override def set(value: Seq[String])(using h: HandlerContext): Unit = {
+    override def set(value: Seq[String]): Unit = {
       components.zip(value).foreach { case (c, v) => c.text.set(v) }
     }
 
-    override def read()(using h: HandlerContext): Seq[String] = {
+    override def read(): Seq[String] = {
       components.map(_.text.read())
     }
   }
@@ -46,18 +46,18 @@ case class FormComponent[T](
   }
 
   /** Set a value. */
-  def setValue(value: T)(using hc: HandlerContext): Unit = {
+  def setValue(value: T): Unit = {
     val split = form.codec.encode(value)
     fieldsProperty.set(split)
   }
 
   /** Clear shown Violations */
-  def clearViolations()(using hc: HandlerContext): Unit = {
+  def clearViolations(): Unit = {
     components.foreach(_.violations.set(Nil))
   }
 
   /** Reset the Form State to the default. */
-  def reset()(using hc: HandlerContext): Unit = {
+  def reset(): Unit = {
     setValue(default)
     clearViolations()
   }
@@ -88,7 +88,7 @@ object FormFieldComponent {
 
   /** Input inside form field. */
   case class FormFieldInput(field: FormField[?], initialValue: String) extends SimpleComponentBase {
-    override def assemble(using c: SimpleContext): Html = {
+    def assemble(using sc: SimpleContext): Html = {
       input(
         name   := field.name,
         `type` := field.formType,
@@ -110,7 +110,7 @@ object FormFieldComponent {
   }
 
   case class FormFieldViolationsComponent(violations: Subscribeable[List[String]]) extends SimpleComponentBase {
-    override def assemble(using c: SimpleContext): Html = {
+    def assemble(using sc: SimpleContext): Html = {
       val got = violations.subscribe()
       if (got.isEmpty) {
         span()
@@ -127,7 +127,7 @@ object FormFieldComponent {
     val violations          = Model.create[List[String]](Nil)
     val violationsComponent = FormFieldViolationsComponent(violations)
 
-    override def assemble(using c: SimpleContext): Html = {
+    def assemble(using sc: SimpleContext): Html = {
       add(
         input.onInputEvent.handle { _ =>
           val value   = input.text.read()

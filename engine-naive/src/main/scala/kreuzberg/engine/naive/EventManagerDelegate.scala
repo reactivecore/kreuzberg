@@ -1,7 +1,6 @@
 package kreuzberg.engine.naive
 
 import kreuzberg.*
-import kreuzberg.engine.common.ModelValues
 import org.scalajs.dom.Element
 
 /** Callback for EventManager. */
@@ -17,4 +16,6 @@ trait EventManagerDelegate {
   ): Unit
 
   def locate(componentId: Identifier): Element
+  
+  def context: KreuzbergContext
 }

@@ -6,7 +6,7 @@ import kreuzberg.scalatags.all.*
 
 case class ErrorShower(model: Model[Option[String]]) extends SimpleComponentBase {
 
-  override def assemble(implicit c: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     val current = subscribe(model)
     current match {
       case None    => div(style := "display:hidden")
@@ -26,7 +26,7 @@ case class ValidatingTextInput(
     validator: String => Option[String]
 ) extends SimpleComponentBase {
 
-  def assemble(using context: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val valueModel   = Model.create("")
     val errorModel   = Model.create(None: Option[String])
     val initialValue = read(valueModel)

@@ -11,7 +11,7 @@ import scala.concurrent.duration.*
 case object Counter extends SimpleComponentBase {
   def model = IndexPage.secondCounter.model
 
-  override def assemble(using c: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val counter = subscribe(model)
 
     addHandlerAny(EventSource.Timer(1.second, true)) {
@@ -28,7 +28,7 @@ object IndexPage extends SimpleComponentBase with SimpleRouted {
 
   val countIncrementer = Button(count.map { i => s"Clicked ${i} times" })
 
-  def assemble(using context: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     add(
       countIncrementer.onClicked.handle { _ =>
         count.update(_ + 1)

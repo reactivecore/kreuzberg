@@ -2,8 +2,7 @@ package kreuzberg.engine.naive
 
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
-import kreuzberg.engine.common.UpdatePath.Change
-import kreuzberg.engine.common.{Assembler, BrowserDrawer, ModelValues, TreeNode, UpdatePath}
+import UpdatePath.Change
 import org.scalajs.dom.{Element, Event}
 
 import scala.collection.mutable
@@ -45,13 +44,37 @@ class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRe
   private val browser      = new BrowserDrawer(rootElement)
   private val eventManager = new EventManager(this)
 
+  object modelValueProvider extends ModelValueProvider {
+    override def value[M](model: Subscribeable[M]): M = modelValues.value(model)
+  }
+
+  object changer extends Changer {
+    override def updateModel[T](model: Model[T], updateFn: T => T): Unit = {
+      eventManager.updateModel(model, updateFn)
+    }
+
+    override def triggerChannel[T](channel: Channel[T], value: T): Unit = {
+      eventManager.triggerChannel(channel, value)
+    }
+
+    override def locate(identifier: Identifier): Element = {
+      browser.findElement(identifier)
+    }
+
+    override def call(callback: () => Unit): Unit = eventManager.call(callback)
+  }
+
+  override val context: KreuzbergContext = KreuzbergContext.Compound(modelValueProvider, serviceRepo, changer)
+
   def run(): Unit = {
     redraw()
   }
 
   private def redraw(): Unit = {
     Logger.debug("Starting Redraw")
-    val tree = Assembler.tree(main)
+    val tree = context.use {
+      Assembler.tree(main)
+    }
     browser.drawRoot(tree)
     _tree = tree
     eventManager.clear()
@@ -60,14 +83,10 @@ class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRe
     Logger.debug("End Redraw")
   }
 
-  private given assemblerContext: AssemblerContext = new AssemblerContext {
-    override def value[M](model: Subscribeable[M]): M = _modelValues.value(model)
-
-    override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = serviceRepo.serviceOption
-  }
-
   private def redrawChanged(changedModels: Set[Identifier], before: ModelValueProvider): Unit = {
-    val path = UpdatePath.build(_tree, changedModels, before)
+    val path = context.use {
+      UpdatePath.build(_tree, changedModels, before)
+    }
     if (path.isEmpty) {
       return
     }

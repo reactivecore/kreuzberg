@@ -20,7 +20,7 @@ object TodoPage extends SimpleComponentBase with SimpleRouted {
     )
   )
 
-  def assemble(using context: SimpleContext): Html = {
+  def assemble(using sc: SimpleContext): Html = {
     val shower = TodoShower(model)
     val adder  = TodoAdder(model)
 

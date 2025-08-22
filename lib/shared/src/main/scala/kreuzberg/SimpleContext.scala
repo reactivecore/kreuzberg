@@ -1,16 +1,10 @@
 package kreuzberg
 
-/** A simple of AssemblerContext which also collects event bindings / event subscriptions */
-class SimpleContext(underlying: AssemblerContext) extends AssemblerContext {
+/** A simple helper for collecting event bindings / subscriptions / services within [[SimpleComponentBase]] */
+class SimpleContext {
   private val _eventBindings = Vector.newBuilder[EventBinding[?]]
   private val _subscriptions = Vector.newBuilder[Subscribeable[?]]
   private val _services      = Vector.newBuilder[HeadlessComponent]
-
-  override def value[M](model: Subscribeable[M]): M = {
-    underlying.value(model)
-  }
-
-  override def serviceOption[S](using snp: ServiceNameProvider[S]): Option[S] = underlying.serviceOption[S]
 
   def addEventBinding(binding: EventBinding[?]): Unit = {
     _eventBindings += binding

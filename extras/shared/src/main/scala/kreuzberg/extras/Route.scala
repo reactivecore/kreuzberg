@@ -1,7 +1,9 @@
 package kreuzberg.extras
 
-import kreuzberg._
+import kreuzberg.*
+
 import language.implicitConversions
+import scala.concurrent.Future
 
 /** A Route within [[SimpleRouter]] */
 trait Route {
@@ -19,10 +21,10 @@ trait Route {
   def canHandle(resource: UrlResource): Boolean
 
   /** Title displayed while loading. */
-  def preTitle(resource: UrlResource)(using AssemblerContext): String
+  def preTitle(resource: UrlResource): String
 
   /** Execute the route, can load lazy. */
-  def target(resource: UrlResource)(using AssemblerContext): Effect[RoutingTarget]
+  def target(resource: UrlResource): Future[RoutingTarget]
 }
 
 case class RoutingTarget(
@@ -69,11 +71,11 @@ object Route {
 
     override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
 
-    override def target(resource: UrlResource)(using AssemblerContext): Effect[RoutingTarget] = Effect.const {
+    override def target(resource: UrlResource): Future[RoutingTarget] = Future.successful {
       eagerTarget(resource)
     }
 
-    def eagerTarget(resource: UrlResource)(using AssemblerContext): RoutingTarget = {
+    def eagerTarget(resource: UrlResource): RoutingTarget = {
       val state = pathCodec.decode(resource).getOrElse {
         throw new IllegalStateException(s"Unmatched path ${resource}")
       }
@@ -83,10 +85,10 @@ object Route {
     /** Returns a title for that path. */
     def title(state: State): String
 
-    override def preTitle(resource: UrlResource)(using AssemblerContext): String = eagerTarget(resource).title
+    override def preTitle(resource: UrlResource): String = eagerTarget(resource).title
 
     /** Assembles a component for a given path. */
-    def component(state: State)(using AssemblerContext): Component
+    def component(state: State): Component
   }
 
   /** Simple Route without parameters. */
@@ -101,13 +103,13 @@ object Route {
 
     override def title(state: Unit): String = title
 
-    override def component(state: Unit)(using AssemblerContext): Component = component
+    override def component(state: Unit): Component = component
   }
 
   /** A Route whose target depends on a value. */
   case class DependentRoute[S](
       pathCodec: PathCodec[S],
-      fn: S => AssemblerContext ?=> Component,
+      fn: S => Component,
       titleFn: S => String
   ) extends EagerRoute {
 
@@ -115,24 +117,24 @@ object Route {
 
     override def title(state: S): String = titleFn(state)
 
-    override def component(state: S)(using AssemblerContext): Component = fn(state)
+    override def component(state: S): Component = fn(state)
   }
 
   /** A Lazy route which fetches data. */
   case class LazyRoute[S](
       pathCodec: PathCodec[S],
       eagerTitle: S => String,
-      routingTarget: S => AssemblerContext ?=> Effect[RoutingTarget]
+      routingTarget: S => Future[RoutingTarget]
   ) extends Route {
     override type State = S
 
     override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
 
-    override def target(resource: UrlResource)(using AssemblerContext): Effect[RoutingTarget] = {
+    override def target(resource: UrlResource): Future[RoutingTarget] = {
       routingTarget(pathCodec.forceDecode(resource))
     }
 
-    override def preTitle(resource: UrlResource)(using AssemblerContext): String = {
+    override def preTitle(resource: UrlResource): String = {
       eagerTitle(pathCodec.forceDecode(resource))
     }
   }

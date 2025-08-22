@@ -6,14 +6,14 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 case class TodoItemShower(item: String) extends SimpleComponentBase {
-  override def assemble(using context: SimpleContext): Html = {
+  override def assemble(using sc: SimpleContext): Html = {
     span(item)
   }
 }
 
 case class TodoShower(todoList: Subscribeable[TodoList]) extends TemplatingComponentBase {
 
-  def assemble(implicit c: SimpleContext): ScalaTagsHtml = {
+  def assemble(using sc: SimpleContext): ScalaTagsHtml = {
     ul(
       todoList.map(_.elements).iter { elem =>
         li(
@@ -23,7 +23,7 @@ case class TodoShower(todoList: Subscribeable[TodoList]) extends TemplatingCompo
     )
   }
 
-  override def update(before: ModelValueProvider)(using context: AssemblerContext): UpdateResult = {
+  override def update(before: ModelValueProvider): UpdateResult = {
     val valueBefore = before.value(todoList)
     val valueAfter  = read(todoList)
     (for {
