@@ -1,5 +1,9 @@
 package kreuzberg.extras
 
+import java.util.UUID
+import scala.Tuple.:*
+import scala.util.Try
+
 /** Helper for encoding/decoding [[UrlResource]]. */
 trait PathCodec[S] {
   def handles(resource: UrlResource): Boolean
@@ -85,5 +89,92 @@ object PathCodec {
     override def decode(resource: UrlResource): Option[UrlResource] = Some(resource)
 
     override def encode(value: UrlResource): UrlResource = value
+  }
+
+  /** A Recursive constructed Path. */
+  sealed trait RecursivePath[S <: Tuple] extends PathCodec[S] {
+    protected def prefixCheck(s: UrlResource): Boolean = true
+
+    def fixed(name: String): RecursivePath[S] = RecursivePath.FixedSubPath(name, this)
+
+    def string: RecursivePath[S :* String] = RecursivePath.PathElement(this, identity, s => Some(s))
+
+    def uuid: RecursivePath[S :* UUID] = {
+      RecursivePath.PathElement(this, s => s.toString, s => Try(UUID.fromString(s)).toOption)
+    }
+
+    def int: RecursivePath[S :* Int] = {
+      RecursivePath.PathElement(this, s => s.toString, s => s.toIntOption)
+    }
+
+    def long: RecursivePath[S :* Long] = {
+      RecursivePath.PathElement(this, s => s.toString, s => s.toLongOption)
+    }
+
+    def boolean: RecursivePath[S :* Boolean] = {
+      RecursivePath.PathElement(this, s => s.toString, s => s.toBooleanOption)
+    }
+  }
+
+  /** Builds a recursive path */
+  def recursive(prefix: String): RecursivePath.Start = RecursivePath.Start(prefix)
+
+  object RecursivePath {
+    case class Start(prefix: String) extends RecursivePath[EmptyTuple] {
+      override def handles(resource: UrlResource): Boolean = resource.path == prefix
+
+      override protected def prefixCheck(resource: UrlResource): Boolean = {
+        resource.str.startsWith(prefix)
+      }
+
+      override def decode(resource: UrlResource): Option[EmptyTuple] = Option.when(handles(resource)) {
+        EmptyTuple
+      }
+
+      override def encode(value: EmptyTuple): UrlResource = UrlResource(prefix)
+    }
+
+    case class PathElement[T, P <: Tuple](parent: RecursivePath[P], encoder: T => String, decoder: String => Option[T])
+        extends RecursivePath[P :* T] {
+      override def handles(resource: UrlResource): Boolean = {
+        parent.prefixCheck(resource) && decode(resource).isDefined
+      }
+
+      override protected def prefixCheck(s: UrlResource): Boolean = {
+        parent.prefixCheck(s)
+      }
+
+      override def decode(resource: UrlResource): Option[Tuple.Append[P, T]] = {
+        for {
+          (part, parentResource) <- resource.dropSubPath
+          decoded                <- decoder(part)
+          decodedParent          <- parent.decode(parentResource)
+        } yield {
+          decodedParent :* decoded
+        }
+      }
+
+      override def encode(value: P :* T): UrlResource = {
+        parent.encode(value.init.asInstanceOf[P]).subPath(encoder(value.last.asInstanceOf[T]))
+      }
+    }
+
+    case class FixedSubPath[P <: Tuple](name: String, parent: RecursivePath[P]) extends RecursivePath[P] {
+      override def handles(resource: UrlResource): Boolean = {
+        parent.prefixCheck(resource) && decode(resource).isDefined
+      }
+
+      override def decode(resource: UrlResource): Option[P] = {
+        for {
+          (part, parentResource) <- resource.dropSubPath
+          if part == name
+          result                 <- parent.decode(parentResource)
+        } yield result
+      }
+
+      override def encode(value: P): UrlResource = {
+        parent.encode(value).subPath(name)
+      }
+    }
   }
 }

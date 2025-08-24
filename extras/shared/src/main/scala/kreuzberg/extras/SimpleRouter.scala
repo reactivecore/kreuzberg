@@ -160,7 +160,7 @@ object SimpleRouter {
     case RoutingState.Failed(url, _, _)  => url
   }
 
-  /** Event Sink for going to a specific route. */
+  /** Go to a specific URL */
   def goto(url: UrlResource): Unit = gotoChannel(url)
 
   /** Force a reload. */
@@ -170,11 +170,8 @@ object SimpleRouter {
     reloadChannel()
   }
 
-  /** Go to a specific fixed route */
-  def gotoTarget(target: UrlResource): Unit = gotoChannel(target)
-
   /** Event sink for going to root (e.g. on logout) */
-  def gotoRoot(): Unit = gotoTarget(UrlResource("/"))
+  def gotoRoot(): Unit = goto(UrlResource())
 
   case object EmptyComponent extends SimpleComponentBase {
     def assemble(using sc: SimpleContext): Html = {

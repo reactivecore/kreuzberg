@@ -15,6 +15,36 @@ case class UrlResource(str: String = "/") extends AnyVal {
     }
   }
 
+  def dropSubPath: Option[(String, UrlResource)] = {
+    str.lastIndexOf('/') match {
+      case -1 => None
+      case n  =>
+        str.indexOf('?') match {
+          case -1         =>
+            val elem      = path.substring(n + 1)
+            val remainder = path.take(n)
+            Some(elem, UrlResource(remainder))
+          case m if m < n =>
+            // Illegal
+            None
+          case m          =>
+            val elem      = path.substring(n + 1, m)
+            val remainder = str.take(n) + str.drop(m)
+            Some(elem, UrlResource(remainder))
+        }
+    }
+  }
+
+  def subPath(s: String): UrlResource = {
+    str.lastIndexOf('?') match {
+      case -1 => UrlResource(str + "/" + s)
+      case n  =>
+        UrlResource(
+          str.take(n) + "/" + s + str.drop(n)
+        )
+    }
+  }
+
   /** Returns the query without ? */
   def query: String = {
     str.indexOf('?') match {
