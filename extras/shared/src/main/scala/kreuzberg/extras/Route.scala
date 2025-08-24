@@ -50,6 +50,9 @@ trait SimpleRouted extends Routed[Unit] {
   /** The routing path */
   def path: String
 
+  /** The URL Resource for this. */
+  final def url: UrlResource = UrlResource(path)
+
   /** The page title */
   def title: String
 
