@@ -32,4 +32,23 @@ class UrlResourceTest extends TestBase {
     withEscaping2.queryArgs shouldBe Map("x" -> "y")
     withEscaping2.fragment shouldBe "bub!"
   }
+
+  "dropSubPath" should "work" in {
+    UrlResource("").dropSubPath shouldBe None
+    UrlResource("/").dropSubPath shouldBe Some("", UrlResource(""))
+    UrlResource("/hallo").dropSubPath shouldBe Some("hallo", UrlResource(""))
+    UrlResource("/hallo?bub=bab#xyz").dropSubPath shouldBe Some("hallo", UrlResource("?bub=bab#xyz"))
+    UrlResource("/hallo/welt").dropSubPath shouldBe Some("welt", UrlResource("/hallo"))
+    UrlResource("/hallo/welt/du").dropSubPath shouldBe Some("du", UrlResource("/hallo/welt"))
+    UrlResource("/hallo/welt?arg1=foo&arg2=bar").dropSubPath shouldBe Some(
+      "welt",
+      UrlResource("/hallo?arg1=foo&arg2=bar")
+    )
+  }
+
+  "subPath" should "work" in {
+    UrlResource("").subPath("foo") shouldBe UrlResource("/foo")
+    UrlResource("/foo").subPath("bar") shouldBe UrlResource("/foo/bar")
+    UrlResource("/foo?a=b#123").subPath("bar") shouldBe UrlResource("/foo/bar?a=b#123")
+  }
 }

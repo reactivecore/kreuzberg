@@ -18,16 +18,16 @@ case class PlainLink(
 }
 
 case class RouterLink(
-    target: String,
+    target: UrlResource,
     name: String,
     deco: Boolean = false
 ) extends SimpleComponentBase {
 
   override def assemble(using sc: SimpleContext): Html = {
-    val link = PlainLink(name, target)
+    val link = PlainLink(name, target.str)
     add(
       link.onClick.handleAny {
-        SimpleRouter.gotoTarget(UrlResource(target))
+        SimpleRouter.goto(target)
       }
     )
     if (deco) {
