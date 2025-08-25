@@ -43,6 +43,10 @@ class PathCodecTest extends TestBase {
 
     child.handles(bad3) shouldBe false
     child.decode(bad3) shouldBe None
+
+    val single = prefix.string.one[String]
+    single.encode("bim") shouldBe UrlResource("/foo/bar/bim")
+    single.decode(UrlResource("/foo/bar/buz")) shouldBe Some("buz")
   }
 
 }

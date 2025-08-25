@@ -15,6 +15,8 @@ trait PathCodec[S] {
   }
 
   def encode(value: S): UrlResource
+
+  def xmap[T](mapFn: S => T, contraMapFn: T => S): PathCodec[T] = PathCodec.XMap(this, mapFn, contraMapFn)
 }
 
 object PathCodec {
@@ -91,6 +93,14 @@ object PathCodec {
     override def encode(value: UrlResource): UrlResource = value
   }
 
+  case class XMap[U, T](underlying: PathCodec[U], mapFn: U => T, contraMapFn: T => U) extends PathCodec[T] {
+    override def handles(resource: UrlResource): Boolean = underlying.handles(resource)
+
+    override def decode(resource: UrlResource): Option[T] = underlying.decode(resource).map(mapFn)
+
+    override def encode(value: T): UrlResource = underlying.encode(contraMapFn(value))
+  }
+
   /** A Recursive constructed Path. */
   sealed trait RecursivePath[S <: Tuple] extends PathCodec[S] {
     protected def prefixCheck(s: UrlResource): Boolean = true
@@ -114,6 +124,12 @@ object PathCodec {
     def boolean: RecursivePath[S :* Boolean] = {
       RecursivePath.PathElement(this, s => s.toString, s => s.toBooleanOption)
     }
+
+    /** When only using one value, you can convert it into a single path codec. */
+    def one[X](using ev: S => Tuple1[X]): PathCodec[X] = xmap(
+      x => x.asInstanceOf[Tuple1[X]]._1,
+      x => Tuple1(x).asInstanceOf[S]
+    )
   }
 
   /** Builds a recursive path */
