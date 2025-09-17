@@ -68,7 +68,7 @@ private[kreuzberg] object Assembler {
   def singleTree(component: () => Component): TreeNode = {
     IdentifierFactory.withFresh {
       val c = component()
-      KreuzbergContext.threadLocal.withInstance(KreuzbergContext.empty){
+      KreuzbergContext.threadLocal.withInstance(KreuzbergContext.empty) {
         tree(c)
       }
     }
