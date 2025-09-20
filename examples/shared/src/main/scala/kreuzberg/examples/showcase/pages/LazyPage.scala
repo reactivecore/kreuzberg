@@ -6,6 +6,7 @@ import kreuzberg.{Html, SimpleComponentBase, SimpleContext}
 import kreuzberg.scalatags.all.*
 import kreuzberg.scalatags.*
 
+import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /** Page which is lazy loaded. */
