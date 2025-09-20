@@ -52,7 +52,8 @@ case class SimpleRouter(
         case loading: RoutingState.Loading =>
           loading.route.target(loading.url).onComplete { result =>
             // Otherwise the user is probably on the nxt screen
-            val stateAgain   = SimpleRouter.routingStateModel.read()
+            // Note: if the callback is fast, the old value may not yet be commited, so we use the eagerValue
+            val stateAgain   = SimpleRouter.routingStateModel.eagerValue()
             val continueHere = stateAgain match {
               case l: RoutingState.Loading if l.invocation == loading.invocation => true
               case _                                                             =>

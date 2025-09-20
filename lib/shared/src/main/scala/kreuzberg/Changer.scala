@@ -8,6 +8,9 @@ private[kreuzberg] trait Changer {
   /** Update model, existing to new state */
   def updateModel[T](model: Model[T], updateFn: T => T): Unit
 
+  /** Returns the eager, not yet comitted state of a Model. */
+  def eagerState[T](model: Model[T]): T
+
   /** Trigger a channel. */
   def triggerChannel[T](channel: Channel[T], value: T): Unit
 
@@ -21,6 +24,8 @@ private[kreuzberg] trait Changer {
 private[kreuzberg] object Changer {
   object empty extends Changer {
     override def updateModel[T](model: Model[T], updateFn: T => T): Unit = {}
+
+    override def eagerState[T](model: Model[T]): T = model.initial
 
     override def triggerChannel[T](channel: Channel[T], value: T): Unit = {}
 

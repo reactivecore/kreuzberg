@@ -45,12 +45,16 @@ class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRe
   private val eventManager = new EventManager(this)
 
   object modelValueProvider extends ModelValueProvider {
-    override def value[M](model: Subscribeable[M]): M = modelValues.value(model)
+    override def modelValue[M](model: Model[M]): M = modelValues.value(model)
   }
 
   object changer extends Changer {
     override def updateModel[T](model: Model[T], updateFn: T => T): Unit = {
       eventManager.updateModel(model, updateFn)
+    }
+
+    override def eagerState[T](model: Model[T]): T = {
+      eventManager.eagerState(model)
     }
 
     override def triggerChannel[T](channel: Channel[T], value: T): Unit = {

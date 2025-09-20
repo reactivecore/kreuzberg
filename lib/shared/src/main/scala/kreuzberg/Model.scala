@@ -6,7 +6,10 @@ sealed trait Subscribeable[+T] {
   def initial: T
 
   /** Read the current value. */
-  def read(): T = KreuzbergContext.get().mvp.value(this)
+  def read(): T
+
+  /** Read the eager (maybe not yet propagated) value of a model. */
+  def eagerValue(): T
 
   /** Subscribe to this Value, to be used in [[SimpleComponentBase]] */
   def subscribe()(using sc: SimpleContext): T = {
@@ -65,6 +68,10 @@ final class Model[T] private (initialValue: => T) extends Subscribeable[T] with 
   def update(f: T => T): Unit = {
     KreuzbergContext.get().changer.updateModel(this, f)
   }
+
+  override def read(): T = KreuzbergContext.get().mvp.value(this)
+
+  override def eagerValue(): T = KreuzbergContext.get().changer.eagerState(this)
 }
 
 object Model {
@@ -77,6 +84,10 @@ object Model {
     override def initial: U = fn(underlying.initial)
 
     override def dependencies: Seq[Identifier] = underlying.dependencies
+
+    override def read(): U = fn(underlying.read())
+
+    override def eagerValue(): U = fn(underlying.eagerValue())
   }
 
   case class Constant[+T](
@@ -90,6 +101,10 @@ object Model {
     override def initial: T = value
 
     override def dependencies: Seq[Identifier] = Nil
+
+    override def read(): T = value
+
+    override def eagerValue(): T = value
   }
 
   /** Create a constant value */

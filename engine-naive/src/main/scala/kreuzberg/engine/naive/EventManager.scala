@@ -132,6 +132,10 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
     ensureNextIteration()
   }
 
+  def eagerState[T](model: Model[T]): T = {
+    _currentState.value(model)
+  }
+
   def call(callback: () => Unit): Unit = {
     val cb = Callback(callback)
     _pending.append(cb)
