@@ -6,7 +6,16 @@ import kreuzberg.rpc.{Dispatcher, Id, SecurityError}
 import java.util.UUID
 import scala.annotation.experimental
 import io.circe.syntax.*
-import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, DeploymentConfig, DeploymentType, InitRequest, MiniServer, MiniServerConfig, RestrictedAssetCandidatePath}
+import kreuzberg.miniserver.{
+  AssetCandidatePath,
+  AssetPaths,
+  DeploymentConfig,
+  DeploymentType,
+  InitRequest,
+  MiniServer,
+  MiniServerConfig,
+  RestrictedAssetCandidatePath
+}
 
 class TodoServiceLoom extends TodoApi[Id] {
   private var items: Vector[String] = Vector.empty
