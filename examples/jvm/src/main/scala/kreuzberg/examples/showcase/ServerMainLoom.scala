@@ -16,6 +16,8 @@ import kreuzberg.miniserver.{
   MiniServerConfig,
   RestrictedAssetCandidatePath
 }
+import kreuzberg.scalatags.*
+import kreuzberg.scalatags.all.*
 
 class TodoServiceLoom extends TodoApi[Id] {
   private var items: Vector[String] = Vector.empty
@@ -54,7 +56,17 @@ val defaultDeploymentConfig = DeploymentConfig(
         AssetCandidatePath.Resource("lib/")
       )
     )
-  )
+  ),
+  extraHtmlHeader = Seq(
+    meta(
+      charset := "utf-8"
+    ),
+    meta(
+      name    := "description",
+      content := "Example"
+    )
+  ),
+  htmlRootAttributes = Seq(lang := "en")
 )
 
 @experimental

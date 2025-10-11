@@ -1,6 +1,8 @@
 package kreuzberg.miniserver
 
 import kreuzberg.{Html, miniserver}
+import kreuzberg.scalatags.*
+import kreuzberg.scalatags.all.*
 
 /** Deployment related configuration */
 case class DeploymentConfig(
@@ -16,7 +18,9 @@ case class DeploymentConfig(
       ".*\\.js\\.map",
       ".*\\.css\\.map"
     ),
-    noScriptText: Option[String] = None // if not given, use default.
+    noScriptText: Option[String] = None, // if not given, use default.
+    // Attributes for the root <html>
+    htmlRootAttributes: Seq[Modifier] = Seq()
 ) {
   def hashedUrl(name: String): String = assetPaths.hashedUrl(name, Some(deploymentType))
 

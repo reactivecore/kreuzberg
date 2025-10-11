@@ -39,13 +39,13 @@ val isIntelliJ = {
 
 val scalaTagsVersion             = "0.13.1"
 val scalatestVersion             = "3.2.19"
-val logbackVersion               = "1.5.18"
+val logbackVersion               = "1.5.19"
 val slf4jVersion                 = "2.0.17"
 val scalaJsDomVersion            = "2.8.1"
 val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.4.0"
-val circeVersion                 = "0.14.14"
+val circeVersion                 = "0.14.15"
 val tapirVersion                 = "1.11.49"
 val sttpVersion                  = "3.11.0"
 val questVersion                 = "0.2.0"
@@ -179,13 +179,14 @@ lazy val miniserver = (project in file("miniserver"))
   .settings(
     name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
-      "org.slf4j"                      % "slf4j-api"               % slf4jVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-netty-server-sync" % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"        % tapirVersion,
-      "com.softwaremill.sttp.client3" %% "core"                    % sttpVersion % Test,
-      "net.reactivecore"              %% "quest"                   % questVersion,
-      "org.webjars"                    % "jquery"                  % "3.7.1"     % Test // For testing Webjar Loader
+      "org.slf4j"                      % "slf4j-api"                % slf4jVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-netty-server-sync"  % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle"  % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"         % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-prometheus-metrics" % tapirVersion,
+      "com.softwaremill.sttp.client3" %% "core"                     % sttpVersion % Test,
+      "net.reactivecore"              %% "quest"                    % questVersion,
+      "org.webjars"                    % "jquery"                   % "3.7.1"     % Test // For testing Webjar Loader
     ),
     publishSettings
   )
