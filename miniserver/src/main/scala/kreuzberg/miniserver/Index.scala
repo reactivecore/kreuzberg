@@ -1,5 +1,6 @@
 package kreuzberg.miniserver
 
+import kreuzberg.Html
 import kreuzberg.scalatags.*
 import scalatags.Text.TypedTag
 import scalatags.Text.all.*
@@ -12,23 +13,25 @@ import java.util.Base64
 case class Index(config: DeploymentConfig) {
 
   /** Rendered index page. */
-  def index(initData: Option[String]): TypedTag[String] = html(
-    head(
-      initData.map(encodeData),
-      mainJs,
-      extraJs,
-      extraCss,
-      config.extraHtmlHeader
-    ),
-    body(
-      div(id := "root"),
-      noscript(
-        config.noScriptText.getOrElse(
-          "Please enable JavaScript in order to use this page."
+  def index(initData: Option[String]): TypedTag[String] = {
+    html(config.htmlRootAttributes)(
+      head(
+        config.extraHtmlHeader,
+        initData.map(encodeData),
+        mainJs,
+        extraJs,
+        extraCss
+      ),
+      body(
+        div(id := "root"),
+        noscript(
+          config.noScriptText.getOrElse(
+            "Please enable JavaScript in order to use this page."
+          )
         )
       )
     )
-  )
+  }
 
   def pageHtml(initData: Option[String]): String = {
     "<!DOCTYPE html>\n" + index(initData).toString
