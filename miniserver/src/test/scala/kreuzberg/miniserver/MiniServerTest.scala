@@ -51,9 +51,9 @@ class MiniServerTest extends TestBase with ShutdownSupport {
       api = Some(helloApi)
     )
 
-    val miniServer               = new MiniServer(config)
+    val miniServer               = new MiniServer(config, fastShutdown = true)
     val (miniServerStopFn, port) = OxServiceBox.run {
-      val running = miniServer.start(fastShutdown = true)
+      val running = miniServer.start()
       releaseAfterScope {
         val t0 = System.currentTimeMillis()
         running.stop()
