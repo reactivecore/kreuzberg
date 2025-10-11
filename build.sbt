@@ -179,13 +179,14 @@ lazy val miniserver = (project in file("miniserver"))
   .settings(
     name := "kreuzberg-miniserver",
     libraryDependencies ++= Seq(
-      "org.slf4j"                      % "slf4j-api"               % slf4jVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-netty-server-sync" % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % tapirVersion,
-      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"        % tapirVersion,
-      "com.softwaremill.sttp.client3" %% "core"                    % sttpVersion % Test,
-      "net.reactivecore"              %% "quest"                   % questVersion,
-      "org.webjars"                    % "jquery"                  % "3.7.1"     % Test // For testing Webjar Loader
+      "org.slf4j"                      % "slf4j-api"                % slf4jVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-netty-server-sync"  % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle"  % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"         % tapirVersion,
+      "com.softwaremill.sttp.tapir"   %% "tapir-prometheus-metrics" % tapirVersion,
+      "com.softwaremill.sttp.client3" %% "core"                     % sttpVersion % Test,
+      "net.reactivecore"              %% "quest"                    % questVersion,
+      "org.webjars"                    % "jquery"                   % "3.7.1"     % Test // For testing Webjar Loader
     ),
     publishSettings
   )

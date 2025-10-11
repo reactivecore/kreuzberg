@@ -9,13 +9,19 @@ import sttp.shared.Identity
 import sttp.tapir.*
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.netty.{NettyConfig, NettySocketConfig}
-import sttp.tapir.server.netty.sync.{NettySyncServer, NettySyncServerBinding, OxStreams}
+import sttp.tapir.server.netty.sync.{NettySyncServer, NettySyncServerBinding, NettySyncServerOptions, OxStreams}
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import sttp.tapir.server.interceptor.decodefailure.DefaultDecodeFailureHandler.OnDecodeFailure.*
 import MiniServer.*
+import sttp.tapir.server.metrics.prometheus.PrometheusMetrics
 
 /** Tapir/Netty Based small HTTP Server */
-class MiniServer(config: MiniServerConfig, extraEndpoints: List[MiniServerEndpoint] = Nil) {
+class MiniServer(
+    config: MiniServerConfig,
+    extraEndpoints: List[MiniServerEndpoint] = Nil,
+    fastShutdown: Boolean = false,
+    enableMetrics: Boolean = false
+) {
   val logger: Logger = LoggerFactory.getLogger(getClass)
 
   /** Run and block forever. */
@@ -29,8 +35,15 @@ class MiniServer(config: MiniServerConfig, extraEndpoints: List[MiniServerEndpoi
   }
 
   /** Just start the server. */
-  def start(fastShutdown: Boolean = false)(using Ox): NettySyncServerBinding = {
+  def start()(using Ox): NettySyncServerBinding = {
+    val server = createNettySyncServer(fastShutdown)
+    logger.info(s"Will start on port ${server.config.port} (mode=${config.deployment.deploymentType})")
+    server.start()
+  }
 
+  protected def createNettySyncServer(
+      fastShutdown: Boolean
+  ): NettySyncServer = {
     val socketConfig = NettySocketConfig.default.withReuseAddress
 
     val maybeFastshutdownNettyConfig: NettyConfig => NettyConfig = if (fastShutdown) { cfg =>
@@ -39,15 +52,23 @@ class MiniServer(config: MiniServerConfig, extraEndpoints: List[MiniServerEndpoi
       identity
     }
 
-    logger.info(s"Will start on port ${config.port} (mode=${config.deployment.deploymentType})")
-    val server = NettySyncServer()
+    NettySyncServer(nettySyncOptions)
       .host(config.host)
       .port(config.port)
       .modifyConfig(_.socketConfig(socketConfig))
       .modifyConfig(maybeFastshutdownNettyConfig)
       .addEndpoints(endpoints)
+  }
 
-    server.start()
+  protected def nettySyncOptions: NettySyncServerOptions = {
+    val base        = NettySyncServerOptions.default
+    val withMetrics = if (enableMetrics) {
+      val prometheusMetrics = PrometheusMetrics.default[Identity]()
+      base.appendInterceptor(prometheusMetrics.metricsInterceptor())
+    } else {
+      base
+    }
+    withMetrics
   }
 
   /** All Endpoints. */
