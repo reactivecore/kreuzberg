@@ -87,7 +87,6 @@ private[tables] object Macros {
     Expr.ofList(
       symbol.primaryConstructor.paramSymss.flatten
         .map { sym =>
-
           val declaredField = symbol.declaredField(sym.name)
           val casted        = declaredField.tree match {
             case valDef: ValDef => valDef
