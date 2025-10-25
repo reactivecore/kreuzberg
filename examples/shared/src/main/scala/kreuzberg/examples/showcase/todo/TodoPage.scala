@@ -4,7 +4,7 @@ import kreuzberg.*
 import kreuzberg.examples.showcase.todo.{TodoAdder, TodoList}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
-import kreuzberg.extras.SimpleRouted
+import kreuzberg.extras.{Meta, MetaData, SimpleRouted}
 
 object TodoPage extends SimpleComponentBase with SimpleRouted {
 
@@ -35,4 +35,9 @@ object TodoPage extends SimpleComponentBase with SimpleRouted {
       )
     )
   }
+
+  override def metaData: MetaData =
+    Seq(
+      Meta.property("og:title", "Todo Page!"),
+    )
 }

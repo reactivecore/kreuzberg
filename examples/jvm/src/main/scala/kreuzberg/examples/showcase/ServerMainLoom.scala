@@ -60,10 +60,6 @@ val defaultDeploymentConfig = DeploymentConfig(
   extraHtmlHeader = Seq(
     meta(
       charset := "utf-8"
-    ),
-    meta(
-      name    := "description",
-      content := "Example"
     )
   ),
   htmlRootAttributes = Seq(lang := "en")

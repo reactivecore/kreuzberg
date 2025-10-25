@@ -2,13 +2,14 @@ package kreuzberg.extras
 
 import kreuzberg.*
 
+
 import language.implicitConversions
 import scala.concurrent.Future
 
 /** A Route within [[SimpleRouter]] */
 trait Route {
 
-  /** The state of which the route depends of. */
+  /** The state of which the route depends on. */
   type State
 
   /** The path codec to map state and path */
@@ -25,6 +26,9 @@ trait Route {
 
   /** Execute the route, can load lazy. */
   def target(resource: UrlResource): Future[RoutingTarget]
+
+  /** Provides `MetaData` that should get injected into <header> */
+  def metaData: MetaData = MetaData.empty
 }
 
 case class RoutingTarget(
@@ -56,7 +60,10 @@ trait SimpleRouted extends Routed[Unit] {
   /** The page title */
   def title: String
 
-  override val route: Route.Aux[Unit] = Route.SimpleRoute(path, title, this)
+  /** The metadata of the page. */
+  def metaData: MetaData = MetaData.empty
+
+  override val route: Route.Aux[Unit] = Route.SimpleRoute(path, title, this, metaData)
 }
 
 object Route {
@@ -98,7 +105,8 @@ object Route {
   case class SimpleRoute(
       path: String,
       title: String,
-      component: Component
+      component: Component,
+      override val metaData: MetaData
   ) extends EagerRoute {
     override type State = Unit
 
@@ -107,13 +115,16 @@ object Route {
     override def title(state: Unit): String = title
 
     override def component(state: Unit): Component = component
+
+
   }
 
   /** A Route whose target depends on a value. */
   case class DependentRoute[S](
       pathCodec: PathCodec[S],
       fn: S => Component,
-      titleFn: S => String
+      titleFn: S => String,
+      override val metaData: MetaData = MetaData.empty
   ) extends EagerRoute {
 
     override type State = S
@@ -121,13 +132,14 @@ object Route {
     override def title(state: S): String = titleFn(state)
 
     override def component(state: S): Component = fn(state)
+
   }
 
-  /** A Lazy route which fetches data. */
   case class LazyRoute[S](
       pathCodec: PathCodec[S],
       eagerTitle: S => String,
-      routingTarget: S => Future[RoutingTarget]
+      routingTarget: S => Future[RoutingTarget],
+      override val metaData: MetaData = MetaData.empty
   ) extends Route {
     override type State = S
 
@@ -140,5 +152,6 @@ object Route {
     override def preTitle(resource: UrlResource): String = {
       eagerTitle(pathCodec.forceDecode(resource))
     }
+
   }
 }

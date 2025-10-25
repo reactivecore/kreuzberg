@@ -2,7 +2,7 @@ package kreuzberg.extras
 
 import kreuzberg.*
 import kreuzberg.extras.Route.EagerRoute
-import kreuzberg.extras.SimpleRouter.RoutingState
+import kreuzberg.extras.SimpleRouter.{RoutingState, routingStateModel}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -43,7 +43,10 @@ case class SimpleRouter(
         Logger.debug(s"Push state ${title}/${url}")
         BrowserRouting.pushState(title, url.str)
       }
+
       BrowserRouting.setDocumentTitle(titlePrefix + title)
+      MetaUtil.injectMetaData(nextRoute.metaData)
+
 
       val initialState = decideInitialState(url, nextRoute)
       SimpleRouter.routingStateModel.set(initialState)
@@ -51,7 +54,7 @@ case class SimpleRouter(
       initialState match {
         case loading: RoutingState.Loading =>
           loading.route.target(loading.url).onComplete { result =>
-            // Otherwise the user is probably on the nxt screen
+            // Otherwise the user is probably on the next screen
             // Note: if the callback is fast, the old value may not yet be commited, so we use the eagerValue
             val stateAgain   = SimpleRouter.routingStateModel.eagerValue()
             val continueHere = stateAgain match {
