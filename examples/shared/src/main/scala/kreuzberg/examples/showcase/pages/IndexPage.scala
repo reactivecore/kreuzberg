@@ -2,7 +2,7 @@ package kreuzberg.examples.showcase.pages
 
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.Button
-import kreuzberg.extras.{LocalStorage, Route, SimpleRouted}
+import kreuzberg.extras.{LocalStorage, Meta, MetaData, Route, SimpleRouted}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -48,4 +48,12 @@ object IndexPage extends SimpleComponentBase with SimpleRouted {
 
   override def path  = "/"
   override def title = "Welcome"
+
+  override def metaData: MetaData =
+    Seq(
+      Meta.viewport("width=device-width, initial-scale=1"),
+      Meta.name("description", "Index Page!"),
+      Meta.name("robots", "index, follow"),
+      Meta.name("keywords", Seq("key1", "another key").mkString(", "))
+    )
 }
