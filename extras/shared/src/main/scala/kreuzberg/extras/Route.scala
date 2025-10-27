@@ -106,7 +106,7 @@ object Route {
       path: String,
       title: String,
       component: Component,
-      override val metaData: MetaData
+      override val metaData: MetaData = MetaData.empty
   ) extends EagerRoute {
     override type State = Unit
 
