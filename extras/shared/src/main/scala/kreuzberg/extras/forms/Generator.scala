@@ -44,6 +44,8 @@ object Generator {
       label = nonEmptyOr(_.label, fieldDescription.name),
       placeholder = nonEmptyOr(_.placeholder, ""),
       formType = nonEmptyOr(_.ftype, fieldDescription.defaultFieldType),
+      description = nonEmptyOr(_.description, ""),
+      tooltip = nonEmptyOr(_.tooltip, ""),
       codec = fieldDescription.codec,
       validator = fieldDescription.useFieldAnnotation.map(_.validator).getOrElse(Validator.succeed),
       required = fieldDescription.useFieldAnnotation.exists(_.required)
