@@ -47,7 +47,6 @@ case class SimpleRouter(
       BrowserRouting.setDocumentTitle(titlePrefix + title)
       MetaUtil.injectMetaData(nextRoute.metaData)
 
-
       val initialState = decideInitialState(url, nextRoute)
       SimpleRouter.routingStateModel.set(initialState)
 

@@ -38,6 +38,6 @@ object TodoPage extends SimpleComponentBase with SimpleRouted {
 
   override def metaData: MetaData =
     Seq(
-      Meta.property("og:title", "Todo Page!"),
+      Meta.property("og:title", "Todo Page!")
     )
 }

@@ -2,7 +2,6 @@ package kreuzberg.extras
 
 import kreuzberg.*
 
-
 import language.implicitConversions
 import scala.concurrent.Future
 
@@ -115,7 +114,6 @@ object Route {
     override def title(state: Unit): String = title
 
     override def component(state: Unit): Component = component
-
 
   }
 
