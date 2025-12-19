@@ -6,6 +6,8 @@ case class FormField[T](
     label: String = "",
     placeholder: String = "",
     formType: String = "text",
+    description: String = "",
+    tooltip: String = "",
     codec: Codec[T, String] = Codec.simpleString,
     validator: Validator[T] = Validator.succeed,
     required: Boolean = false

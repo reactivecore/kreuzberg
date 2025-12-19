@@ -8,6 +8,8 @@ case class UseField[-T](
     label: String = "",
     placeholder: String = "",
     ftype: String = "",
+    description: String = "",
+    tooltip: String = "",
     validator: Validator[T] = Validator.succeed,
     required: Boolean = false
 ) extends StaticAnnotation {

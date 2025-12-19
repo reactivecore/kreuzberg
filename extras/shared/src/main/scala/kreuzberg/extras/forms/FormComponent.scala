@@ -136,11 +136,20 @@ object FormFieldComponent {
         }
       )
       div(
+        Option.when(field.tooltip.nonEmpty) {
+          title := field.tooltip
+        }
+      )(
         label(
           `for` := field.name,
           field.label
         ),
         input,
+        Option.when(field.description.nonEmpty) {
+          div(style := "color: #A9A9A9; font-size: 0.875em;")(
+            field.description
+          )
+        },
         violationsComponent
       )
     }
