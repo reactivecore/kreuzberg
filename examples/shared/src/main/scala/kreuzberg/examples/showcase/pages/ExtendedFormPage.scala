@@ -20,11 +20,20 @@ object ExtendedFormPage extends SimpleComponentBase with SimpleRouted {
       lastName: String = "",
       @UseField(label = "Email Address", validator = Validator.email)
       emailAddress: String = "",
-      @UseField(label = "Password", ftype = "password", validator = Validator.minLength(6), description = "Password should be at least 6 characters")
+      @UseField(
+        label = "Password",
+        ftype = "password",
+        validator = Validator.minLength(6),
+        description = "Password should be at least 6 characters"
+      )
       password: String = "",
       @UseField(label = "Password (Repeat)", ftype = "password")
       passwordRepeat: String = "",
-      @UseField(label = "Large Number", validator = Validator.fromPredicate[Int](_ > 100, "Must be large"), tooltip = "A number larger than 100")
+      @UseField(
+        label = "Large Number",
+        validator = Validator.fromPredicate[Int](_ > 100, "Must be large"),
+        tooltip = "A number larger than 100"
+      )
       largeNumber: Int = 0,
       @UseField(label = "Is Adult", validator = Validator.fromPredicate[Boolean](_ == true, "Must be true"))
       isAdult: Boolean = false
