@@ -1,7 +1,7 @@
 package kreuzberg.miniserver
 
 import AssetHandler.AssetEndpoint
-import sttp.model.{Header, Headers, MediaType, StatusCode}
+import sttp.model.{MediaType, StatusCode}
 import sttp.shared.Identity
 import sttp.tapir.*
 import sttp.tapir.extension.MimeTypes

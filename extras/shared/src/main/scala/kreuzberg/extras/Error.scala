@@ -21,11 +21,11 @@ object Error {
   }
 
   case object NestedPathError extends PathError {
-    override def toString: String = s"There is an unexpected nested path"
+    override def toString: String = "There is an unexpected nested path"
   }
 
   case object MissingNestedPathError extends PathError {
-    override def toString: String = s"There is a missing nested path"
+    override def toString: String = "There is a missing nested path"
   }
 
   case class BadPathError(got: UrlPath, expected: UrlPath) extends PathError {
@@ -108,7 +108,7 @@ object Error {
 
   /** Builder for concatenating validation errors. */
   class ValidationErrorBuilder {
-    private var current: Option[ValidationError] = None
+    private var current: Option[ValidationError] = None // scalafix:ok
 
     def add(error: Option[ValidationError], nest: String): Unit = {
       error.foreach { v =>

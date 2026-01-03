@@ -4,7 +4,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import ox.Ox
 import sttp.capabilities.WebSockets
 import sttp.model.headers.Cookie
-import sttp.model.{Header, Headers, MediaType, StatusCode}
+import sttp.model.{Header, MediaType, StatusCode}
 import sttp.shared.Identity
 import sttp.tapir.*
 import sttp.tapir.server.ServerEndpoint

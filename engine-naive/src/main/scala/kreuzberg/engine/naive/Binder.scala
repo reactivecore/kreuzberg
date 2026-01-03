@@ -1,12 +1,7 @@
 package kreuzberg.engine.naive
 
 import kreuzberg.*
-import kreuzberg.engine.naive.utils.MutableMultimap
-import UpdatePath.Change
 import org.scalajs.dom.{Element, Event}
-
-import scala.collection.mutable
-import scala.util.control.NonFatal
 
 object Binder {
 
@@ -14,7 +9,7 @@ object Binder {
   def runOnLoaded(component: Component, rootId: String)(using ServiceRepository): Unit = {
     org.scalajs.dom.document.addEventListener(
       "DOMContentLoaded",
-      { (e: Event) =>
+      { (_: Event) =>
         Logger.info("Initializing naive Kreuzberg engine")
         val rootElement = org.scalajs.dom.document.getElementById(rootId)
         val binder      = Binder(rootElement, component)
@@ -26,8 +21,8 @@ object Binder {
 
 /** Binds a root element to a Node. */
 class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRepository) extends EventManagerDelegate {
-  private var _modelValues: ModelValues = ModelValues()
-  private var _tree: TreeNode           = TreeNode.empty
+  private var _modelValues: ModelValues = ModelValues()  // scalafix:ok
+  private var _tree: TreeNode           = TreeNode.empty // scalafix:ok
 
   override def modelValues: ModelValues = _modelValues
 
@@ -121,7 +116,7 @@ class Binder(rootElement: Element, main: Component)(using serviceRepo: ServiceRe
       modelValues = _modelValues.modelValues.view.filterKeys(referencedModels.contains).toMap
     )
 
-    eventManager.garbageCollect(referencedComponents, referencedModels)
+    eventManager.garbageCollect(referencedComponents)
 
     Logger.debug(
       s"Garbage Collecting Referenced: ${referencedComponents.size} Components/ ${referencedModels.size} Models"

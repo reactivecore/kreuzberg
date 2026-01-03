@@ -1,5 +1,5 @@
 package kreuzberg.rpc
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.Json
 
 import scala.concurrent.{ExecutionContext, Future}
 

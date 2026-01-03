@@ -1,8 +1,6 @@
 package kreuzberg.rpc
 
-import io.circe.{Decoder, Encoder, Json}
-
-import scala.annotation.experimental
+import scala.annotation.{experimental, unused}
 import scala.quoted.*
 import scala.concurrent.Future
 
@@ -111,7 +109,7 @@ object Dispatcher {
     val implName = analyzed.name + "_dispatcher"
     val cls      = Symbol.newClass(Symbol.spliceOwner, implName, parents = parents.map(_.tpe), decls, selfType = None)
 
-    def callClause(owner: Symbol, args: List[List[Tree]], method: analyzer.Method, elseBlock: Term): Term = {
+    def callClause(@unused owner: Symbol, args: List[List[Tree]], method: analyzer.Method, elseBlock: Term): Term = {
       val forwardMethod  = "call_" + method.name
       val declaredMethod = cls.declaredMethod(forwardMethod).head
       val ref            = Ref(declaredMethod)
@@ -144,9 +142,9 @@ object Dispatcher {
     }
 
     def synthetisizeCall(arguments: List[Term], method: analyzer.Method): Term = {
-      var splitArguments: List[List[Term]] = Nil
+      var splitArguments: List[List[Term]] = Nil // scalafix:ok
 
-      var remainingArgs: List[Term] = arguments
+      var remainingArgs: List[Term] = arguments // scalafix:ok
 
       method.parameters.foreach { paramGroup =>
         val groupArgs = remainingArgs.take(paramGroup.parameters.size)
@@ -169,12 +167,12 @@ object Dispatcher {
         val decodingTerms: List[Term] =
           method.paramTypes.zip(method.paramNames).zipWithIndex.map { case ((dtype, paramName), idx) =>
             type X
-            given Type[X]     = dtype.asType.asInstanceOf[Type[X]]
-            val paramDecoder  = Expr.summon[ParamDecoder[X]].getOrElse {
+            given Type[X]    = dtype.asType.asInstanceOf[Type[X]]
+            val paramDecoder = Expr.summon[ParamDecoder[X]].getOrElse {
               throw new IllegalArgumentException(s"Could not find ParamCodec for type X: ${dtype.show}, Idx: ${idx}")
             }
-            val idxExpression = Expr(idx)
-            val decodeTerm    = '{ $paramDecoder.decode(${ Expr(paramName) }, $args) }.asTerm: Term
+            Expr(idx)
+            val decodeTerm   = '{ $paramDecoder.decode(${ Expr(paramName) }, $args) }.asTerm: Term
             decodeTerm
           }
 
@@ -233,7 +231,6 @@ object Dispatcher {
         decl,
         argss =>
           Some {
-            given Quotes = decl.asQuotes
             callMethod(decl, argss, method)
           }
       )

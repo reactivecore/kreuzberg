@@ -1,6 +1,6 @@
 package kreuzberg.extras
 
-import kreuzberg.{Component, Identifier, Logger, Model}
+import kreuzberg.{Identifier, Logger, Model}
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
@@ -79,7 +79,7 @@ private[extras] object RoutingState {
       case l: RoutingState.Loading if l.invocation == loadingId => true
       case _                                                    =>
         Logger.debug(
-          s"Discarding response of loading, not anymore on the same loading page"
+          "Discarding response of loading, not anymore on the same loading page"
         )
         false
     }

@@ -2,7 +2,6 @@ package kreuzberg
 
 import kreuzberg.SimpleHtmlNode.Wrapper
 
-import scala.annotation.static
 import scala.collection.immutable.Vector
 
 /** Trivial implementation of Html. Note: just implemented enough to get it barely working. */

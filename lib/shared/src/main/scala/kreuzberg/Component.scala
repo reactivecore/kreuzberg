@@ -2,6 +2,7 @@ package kreuzberg
 
 import org.scalajs.dom.Element
 
+import scala.annotation.unused
 import scala.concurrent.ExecutionContext
 
 /**
@@ -33,7 +34,7 @@ trait Component extends Identified {
    * Overriding this method can improve performance, if a component generates large sub-trees and we do not want to
    * rebuild everything (e.g. List-Components).
    */
-  def update(before: ModelValueProvider): UpdateResult = {
+  def update(@unused before: ModelValueProvider): UpdateResult = {
     UpdateResult.Build(assemble)
   }
 }

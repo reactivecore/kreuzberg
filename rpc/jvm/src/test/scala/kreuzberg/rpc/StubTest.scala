@@ -21,7 +21,7 @@ class StubTest extends TestBase {
   trait Env {
     object backend extends CallingBackend[Future] {
       val calls              = Seq.newBuilder[(String, String, Request)]
-      var response: Response = Response(Json.obj())
+      var response: Response = Response(Json.obj()) // scalafix:ok
 
       override def call(service: String, name: String, input: Request): Future[Response] = {
         calls += ((service, name, input))

@@ -1,6 +1,5 @@
 package kreuzberg.extras.tables
 
-import scala.annotation.nowarn
 import scala.compiletime.{erasedValue, summonInline}
 import scala.deriving.Mirror
 import scala.quoted.{Expr, Quotes, Type}
@@ -27,9 +26,7 @@ private[tables] object Macros {
     inline erasedValue[T] match {
       case _: EmptyTuple => Nil
       case _: (t *: ts)  =>
-        @nowarn
         val label :: labelTail           = labels: @unchecked
-        @nowarn
         val annotation :: annotationTail = annotations: @unchecked
         deriveColumn[t](label, annotation.asInstanceOf[Option[UseTableColumn[t]]]) :: deriveColumns[ts](
           labelTail,

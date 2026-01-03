@@ -1,6 +1,6 @@
 package kreuzberg.scalatags
 
-import kreuzberg.{Assembly, Html, SimpleContext}
+import kreuzberg.{Assembly, Html}
 import scalatags.Text.TypedTag
 
 import scala.language.implicitConversions

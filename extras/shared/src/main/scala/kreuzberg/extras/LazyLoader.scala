@@ -2,6 +2,7 @@ package kreuzberg.extras
 
 import kreuzberg.*
 
+import scala.annotation.unused
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -44,12 +45,12 @@ abstract class LazyLoader[T] extends SimpleComponentBase {
   def load(): Future[T]
 
   /** Html which is rendered during loading. */
-  def waiting()(using c: SimpleContext): Html = {
+  def waiting()(using @unused c: SimpleContext): Html = {
     SimpleHtml("div").addText("Loading...")
   }
 
   /** Html which is rendered on error. */
-  def failed(error: Throwable)(using c: SimpleContext): Html = {
+  def failed(error: Throwable)(using @unused c: SimpleContext): Html = {
     SimpleHtml("div").addText(s"Error: ${error.getMessage}")
   }
 

@@ -15,4 +15,4 @@ stages:
 test:
   stage: build
   script:
-    - sbt clean test
+    - sbt clean lintCheck test

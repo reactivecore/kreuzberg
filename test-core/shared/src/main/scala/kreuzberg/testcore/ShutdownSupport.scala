@@ -5,7 +5,7 @@ import org.scalatest.BeforeAndAfterEach
 /** Registers a method to be called on shutdown. */
 trait ShutdownSupport extends BeforeAndAfterEach {
   self: TestBase =>
-  private var shutdowns: List[() => Unit] = Nil
+  private var shutdowns: List[() => Unit] = Nil // scalafix:ok
 
   /** Registers the method. */
   def withShutdown(f: => Unit): Unit = {

@@ -1,6 +1,6 @@
 package kreuzberg.rpc
 
-import io.circe.{Json, JsonObject}
+import io.circe.JsonObject
 
 /** A serialized request which is transferred using a POST-Request. */
 case class Request(

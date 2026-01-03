@@ -73,7 +73,7 @@ case class MainRouter(
       case RoutingState.Loaded(_, _, route) if route.update(url) =>
         // The route can update it's stuff by itself, stop here now
         return
-      case _                                                           =>
+      case _                                                     =>
       // Nothing
     }
 

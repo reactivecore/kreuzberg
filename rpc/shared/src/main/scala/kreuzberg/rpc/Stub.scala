@@ -1,5 +1,4 @@
 package kreuzberg.rpc
-import io.circe.{Decoder, Encoder, Json}
 
 import scala.annotation.experimental
 import scala.quoted.*

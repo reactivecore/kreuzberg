@@ -3,7 +3,7 @@ package kreuzberg.extras
 import kreuzberg.*
 
 import language.implicitConversions
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 /** A Route within [[MainRouter]] */
 trait Route {

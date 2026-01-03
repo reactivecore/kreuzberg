@@ -4,21 +4,17 @@ import kreuzberg.*
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 import kreuzberg.extras.{
-  MainRouter,
   Page,
   PathCodec,
   Renderer,
-  Result,
   Route,
   Routed,
   Router,
   RouterLink,
   RouterSettings,
   RoutingResult,
-  RoutingTarget,
   SubRouter,
-  UrlPath,
-  UrlResource
+  UrlPath
 }
 
 object SubRouterPage extends SimpleComponentBase with Page with Routed {

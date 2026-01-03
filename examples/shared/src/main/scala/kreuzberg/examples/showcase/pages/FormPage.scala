@@ -1,12 +1,12 @@
 package kreuzberg.examples.showcase.pages
 
 import kreuzberg.*
-import kreuzberg.examples.showcase.components.{Button, ValidatingTextInput}
+import kreuzberg.examples.showcase.components.ValidatingTextInput
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 import kreuzberg.extras.SimpleRouted
 
-import scala.util.{Success, Try}
+import scala.util.Try
 
 object FormPage extends SimpleComponentBase with SimpleRouted {
   def assemble(using sc: SimpleContext): Html = {

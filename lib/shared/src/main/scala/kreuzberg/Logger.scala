@@ -1,8 +1,8 @@
 package kreuzberg
 
 object Logger {
-  private var _isDebug = false
-  private var _isTrace = false
+  private var _isDebug = false // scalafix:ok
+  private var _isTrace = false // scalafix:ok
 
   inline def isDebug: Boolean = _isDebug
   inline def isTrace: Boolean = _isTrace

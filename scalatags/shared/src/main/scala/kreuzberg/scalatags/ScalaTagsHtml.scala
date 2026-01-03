@@ -2,12 +2,9 @@ package kreuzberg.scalatags
 import kreuzberg.{Component, FlatHtmlBuilder, Html, Identifier}
 import scalatags.Text.TypedTag
 import scalatags.Text.all.*
-import scalatags.text.Builder
 
 import java.io.Writer
-import scala.collection.mutable
 import scala.language.implicitConversions
-import java.io.StringWriter
 
 /** Adapts ScalaTags to HTML. */
 case class ScalaTagsHtml(tag: TypedTag[String]) extends Html {
@@ -65,7 +62,7 @@ object ScalaTagsHtml {
   def maybeWrap(html: Html): Frag = {
     html match {
       case s: ScalaTagsHtml => s.tag
-      case other            =>
+      case _                =>
         ScalaTagsHtmlEmbedding(html)
     }
   }

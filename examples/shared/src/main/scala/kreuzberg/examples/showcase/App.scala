@@ -13,7 +13,7 @@ import kreuzberg.examples.showcase.pages.{
   XmlPage
 }
 import kreuzberg.examples.showcase.todo.{TodoPage, TodoPageWithApi}
-import kreuzberg.extras.{PathCodec, Route, RouterSettings, RoutingResult, MainRouter, UrlResource}
+import kreuzberg.extras.{Route, RouterSettings, RoutingResult, MainRouter, UrlResource}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 

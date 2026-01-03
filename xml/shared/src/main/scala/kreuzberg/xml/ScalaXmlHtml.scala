@@ -71,7 +71,7 @@ object ScalaXmlHtml {
   def maybeEmbed(html: Html): Node = {
     html match {
       case s: ScalaXmlHtml => s.elem
-      case other           => ScalaXmlHtmlEmbedding(html)
+      case _               => ScalaXmlHtmlEmbedding(html)
     }
   }
 }

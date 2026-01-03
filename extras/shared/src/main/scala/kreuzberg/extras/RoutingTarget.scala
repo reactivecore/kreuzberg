@@ -57,7 +57,7 @@ case class Forward(url: UrlResource) extends RoutingTarget {
 
   override def metaData: MetaData = MetaData.empty
 
-  override def load(): Future[RoutingResult] = Future.failed(new RuntimeException(s"Should not evaluate"))
+  override def load(): Future[RoutingResult] = Future.failed(new RuntimeException("Should not evaluate"))
 
   override def forward: Option[UrlResource] = Some(url)
 }

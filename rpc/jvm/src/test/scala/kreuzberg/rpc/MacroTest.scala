@@ -4,7 +4,6 @@ import kreuzberg.testcore.TestBase
 
 import scala.annotation.experimental
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 

@@ -1,7 +1,5 @@
 package kreuzberg.rpc
 
-import io.circe.Encoder
-
 /**
  * A Special return result, which modifies connection state, e.g. set cookies. The client doesn't see that.
  */

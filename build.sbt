@@ -18,9 +18,18 @@ ThisBuild / version := artefactVersion
 
 ThisBuild / scalaVersion := "3.7.4"
 
-ThisBuild / scalacOptions += "-Xcheck-macros"
-ThisBuild / scalacOptions += "-feature"
-ThisBuild / scalacOptions ++= Seq("-rewrite", "-source", "3.4-migration")
+ThisBuild / scalacOptions ++= Seq(
+  "-Xcheck-macros",
+  "-feature",
+  "-Wunused:all",
+  "-Wunused:strict-no-implicit-warn",
+  "-Wconf:any:e",                                      // All Warnings are errors
+  "-Wconf:src=src_managed/.*:silent",                  // No Warnings inside generated code
+  "-Wconf:msg=unused private member&src=test/*:silent" // Do not care about unused stuff in Testcases
+)
+
+ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / Compile / run / fork := true
 ThisBuild / Test / run / fork    := true
@@ -113,6 +122,7 @@ lazy val lib = (crossProject(JSPlatform, JVMPlatform, NativePlatform) in file("l
   .jsSettings(
     libraryDependencies ++= Seq(
       "org.scala-js"  %%% "scalajs-dom"            % scalaJsDomVersion,
+      "org.scala-lang" %% "scala3-library"         % scalaVersion.value,
       ("org.scala-js" %%% "scalajs-weakreferences" % scalaJsWeakReferencesVersion).cross(CrossVersion.for3Use2_13)
     )
   )
@@ -283,3 +293,7 @@ lazy val root = (project in file("."))
     runner,
     runnerProd
   )
+
+addCommandAlias("lint", "scalafmtAll;scalafixAll")
+
+addCommandAlias("lintCheck", "scalafmtCheckAll; scalafixAll --check")
