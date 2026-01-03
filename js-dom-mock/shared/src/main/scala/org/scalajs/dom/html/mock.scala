@@ -5,7 +5,7 @@ import org.scalajs.dom.Element
 trait Input extends Element {
 
   /** Text Input of input field */
-  var value: String
+  var value: String // scalafix:ok
 
-  var checked: Boolean
+  var checked: Boolean // scalafix:ok
 }

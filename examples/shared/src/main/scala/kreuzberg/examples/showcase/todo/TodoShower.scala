@@ -1,7 +1,7 @@
 package kreuzberg.examples.showcase.todo
 
 import kreuzberg.*
-import kreuzberg.examples.showcase.todo.{TodoItemShower, TodoList}
+import kreuzberg.examples.showcase.todo.TodoList
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 

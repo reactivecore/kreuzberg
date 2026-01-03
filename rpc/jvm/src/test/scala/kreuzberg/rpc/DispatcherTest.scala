@@ -17,10 +17,10 @@ class DispatcherTest extends TestBase {
   }
 
   class Dummy extends Service {
-    var helloReturn: Future[Int]     = Future.successful(5)
-    var gotA: String                 = ""
-    var gotB: Int                    = 0
-    var worldReturn: Future[Boolean] = Future.successful(false)
+    var helloReturn: Future[Int]     = Future.successful(5)     // scalafix:ok
+    var gotA: String                 = ""                       // scalafix:ok
+    var gotB: Int                    = 0                        // scalafix:ok
+    var worldReturn: Future[Boolean] = Future.successful(false) // scalafix:ok
 
     def hello(): Future[Int] = {
       helloReturn

@@ -1,6 +1,5 @@
 package kreuzberg.miniserver
 
-import kreuzberg.Html
 import kreuzberg.scalatags.*
 import scalatags.Text.TypedTag
 import scalatags.Text.all.*
@@ -61,13 +60,4 @@ case class Index(config: DeploymentConfig) {
   private val extraCss = config.extraCss.map { name =>
     link(rel := "stylesheet", href := config.hashedUrl(name))
   }
-
-  private val _body = body(
-    div(id := "root"),
-    noscript(
-      config.noScriptText.getOrElse(
-        "Please enable JavaScript in order to use this page."
-      )
-    )
-  )
 }

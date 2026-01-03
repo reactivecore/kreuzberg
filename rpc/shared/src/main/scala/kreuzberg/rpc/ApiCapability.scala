@@ -10,7 +10,7 @@ class ApiCapability[T](val value: T, checkValue: Option[Any] = None) {
   def check(using c: ApiCheck[T]): c.Result = {
     checkValue
       .getOrElse {
-        throw new IllegalStateException(s"Check not executed")
+        throw new IllegalStateException("Check not executed")
       }
       .asInstanceOf[c.Result]
   }

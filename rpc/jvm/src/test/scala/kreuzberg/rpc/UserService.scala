@@ -44,7 +44,7 @@ class UserMock(backend: CallingBackend[Future])(implicit e: EffectSupport[Future
   }
 
   override def logout(token: String, reason: String): Future[Boolean] = {
-    var request  = Request.empty
+    var request  = Request.empty // scalafix:ok
     request = ParamEncoder[String].encode("token", token, request)
     request = ParamEncoder[String].encode("reason", reason, request)
     val response = backend.call("UserService", "logout", request)

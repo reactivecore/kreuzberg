@@ -76,7 +76,7 @@ class TabularTest extends TestBase {
   )
 
   it should "derive from types without cell renderer" in {
-    val derived = Tabular.derived[WithUnknown]
+    Tabular.derived[WithUnknown]
     // TODO: It would be better if we would not have to provide an ordering for the unknown type
     // but this is tricky to evaluate on compile time
   }

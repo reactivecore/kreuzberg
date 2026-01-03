@@ -4,7 +4,7 @@ package kreuzberg
 trait ModelValueProvider {
 
   def value[M](subscribeable: Subscribeable[M]): M = subscribeable match {
-    case model: Model[M]              => modelValue(model)
+    case model: Model[M] @unchecked   => modelValue(model)
     case Model.Mapped(underlying, fn) => fn(value(underlying))
     case Model.Constant(value)        => value
   }

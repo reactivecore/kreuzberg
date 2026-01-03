@@ -1,7 +1,5 @@
 package kreuzberg.rpc
 
-import scala.concurrent.{ExecutionContext, Future}
-
 /** Interface for a calling out backend. */
 trait CallingBackend[F[_]] {
   def call(service: String, name: String, input: Request): F[Response]
@@ -11,7 +9,7 @@ trait CallingBackend[F[_]] {
     new CallingBackend[F] {
       override def call(service: String, name: String, input: Request): F[Response] = {
         effectSupport.flatMap(f(input)) { request =>
-          outer.call(service, name, input)
+          outer.call(service, name, request)
         }
       }
     }

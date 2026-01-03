@@ -245,7 +245,7 @@ object Generator {
         } match {
           case Nil       => None
           case List(one) => Some(one)
-          case multiple  =>
+          case _         =>
             throw new IllegalArgumentException(s"Multiple annotations found on ${name}")
         }
 

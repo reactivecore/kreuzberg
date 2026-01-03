@@ -15,7 +15,7 @@ private[kreuzberg] case class ModelValues(
   }
 
   /** Returns the value of a model. */
-  def value[M](model: Model[M])(using ServiceRepository): M = {
+  def value[M](model: Model[M]): M = {
     modelValues.get(model.id) match {
       case Some(ok) => ok.asInstanceOf[M]
       case None     =>
@@ -24,7 +24,7 @@ private[kreuzberg] case class ModelValues(
   }
 
   /** Convert to a ModelValueProvider. */
-  def toModelValueProvider(using ServiceRepository): ModelValueProvider = {
+  def toModelValueProvider: ModelValueProvider = {
     new ModelValueProvider {
       override def modelValue[M](model: Model[M]): M = {
         self.value(model)

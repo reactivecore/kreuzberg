@@ -1,7 +1,6 @@
 package kreuzberg
 
 import kreuzberg.Component
-import org.scalajs.dom.Event
 
 import scala.language.implicitConversions
 

@@ -1,8 +1,6 @@
 package kreuzberg.rpc
 import io.circe.{Codec, DecodingFailure, Encoder, Json, ParsingFailure}
 
-import scala.util.control.NonFatal
-
 sealed abstract class Failure(message: String, cause: Throwable = null) extends RuntimeException(message, cause) {
   def encode: EncodedError
 
@@ -104,7 +102,7 @@ case class EncodedError(
       case "ValidationFailed" => ValidationFailed(message)
       case "NotFound"         => NotFound(message)
       case "SecurityError"    => SecurityError(message)
-      case other              => ServiceExecutionError(message, code)
+      case _                  => ServiceExecutionError(message, code)
     }
   }
 }

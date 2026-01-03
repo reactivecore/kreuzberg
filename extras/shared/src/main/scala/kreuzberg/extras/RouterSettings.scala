@@ -4,6 +4,8 @@ import kreuzberg.*
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
+import scala.annotation.unused
+
 case class RouterSettings(
     notFoundHandler: UrlResource => RoutingResult = RouterSettings.DefaultNotFoundHandler(_),
     titlePrefix: String = "",
@@ -41,7 +43,7 @@ object RouterSettings {
     }
   }
 
-  class DefaultLoadingHandler(url: UrlResource) extends SimpleComponentBase {
+  class DefaultLoadingHandler(@unused url: UrlResource) extends SimpleComponentBase {
     def assemble(using sc: SimpleContext): Html = {
       div("Loading...")
     }

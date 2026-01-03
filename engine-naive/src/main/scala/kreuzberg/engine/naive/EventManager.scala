@@ -2,17 +2,14 @@ package kreuzberg.engine.naive
 
 import kreuzberg.*
 import kreuzberg.engine.naive.utils.MutableMultimap
-import org.scalajs.dom.{Element, Event}
+import org.scalajs.dom.Event
 
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
-import scala.ref.WeakReference
-import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Encapsulate the highly stateful event handling. */
-private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: ServiceRepository) {
+private[kreuzberg] class EventManager(delegate: EventManagerDelegate) {
 
   /** A Pending change. */
   private sealed trait PendingChange
@@ -23,10 +20,10 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
   private case class Callback(fn: () => Unit) extends PendingChange
 
   /** There is a next iteration triggered yet */
-  private var _hasNextIteration: Boolean = false
+  private var _hasNextIteration: Boolean = false // scalafix:ok
 
   /** We are in a next iteration. */
-  private var _inIteration: Boolean = false
+  private var _inIteration: Boolean = false // scalafix:ok
 
   /** During Iteration: Set of changed models. */
   private val _changedModel = mutable.Set[Identifier]()
@@ -89,7 +86,7 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
   // Keeping track of registered window events (we do not yet remove them)
   private val _registeredWindowEvents = mutable.Set[String]()
 
-  private var _currentState = ModelValues()
+  private var _currentState = ModelValues() // scalafix:ok
 
   /** Activate Events on a Node. */
   def activateEvents(node: TreeNode): Unit = {
@@ -115,7 +112,7 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
     _changedModel.clear()
   }
 
-  def garbageCollect(referencedComponents: Set[Identifier], referencedModels: Set[Identifier]): Unit = {
+  def garbageCollect(referencedComponents: Set[Identifier]): Unit = {
     _windowEventBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _channelBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
     _foreignBindings.filterValuesInPlace(binding => referencedComponents.contains(binding.owner))
@@ -140,14 +137,6 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
     val cb = Callback(callback)
     _pending.append(cb)
     ensureNextIteration()
-  }
-
-  private def triggerWeakChannel[T](ref: WeakReference[Channel[T]], data: T): Unit = {
-    ref.get match {
-      case Some(c) =>
-        triggerChannel(c, data)
-      case None    => // nothing
-    }
   }
 
   def triggerChannel[T](channel: Channel[T], data: T): Unit = {
@@ -286,7 +275,7 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate)(using sp: 
     _inIteration = true
     _changedModel.clear()
     val max = 10000
-    var it  = 0
+    var it  = 0 // scalafix:ok
     delegate.context.use {
       while (_pending.nonEmpty && it < max) {
         val first = _pending.dequeue()

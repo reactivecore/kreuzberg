@@ -2,7 +2,7 @@ package kreuzberg.examples.showcase.pages
 
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.Button
-import kreuzberg.extras.{LocalStorage, Meta, MetaData, Route, SimpleRouted}
+import kreuzberg.extras.{LocalStorage, Meta, MetaData, SimpleRouted}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 

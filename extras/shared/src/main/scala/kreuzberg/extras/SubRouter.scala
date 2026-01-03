@@ -5,8 +5,6 @@ import kreuzberg.extras.RoutingResult.fromPage
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
-import scala.util.{Failure, Success, Try}
-
 /** An additional sub router, which has it's own Paths. */
 class SubRouter(
     prefix: UrlPath,

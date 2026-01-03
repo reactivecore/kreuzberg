@@ -85,7 +85,7 @@ private[kreuzberg] object UpdatePath {
         case c: Component         =>
           collectComponentNode(treeNode, c)
         case s: HeadlessComponent =>
-          collectService(treeNode, s)
+          collectService(s)
       }
     }
 
@@ -106,7 +106,6 @@ private[kreuzberg] object UpdatePath {
     }
 
     private def collectService(
-        treeNode: TreeNode,
         service: HeadlessComponent
     ): TreeNode = {
       val treeNode = Assembler.treeFromHeadless(service)

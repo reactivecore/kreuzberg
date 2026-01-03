@@ -41,9 +41,9 @@ private[kreuzberg] object KreuzbergContext {
     val value = threadLocal.get()
     if (value == null) {
       throw new IllegalStateException(
-        s"""KreuzbergContext is only available within Components and Kreuzberg provided Callbacks.
-           |You should use the ExecutionContext of a component to run a JavaScript callback.
-           |""".stripMargin
+        """KreuzbergContext is only available within Components and Kreuzberg provided Callbacks.
+          |You should use the ExecutionContext of a component to run a JavaScript callback.
+          |""".stripMargin
       )
     }
     value

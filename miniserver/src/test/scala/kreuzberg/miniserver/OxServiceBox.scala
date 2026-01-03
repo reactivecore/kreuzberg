@@ -9,7 +9,7 @@ import scala.util.Try
 
 /** Wraps an Ox service (like [[MiniServer]]) to be used in Testcases with remote start and stop functionality */
 abstract class OxServiceBox[R] {
-  private var used: Boolean          = false
+  private var used: Boolean          = false // scalafix:ok
   private val thread: Thread         = new Thread(() => threadMain())
   private val result: Promise[R]     = Promise[R]
   private val stopper: Promise[Unit] = Promise[Unit]

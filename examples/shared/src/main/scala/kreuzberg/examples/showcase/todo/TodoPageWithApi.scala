@@ -3,7 +3,7 @@ package kreuzberg.examples.showcase.todo
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.{Button, TextInput}
 import kreuzberg.examples.showcase.*
-import kreuzberg.extras.{LazyLoader, MainRouter, SimpleRouted}
+import kreuzberg.extras.{LazyLoader, SimpleRouted}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 

@@ -18,7 +18,7 @@ case class LazyPage(result: String) extends SimpleComponentBase {
 object LazyPage extends Routed {
   override def route: RouteWithCodec[String] = Route.LazyRoute(
     PathCodec.recursive("/lazy").string.one,
-    eagerTitle = path => s"Lazy...",
+    eagerTitle = _ => "Lazy...",
     fn = path => {
       SlowApiMock.timer(
         1.second,

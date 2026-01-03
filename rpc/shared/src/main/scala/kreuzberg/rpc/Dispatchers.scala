@@ -1,7 +1,5 @@
 package kreuzberg.rpc
 
-import io.circe.Json
-
 /** Combines multiple dispatchers into one. */
 case class Dispatchers[F[_]](
     dispatchers: Seq[Dispatcher[F]]

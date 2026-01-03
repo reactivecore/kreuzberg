@@ -1,7 +1,5 @@
 package kreuzberg
 
-import kreuzberg.IdentifierFactory.instance
-
 import java.util.concurrent.atomic.AtomicInteger
 
 /** Some object which has an identifier. */

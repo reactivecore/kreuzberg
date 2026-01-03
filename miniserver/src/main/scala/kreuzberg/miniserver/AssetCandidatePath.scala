@@ -154,7 +154,7 @@ object AssetCandidatePath {
    *   prefix which will be removed from any search file
    */
   case class Webjar(prefix: String = "") extends AssetCandidatePath {
-    private var versionCache: Map[String, String] = Map.empty
+    private var versionCache: Map[String, String] = Map.empty // scalafix:ok
     private val classLoader                       = getClass.getClassLoader
 
     override def locate(path: String): Option[Location] = {

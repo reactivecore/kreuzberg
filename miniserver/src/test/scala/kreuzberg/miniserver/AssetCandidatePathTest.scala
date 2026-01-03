@@ -17,7 +17,7 @@ class AssetCandidatePathTest extends TestBase {
     candidatePath.locate("foo/../sub2/Hidden.txt") shouldBe empty
 
     val candidatePath2 = AssetCandidatePath.Resource("test_resource", "")
-    val bytes2         = candidatePath2.locate("sub1/Test.txt")
+    candidatePath2.locate("sub1/Test.txt")
     new String(bytes, StandardCharsets.UTF_8).trim shouldBe "Hello Testcase!"
 
     candidatePath2.locate("../sub1/Test.txt") shouldBe empty

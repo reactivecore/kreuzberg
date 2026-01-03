@@ -82,7 +82,7 @@ case class UrlResource(path: UrlPath = UrlPath(), query: Seq[(String, String)] =
     path.printTo(sb)
     if (query.nonEmpty) {
       sb += '?'
-      var first = true
+      var first = true // scalafix:ok
       query.foreach { case (key, value) =>
         if (!first) {
           sb += '&'
@@ -116,10 +116,6 @@ object UrlResource {
     UrlResource(UrlPath.decode(path), query, fragment)
   }
 
-  private def decodePath(path: String): List[String] = {
-    path.split('/').filter(_.nonEmpty).toList
-  }
-
   private def decodeQuery(query: String): Seq[(String, String)] = {
     query
       .split('&')
@@ -132,6 +128,7 @@ object UrlResource {
             (name -> value)
         }
       }
+      .toSeq
   }
 
   /** Strip the Query from a path */

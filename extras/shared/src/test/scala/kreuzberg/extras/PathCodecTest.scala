@@ -53,7 +53,7 @@ class PathCodecTest extends TestBase {
 
     val bad1 = UrlResource(s"/foo/bar/Hallo/true/${uuid}/bub1")
     val bad2 = UrlResource(s"/foo/bar2/Hallo/true/${uuid}/bub")
-    val bad3 = UrlResource(s"/foo/bar/Hallo/true/no-uuid/bub")
+    val bad3 = UrlResource("/foo/bar/Hallo/true/no-uuid/bub")
     child.handles(bad1) shouldBe false
     child.decode(bad1) shouldBe Left(Error.BadPathElementError("bub1", "bub"))
 

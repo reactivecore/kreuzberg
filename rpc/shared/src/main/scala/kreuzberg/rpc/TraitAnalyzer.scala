@@ -102,7 +102,7 @@ private[rpc] class TraitAnalyzer[Q <: Quotes](using val quotes: Q) {
               v.tpt.tpe
             )
           case p: TypeDef =>
-            println("Do not know what to do with ${p}")
+            println(s"Do not know what to do with ${p}")
             ???
         }
         MethodParameterGroup(

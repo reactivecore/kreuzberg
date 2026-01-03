@@ -20,7 +20,7 @@ import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
 class TodoServiceLoom extends TodoApi[Id] {
-  private var items: Vector[String] = Vector.empty
+  private var items: Vector[String] = Vector.empty // scalafix:ok
 
   private object lock
 
@@ -81,7 +81,7 @@ class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfi
     }
 
   // Demonstrating initialization of JS Side with some data of the Server
-  val initializer: InitRequest => String = { request =>
+  val initializer: InitRequest => String = { _ =>
     val data   = InitData(code = UUID.randomUUID().toString)
     val asJson = data.asJson.spaces2
     asJson
