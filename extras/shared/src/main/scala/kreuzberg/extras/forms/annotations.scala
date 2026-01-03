@@ -1,5 +1,7 @@
 package kreuzberg.extras.forms
 
+import kreuzberg.extras.Validator
+
 import scala.annotation.StaticAnnotation
 
 /** Annotation to control field generation. */

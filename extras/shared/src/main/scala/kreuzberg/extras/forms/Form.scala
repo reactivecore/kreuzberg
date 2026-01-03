@@ -1,5 +1,7 @@
 package kreuzberg.extras.forms
 
+import kreuzberg.extras.{Codec, Validator}
+
 /** Encapsulates the whole form for some value T */
 trait Form[T] {
 

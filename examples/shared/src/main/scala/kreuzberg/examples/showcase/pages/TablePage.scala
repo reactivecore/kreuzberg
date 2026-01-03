@@ -4,7 +4,7 @@ import kreuzberg.*
 import kreuzberg.examples.showcase.components.Button
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
-import kreuzberg.extras.SimpleRouted
+import kreuzberg.extras.{SimpleRouted, UrlPath}
 import kreuzberg.extras.forms.{Form, FormComponent}
 import kreuzberg.extras.tables.{GenericTableComponent, Tabular, UseTableColumn}
 
@@ -39,7 +39,7 @@ object TablePage extends SimpleComponentBase with SimpleRouted {
     )
   }
 
-  override def path: String = "/table"
+  override def path: UrlPath = "/table"
 
   override def title: String = "Table Example"
 }

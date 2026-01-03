@@ -1,12 +1,14 @@
 package kreuzberg.extras.forms
 
-import kreuzberg.extras.forms.Error.DecodingError
+import kreuzberg.extras
+import kreuzberg.extras.Error.DecodingError
+import kreuzberg.extras.{Codec, Validator, Error}
 import kreuzberg.testcore.TestBase
 
 object nameValidator extends Validator[SampleForm] {
-  override def validate(value: SampleForm): Option[Error.ValidationError] = {
+  override def validate(value: SampleForm): Option[extras.Error.ValidationError] = {
     if (value.name.isEmpty) {
-      Some(Error.SingleValidationError("Name should not be empty"))
+      Some(extras.Error.SingleValidationError("Name should not be empty"))
     } else {
       None
     }
@@ -59,7 +61,7 @@ class GeneratorTest extends TestBase {
       FormField(
         name = "niceName",
         label = "name",
-        codec = Codec.simpleString,
+        codec = Codec.string,
         validator = Validator.succeed,
         required = true
       ),

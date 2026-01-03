@@ -7,12 +7,13 @@ import kreuzberg.examples.showcase.pages.{
   IndexPage,
   LazyPage,
   NotFoundPage,
+  SubRouterPage,
   TablePage,
   WizzardPage,
   XmlPage
 }
 import kreuzberg.examples.showcase.todo.{TodoPage, TodoPageWithApi}
-import kreuzberg.extras.{PathCodec, Route, SimpleRouter, UrlResource}
+import kreuzberg.extras.{PathCodec, Route, RouterSettings, RoutingResult, MainRouter, UrlResource}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 
@@ -23,14 +24,12 @@ object App extends SimpleComponentBase {
     div(
       Menu.wrap,
       LoadingIndicator,
-      SimpleRouter(
+      MainRouter(
         routes,
-        Route.DependentRoute[UrlResource](
-          PathCodec.all,
-          s => NotFoundPage(s),
-          s => "Not Found"
-        ),
-        titlePrefix = "Example - "
+        settings = RouterSettings(
+          notFoundHandler = path => RoutingResult("Not Found", NotFoundPage(path)),
+          titlePrefix = "Example - "
+        )
       )
     )
   }
@@ -44,6 +43,8 @@ object App extends SimpleComponentBase {
     WizzardPage,
     XmlPage,
     LazyPage,
-    TablePage
+    TablePage,
+    SubRouterPage,
+    Route.SimpleForward("/forward", UrlResource("/"))
   )
 }

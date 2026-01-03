@@ -1,6 +1,8 @@
-package kreuzberg.extras.forms
+package kreuzberg.extras
 
-import kreuzberg.extras.forms.Error.ValidationError
+import kreuzberg.extras
+import kreuzberg.extras.Error.ValidationError
+import kreuzberg.extras.Result
 
 /** Simple validators */
 trait Validator[-T] {
@@ -15,7 +17,7 @@ trait Validator[-T] {
     other match {
       case Validator.succeed => this
       case _                 => { in =>
-        Error.ValidationError.combineOpt(this.validate(in), other.validate(in))
+        extras.Error.ValidationError.combineOpt(this.validate(in), other.validate(in))
       }
     }
   }
@@ -38,7 +40,7 @@ object Validator {
     if (f(input)) {
       None
     } else {
-      Some(Error.SingleValidationError(msg))
+      Some(extras.Error.SingleValidationError(msg))
     }
   }
 

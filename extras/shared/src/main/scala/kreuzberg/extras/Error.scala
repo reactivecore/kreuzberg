@@ -1,12 +1,12 @@
-package kreuzberg.extras.forms
+package kreuzberg.extras
 
-import kreuzberg.extras.forms.Error._
+import kreuzberg.extras.Error.*
 
-/** Encodes Errors of the Form system. */
+/** Encodes Errors of the Form / URL system. */
 sealed trait Error {
-  def asList: List[String]
 
-  def nest(path: String): Error
+  /** Format as list of errors. */
+  def asList: List[String]
 }
 
 /** Either an Error or a value. */
@@ -16,10 +16,49 @@ type Result[T] = Either[Error, T]
 type DecodingResult[T] = Either[DecodingError, T]
 
 object Error {
+  sealed trait PathError extends Error {
+    override def asList: List[String] = List(toString)
+  }
 
-  sealed trait ValidationError extends Error {
+  case object NestedPathError extends PathError {
+    override def toString: String = s"There is an unexpected nested path"
+  }
+
+  case object MissingNestedPathError extends PathError {
+    override def toString: String = s"There is a missing nested path"
+  }
+
+  case class BadPathError(got: UrlPath, expected: UrlPath) extends PathError {
+    override def toString: String = s"Bad path, expected: ${expected}, got: ${got}"
+  }
+
+  case class BadPathElementError(got: String, expected: String) extends PathError {
+    override def toString: String = s"Bad path element, expected: ${expected}, got: ${got}"
+  }
+
+  case class MissingQueryParameter(key: String) extends PathError {
+    override def toString: String = s"Missing query parameter: ${key}"
+  }
+
+  case class PathNotFound(msg: String) extends PathError {
+    override def toString: String = msg
+  }
+
+  case class PathCodecException(error: Error) extends Exception(error.toString, null, false, false) with Error {
+    override def asList: List[String] = error.asList
+  }
+
+  /** An error which can have a nested position. */
+  sealed trait PositionalError extends Error {
+    def nest(path: String): PositionalError
+  }
+
+  sealed trait ValidationError extends PositionalError {
+    def asList: List[String]
 
     override def nest(path: String): ValidationError
+
+    override def toString: String = s"ValidationError: ${asList.mkString(",")}"
   }
 
   object ValidationError {
@@ -57,10 +96,10 @@ object Error {
     override def nest(path: String): ValidationError = MultipleValidationError(errors.map(_.nest(path)))
   }
 
-  case class DecodingError(msg: String, path: List[String] = Nil) extends Error {
+  case class DecodingError(msg: String, path: List[String] = Nil) extends PositionalError {
     override def asList: List[String] = List(msg)
 
-    override def nest(path: String): Error = {
+    override def nest(path: String): DecodingError = {
       copy(
         path = path :: this.path
       )
@@ -82,5 +121,17 @@ object Error {
     }
 
     def result: Option[ValidationError] = current
+  }
+
+  /** Captures other Throwables. */
+  case class NestedThrowable(e: Throwable) extends Error {
+    override def asList: List[String] = List(e.getMessage)
+  }
+
+  def fromThrowable(t: Throwable): Error = {
+    t match {
+      case pathCodecException: PathCodecException => pathCodecException.error
+      case other                                  => NestedThrowable(other)
+    }
   }
 }

@@ -1,6 +1,8 @@
 package kreuzberg.extras.forms
+import kreuzberg.extras.{Codec, DecodingResult, UnhandledDecodingError, Validator}
+
 import scala.quoted.*
-import kreuzberg.extras.forms.Error.{DecodingError, ValidationErrorBuilder}
+import kreuzberg.extras.Error.{DecodingError, ValidationErrorBuilder}
 
 /** Generator for Forms. */
 object Generator {

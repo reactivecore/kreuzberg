@@ -27,7 +27,7 @@ case class RouterLink(
     val link = PlainLink(name, target.str)
     add(
       link.onClick.handleAny {
-        SimpleRouter.goto(target)
+        Router.goto(target)
       }
     )
     if (deco) {

@@ -7,4 +7,12 @@ object UriHelper {
   inline def encodeUriComponent(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 
   inline def decodeUriComponent(s: String): String = URLDecoder.decode(s, StandardCharsets.UTF_8)
+
+  def encodePathSegment(s: String): String = {
+    URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20")
+  }
+
+  def decodePathSegment(s: String): String = {
+    URLDecoder.decode(s, StandardCharsets.UTF_8)
+  }
 }
