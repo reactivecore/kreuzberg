@@ -2,19 +2,49 @@ package kreuzberg.extras
 
 import java.util.UUID
 import scala.Tuple.:*
-import scala.util.Try
+import scala.concurrent.Future
 
 /** Helper for encoding/decoding [[UrlResource]]. */
 trait PathCodec[S] {
-  def handles(resource: UrlResource): Boolean
 
-  def decode(resource: UrlResource): Option[S]
-
-  def forceDecode(resource: UrlResource): S = decode(resource).getOrElse {
-    throw new IllegalStateException("Invalid path")
+  /** Returns true if this path is responsible for this UrlResource. */
+  final def handles(url: UrlResource): Boolean = {
+    handlesPrefix(url).exists(_.path.isEmpty)
   }
 
-  def encode(value: S): UrlResource
+  /** Returns the remainder if this path handles the prefix of this resource. */
+  def handlesPrefix(url: UrlResource): Option[UrlResource]
+
+  /** Decode an [[UrlResource]] */
+  final def decode(url: UrlResource): Result[S] = for {
+    (result, remainder) <- decodePrefix(url)
+    _                   <- (if (remainder.path.isEmpty) {
+                              Right(())
+                            } else {
+                              Left(Error.NestedPathError)
+                            })
+  } yield {
+    result
+  }
+
+  /**
+   * Decode the prefix of an URL Resource, returns decoded value and remainder.
+   */
+  def decodePrefix(url: UrlResource): Result[(S, UrlResource)]
+
+  /** Forces decoding of this Resource. */
+  def decodeToFuture(url: UrlResource): Future[S] = decode(url) match {
+    case Left(error) => Future.failed(Error.PathCodecException(error))
+    case Right(ok)   => Future.successful(ok)
+  }
+
+  /** Encode the value into an UrlResource. */
+  final def encode(value: S): UrlResource = {
+    encodeToSuffix(value, UrlResource())
+  }
+
+  /** Encode a value to the left part of the suffix. */
+  protected def encodeToSuffix(value: S, suffix: UrlResource): UrlResource
 
   def xmap[T](mapFn: S => T, contraMapFn: T => S): PathCodec[T] = PathCodec.XMap(this, mapFn, contraMapFn)
 }
@@ -22,174 +52,201 @@ trait PathCodec[S] {
 object PathCodec {
 
   /** A Constant path. */
-  def const(path: String): PathCodec[Unit] = new PathCodec[Unit] {
+  def const(path: UrlPath): PathCodec[Unit] = new PathCodec[Unit] {
 
-    override def handles(resource: UrlResource): Boolean = resource.path == path
-
-    override def decode(resource: UrlResource): Option[Unit] = if (path == resource.path) {
-      Some(())
-    } else {
-      None
-    }
-
-    override def encode(value: Unit): UrlResource = UrlResource(path)
-  }
-
-  def constWithQueryParams(path: String, params: String*): PathCodec[Seq[String]] = new PathCodec[Seq[String]] {
-    override def handles(resource: UrlResource): Boolean = {
-      resource.path == path && {
-        val queryArgs = resource.queryArgs
-        params.forall(p => queryArgs.contains(p))
+    override def handlesPrefix(url: UrlResource): Option[UrlResource] = {
+      url.path.stripPrefix(path).map { remainder =>
+        url.copy(path = remainder)
       }
     }
 
-    override def decode(resource: UrlResource): Option[Seq[String]] = {
-      if (resource.path != path) {
-        None
-      } else {
-        val builder   = Seq.newBuilder[String]
-        val queryArgs = resource.queryArgs
-        val it        = params.iterator
-        while (it.hasNext) {
-          queryArgs.get(it.next()) match {
-            case None    => return None
-            case Some(v) => builder += v
-          }
-        }
-        Some(builder.result())
+    override def decodePrefix(url: UrlResource): Result[(Unit, UrlResource)] = {
+      handlesPrefix(url) match {
+        case Some(remainder) => Right(((), remainder))
+        case None            => Left(Error.BadPathError(url.path, path))
       }
     }
 
-    override def encode(value: Seq[String]): UrlResource = {
-      UrlResource.encodeWithArgs(path, params.zip(value))
-    }
-  }
-
-  /** A Simple Prefix. */
-  def prefix(prefix: String): PathCodec[String] = new PathCodec[String] {
-
-    override def handles(resource: UrlResource): Boolean = resource.path.startsWith(prefix)
-
-    override def decode(resource: UrlResource): Option[String] = {
-      if (handles(resource)) {
-        Some(resource.path.stripPrefix(prefix))
-      } else {
-        None
-      }
-    }
-
-    override def encode(value: String): UrlResource = {
-      UrlResource(prefix + value)
+    override protected def encodeToSuffix(value: Unit, suffix: UrlResource): UrlResource = {
+      suffix.prependPath(path)
     }
   }
 
   /** Collects all. */
   def all: PathCodec[UrlResource] = new PathCodec[UrlResource] {
 
-    override def handles(path: UrlResource): Boolean = true
+    override def handlesPrefix(url: UrlResource): Option[UrlResource] = {
+      Some(url.copy(path = UrlPath()))
+    }
 
-    override def decode(resource: UrlResource): Option[UrlResource] = Some(resource)
+    override def decodePrefix(url: UrlResource): Result[(UrlResource, UrlResource)] = {
+      Right(url, url.copy(path = UrlPath()))
+    }
 
-    override def encode(value: UrlResource): UrlResource = value
+    override protected def encodeToSuffix(value: UrlResource, suffix: UrlResource): UrlResource = {
+      value
+    }
   }
 
   case class XMap[U, T](underlying: PathCodec[U], mapFn: U => T, contraMapFn: T => U) extends PathCodec[T] {
-    override def handles(resource: UrlResource): Boolean = underlying.handles(resource)
+    override def handlesPrefix(url: UrlResource): Option[UrlResource] = {
+      underlying.handlesPrefix(url)
+    }
 
-    override def decode(resource: UrlResource): Option[T] = underlying.decode(resource).map(mapFn)
+    override def decodePrefix(url: UrlResource): Result[(T, UrlResource)] = {
+      underlying.decodePrefix(url).map { case (result, remainder) =>
+        mapFn(result) -> remainder
+      }
+    }
 
-    override def encode(value: T): UrlResource = underlying.encode(contraMapFn(value))
+    override protected def encodeToSuffix(value: T, suffix: UrlResource): UrlResource = {
+      underlying.encodeToSuffix(contraMapFn(value), suffix)
+    }
   }
 
   /** A Recursive constructed Path. */
   sealed trait RecursivePath[S <: Tuple] extends PathCodec[S] {
-    protected def prefixCheck(s: UrlResource): Boolean = true
-
     def fixed(name: String): RecursivePath[S] = RecursivePath.FixedSubPath(name, this)
 
-    def string: RecursivePath[S :* String] = RecursivePath.PathElement(this, identity, s => Some(s))
+    def string: RecursivePath[S :* String] = part[String]
 
-    def uuid: RecursivePath[S :* UUID] = {
-      RecursivePath.PathElement(this, s => s.toString, s => Try(UUID.fromString(s)).toOption)
-    }
+    def uuid: RecursivePath[S :* UUID] = part[UUID]
 
-    def int: RecursivePath[S :* Int] = {
-      RecursivePath.PathElement(this, s => s.toString, s => s.toIntOption)
-    }
+    def int: RecursivePath[S :* Int] = part[Int]
 
-    def long: RecursivePath[S :* Long] = {
-      RecursivePath.PathElement(this, s => s.toString, s => s.toLongOption)
-    }
+    def long: RecursivePath[S :* Long] = part[Long]
 
-    def boolean: RecursivePath[S :* Boolean] = {
-      RecursivePath.PathElement(this, s => s.toString, s => s.toBooleanOption)
-    }
+    def boolean: RecursivePath[S :* Boolean] = part[Boolean]
+
+    def part[T](using Codec[T, String]): RecursivePath[S :* T] = RecursivePath.PathElement(this)
+
+    /** Decodes a query parameter */
+    def query[T](key: String)(using Codec[T, String]): RecursivePath[S :* T] = RecursivePath.QueryParam(key, this)
 
     /** When only using one value, you can convert it into a single path codec. */
-    def one[X](using ev: S => Tuple1[X]): PathCodec[X] = xmap(
+    def one[X](using ev: S =:= Tuple1[X]): PathCodec[X] = xmap(
       x => x.asInstanceOf[Tuple1[X]]._1,
       x => Tuple1(x).asInstanceOf[S]
+    )
+
+    def unit[X](using ev: S =:= EmptyTuple): PathCodec[Unit] = xmap(
+      _ => (),
+      _ => EmptyTuple.asInstanceOf[S]
     )
   }
 
   /** Builds a recursive path */
-  def recursive(prefix: String): RecursivePath.Start = RecursivePath.Start(prefix)
+  def recursive(prefix: String): RecursivePath.Start = RecursivePath.Start(UrlPath.decode(prefix))
 
   object RecursivePath {
-    case class Start(prefix: String) extends RecursivePath[EmptyTuple] {
-      override def handles(resource: UrlResource): Boolean = resource.path == prefix
+    case class Wrapped[T](parent: PathCodec[T]) extends RecursivePath[Tuple1[T]] {
+      override def handlesPrefix(url: UrlResource): Option[UrlResource] = parent.handlesPrefix(url)
 
-      override protected def prefixCheck(resource: UrlResource): Boolean = {
-        resource.str.startsWith(prefix)
+      override def decodePrefix(url: UrlResource): Result[(Tuple1[T], UrlResource)] =
+        parent.decodePrefix(url).map { case (result, remainder) =>
+          (Tuple1(result), remainder)
+        }
+
+      override protected def encodeToSuffix(value: Tuple1[T], suffix: UrlResource): UrlResource = {
+        parent.encodeToSuffix(value._1, suffix)
       }
-
-      override def decode(resource: UrlResource): Option[EmptyTuple] = Option.when(handles(resource)) {
-        EmptyTuple
-      }
-
-      override def encode(value: EmptyTuple): UrlResource = UrlResource(prefix)
     }
 
-    case class PathElement[T, P <: Tuple](parent: RecursivePath[P], encoder: T => String, decoder: String => Option[T])
-        extends RecursivePath[P :* T] {
-      override def handles(resource: UrlResource): Boolean = {
-        parent.prefixCheck(resource) && decode(resource).isDefined
-      }
+    case class Start(prefix: UrlPath) extends RecursivePath[EmptyTuple] {
 
-      override protected def prefixCheck(s: UrlResource): Boolean = {
-        parent.prefixCheck(s)
-      }
-
-      override def decode(resource: UrlResource): Option[Tuple.Append[P, T]] = {
-        for {
-          (part, parentResource) <- resource.dropSubPath
-          decoded                <- decoder(part)
-          decodedParent          <- parent.decode(parentResource)
-        } yield {
-          decodedParent :* decoded
+      override def handlesPrefix(url: UrlResource): Option[UrlResource] = {
+        url.path.stripPrefix(prefix).map { remainder =>
+          url.copy(path = remainder)
         }
       }
 
-      override def encode(value: P :* T): UrlResource = {
-        parent.encode(value.init.asInstanceOf[P]).subPath(encoder(value.last.asInstanceOf[T]))
+      override def decodePrefix(url: UrlResource): Result[(EmptyTuple, UrlResource)] = {
+        handlesPrefix(url) match {
+          case Some(remainder) => Right((EmptyTuple, remainder))
+          case None            => Left(Error.BadPathError(url.path, prefix))
+        }
+      }
+
+      override protected def encodeToSuffix(value: EmptyTuple, suffix: UrlResource): UrlResource = {
+        suffix.prependPath(prefix)
       }
     }
 
-    case class FixedSubPath[P <: Tuple](name: String, parent: RecursivePath[P]) extends RecursivePath[P] {
-      override def handles(resource: UrlResource): Boolean = {
-        parent.prefixCheck(resource) && decode(resource).isDefined
-      }
-
-      override def decode(resource: UrlResource): Option[P] = {
+    case class PathElement[T, P <: Tuple](parent: RecursivePath[P])(using codec: Codec[T, String])
+        extends RecursivePath[P :* T] {
+      override def handlesPrefix(url: UrlResource): Option[UrlResource] = {
         for {
-          (part, parentResource) <- resource.dropSubPath
-          if part == name
-          result                 <- parent.decode(parentResource)
-        } yield result
+          parentRemainder <- parent.handlesPrefix(url)
+          (_, remainder)  <- parentRemainder.dropFirstPathPart
+        } yield {
+          remainder
+        }
       }
 
-      override def encode(value: P): UrlResource = {
-        parent.encode(value).subPath(name)
+      override def decodePrefix(url: UrlResource): Result[(P :* T, UrlResource)] = {
+        for {
+          (decodedParent, remainder) <- parent.decodePrefix(url)
+          (subPath, rest)            <- remainder.dropFirstPathPart.toRight(Error.MissingNestedPathError)
+          decoded                    <- codec.decode(subPath)
+        } yield {
+          (decodedParent :* decoded, rest)
+        }
+      }
+
+      override protected def encodeToSuffix(value: P :* T, suffix: UrlResource): UrlResource = {
+        val newPath = suffix.prependPathPart(codec.encode(value.last.asInstanceOf[T]))
+        parent.encodeToSuffix(value.init.asInstanceOf[P], newPath)
+      }
+    }
+
+    case class QueryParam[T, P <: Tuple](key: String, parent: RecursivePath[P])(using codec: Codec[T, String])
+        extends RecursivePath[P :* T] {
+
+      override def handlesPrefix(url: UrlResource): Option[UrlResource] = {
+        parent.handlesPrefix(url)
+      }
+
+      override def decodePrefix(url: UrlResource): Result[(P :* T, UrlResource)] = {
+        for {
+          value               <- url.queryMap.get(key).toRight(Error.MissingQueryParameter(key))
+          decoded             <- codec.decode(value)
+          (prefix, remainder) <- parent.decodePrefix(url)
+        } yield {
+          ((prefix :* decoded), remainder)
+        }
+      }
+
+      override protected def encodeToSuffix(value: P :* T, suffix: UrlResource): UrlResource = {
+        val updated = suffix.copy(
+          query = (key -> codec.encode(value.last.asInstanceOf[T])) +: suffix.query
+        )
+        parent.encodeToSuffix(value.init.asInstanceOf[P], updated)
+      }
+    }
+
+    case class FixedSubPath[P <: Tuple](part: String, parent: RecursivePath[P]) extends RecursivePath[P] {
+      override def handlesPrefix(url: UrlResource): Option[UrlResource] = {
+        for {
+          remainder     <- parent.handlesPrefix(url)
+          (first, rest) <- remainder.dropFirstPathPart
+          if first == part
+        } yield {
+          rest
+        }
+      }
+
+      override def decodePrefix(url: UrlResource): Result[(P, UrlResource)] = {
+        for {
+          (decodedParent, parentRest) <- parent.decodePrefix(url)
+          (subPath, rest)             <- parentRest.dropFirstPathPart.toRight(Error.MissingNestedPathError)
+          _                           <- Either.cond(subPath == part, (), Error.BadPathElementError(subPath, part))
+        } yield {
+          (decodedParent, rest)
+        }
+      }
+
+      override protected def encodeToSuffix(value: P, suffix: UrlResource): UrlResource = {
+        parent.encodeToSuffix(value, suffix.prependPathPart(part))
       }
     }
   }

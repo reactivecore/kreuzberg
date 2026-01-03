@@ -2,6 +2,7 @@ package kreuzberg.extras.forms
 
 import kreuzberg.*
 import kreuzberg.RuntimeState.JsProperty
+import kreuzberg.extras.Result
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
 import org.scalajs.dom.html.Input

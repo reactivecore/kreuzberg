@@ -18,7 +18,9 @@ case object Menu extends SimpleComponentBase {
     "/xml"                        -> "XML",
     "/notfound"                   -> "Not Found",
     "/table"                      -> "Table",
-    LazyPage.route.url("123").str -> "Lazy"
+    LazyPage.route.url("123").str -> "Lazy",
+    "/subrouter"                  -> "Sub Router",
+    "/forward"                    -> "Forward"
   )
 
   override def assemble(using sc: SimpleContext): Html = {

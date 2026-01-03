@@ -1,5 +1,8 @@
 package kreuzberg.extras.forms
 
+import kreuzberg.extras
+import kreuzberg.extras.{Error, Codec, DecodingResult, Result, Validator}
+
 /** A Single Field Element. */
 case class FormField[T](
     name: String,
@@ -8,7 +11,7 @@ case class FormField[T](
     formType: String = "text",
     description: String = "",
     tooltip: String = "",
-    codec: Codec[T, String] = Codec.simpleString,
+    codec: Codec[T, String] = Codec.string,
     validator: Validator[T] = Validator.succeed,
     required: Boolean = false
 ) {

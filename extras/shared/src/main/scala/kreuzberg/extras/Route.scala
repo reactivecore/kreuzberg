@@ -3,153 +3,99 @@ package kreuzberg.extras
 import kreuzberg.*
 
 import language.implicitConversions
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-/** A Route within [[SimpleRouter]] */
+/** A Route within [[MainRouter]] */
 trait Route {
 
-  /** The state of which the route depends on. */
-  type State
+  /** Returns true if this route handles the resource. */
+  def handles(url: UrlResource): Boolean
+
+  /** Returns the target for this URL. */
+  def target(url: UrlResource): Result[RoutingTarget]
+
+  /**
+   * Updates this Route with an updated Resource.
+   *
+   * When it returns true, the route won't be updated.
+   *
+   * Used for Sub routers, so that they do not flicker.
+   */
+  def update(url: UrlResource): Boolean = false
+}
+
+/** A Route which has a codec inside. */
+trait RouteWithCodec[State] extends Route {
 
   /** The path codec to map state and path */
-  def pathCodec: PathCodec[State]
+  def codec: PathCodec[State]
+
+  final override def handles(url: UrlResource): Boolean = codec.handles(url)
 
   /** Directly encode a state into a path. */
-  def url(state: State): UrlResource = pathCodec.encode(state)
+  final def url(state: State): UrlResource = codec.encode(state)
 
-  /** Returns true if the route can handle a given path. */
-  def canHandle(resource: UrlResource): Boolean
+  /** Returns the URL f there is no state. */
+  final def url(using ev: Unit =:= State): UrlResource = url(ev(()))
 
-  /** Title displayed while loading. */
-  def preTitle(resource: UrlResource): String
+  /** Returns the target for the route. */
+  def target(state: State): RoutingTarget
 
-  /** Execute the route, can load lazy. */
-  def target(resource: UrlResource): Future[RoutingTarget]
-
-  /** Provides `MetaData` that should get injected into <header> */
-  def metaData: MetaData = MetaData.empty
-}
-
-case class RoutingTarget(
-    title: String,
-    component: Component
-)
-
-/** Marks something as being routed. */
-trait Routed[T] {
-  def route: Route.Aux[T]
-
-  /** Accessing the URL directly from a state. */
-  inline def url(state: T): UrlResource = route.url(state)
-
-  /** Accessing the URL directly if there is no state */
-  inline def url(implicit ev: Unit => T): UrlResource = url(ev(()))
-}
-
-/** Mark some component as simple routed without further state */
-trait SimpleRouted extends Routed[Unit] {
-  self: Component =>
-
-  /** The routing path */
-  def path: String
-
-  /** The URL Resource for this. */
-  final def url: UrlResource = UrlResource(path)
-
-  /** The page title */
-  def title: String
-
-  /** The metadata of the page. */
-  def metaData: MetaData = MetaData.empty
-
-  override val route: Route.Aux[Unit] = Route.SimpleRoute(path, title, this, metaData)
+  /** Returns the target for a given URL. */
+  def target(url: UrlResource): Result[RoutingTarget] = {
+    codec.decode(url).map(target)
+  }
 }
 
 object Route {
 
-  type Aux[T] = Route {
-    type State = T
-  }
-
   /** Simplification for building routing tables. */
-  implicit def routedToRoute[T](routed: Routed[T]): Route.Aux[T] = routed.route
-
-  /** A Route which directly translates a path into a component */
-  trait EagerRoute extends Route {
-    val pathCodec: PathCodec[State]
-
-    override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
-
-    override def target(resource: UrlResource): Future[RoutingTarget] = Future.successful {
-      eagerTarget(resource)
-    }
-
-    def eagerTarget(resource: UrlResource): RoutingTarget = {
-      val state = pathCodec.decode(resource).getOrElse {
-        throw new IllegalStateException(s"Unmatched path ${resource}")
-      }
-      RoutingTarget(title(state), component(state))
-    }
-
-    /** Returns a title for that path. */
-    def title(state: State): String
-
-    override def preTitle(resource: UrlResource): String = eagerTarget(resource).title
-
-    /** Assembles a component for a given path. */
-    def component(state: State): Component
-  }
+  implicit def routedToRoute(routed: Routed): Route = routed.route
 
   /** Simple Route without parameters. */
   case class SimpleRoute(
-      path: String,
-      title: String,
-      component: Component,
-      override val metaData: MetaData = MetaData.empty
-  ) extends EagerRoute {
-    override type State = Unit
+      path: UrlPath,
+      result: RoutingResult
+  ) extends RouteWithCodec[Unit] {
+    override val codec: PathCodec[Unit] = PathCodec.const(path)
 
-    val pathCodec: PathCodec[Unit] = PathCodec.const(path)
-
-    override def title(state: Unit): String = title
-
-    override def component(state: Unit): Component = component
-
+    override def target(state: Unit): RoutingResult = result
   }
 
-  /** A Route whose target depends on a value. */
-  case class DependentRoute[S](
-      pathCodec: PathCodec[S],
-      fn: S => Component,
-      titleFn: S => String,
-      override val metaData: MetaData = MetaData.empty
-  ) extends EagerRoute {
+  case class SimpleForward(
+      path: UrlPath,
+      destination: UrlResource
+  ) extends RouteWithCodec[Unit] {
+    override def codec: PathCodec[Unit] = PathCodec.const(path)
 
-    override type State = S
-
-    override def title(state: S): String = titleFn(state)
-
-    override def component(state: S): Component = fn(state)
-
+    override def target(state: Unit): Forward = Forward(destination)
   }
 
+  /** A eager Route whose target depends on a value. */
+  case class SimpleDependentRoute[S](
+      override val codec: PathCodec[S],
+      fn: S => RoutingResult
+  ) extends RouteWithCodec[S] {
+
+    override def target(state: S): RoutingResult = fn(state)
+  }
+
+  /** A Route which depends upon loading data. */
   case class LazyRoute[S](
-      pathCodec: PathCodec[S],
+      override val codec: PathCodec[S],
       eagerTitle: S => String,
-      routingTarget: S => Future[RoutingTarget],
-      override val metaData: MetaData = MetaData.empty
-  ) extends Route {
-    override type State = S
+      fn: S => Future[RoutingResult],
+      meta: MetaData = MetaData.empty
+  ) extends RouteWithCodec[S] {
 
-    override def canHandle(resource: UrlResource): Boolean = pathCodec.handles(resource)
+    override def target(state: S): RoutingTarget = {
+      new RoutingTarget {
+        override def preTitle: String = eagerTitle(state)
 
-    override def target(resource: UrlResource): Future[RoutingTarget] = {
-      routingTarget(pathCodec.forceDecode(resource))
+        override def metaData: MetaData = meta
+
+        override def load(): Future[RoutingResult] = fn(state)
+      }
     }
-
-    override def preTitle(resource: UrlResource): String = {
-      eagerTitle(pathCodec.forceDecode(resource))
-    }
-
   }
 }
