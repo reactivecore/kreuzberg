@@ -40,7 +40,7 @@ object SubRouterPage extends SimpleComponentBase with Page with Routed {
   val basePath = PathCodec.RecursivePath.Start("/subrouter")
   val page1    = Route.SimpleRoute("page1", Page1)
   val page2    = Route.SimpleRoute("page2", Page2)
-  val root     = Route.SimpleForward(UrlPath(), page1.url)
+  val root     = Route.SimpleForward(UrlPath(), page1.url, replaceHistory = true)
 
   val subRouter = SubRouter(
     "/subrouter",

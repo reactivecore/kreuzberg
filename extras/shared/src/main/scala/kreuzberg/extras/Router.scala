@@ -12,6 +12,12 @@ object Router {
   /** Go to a specific URL */
   def goto(url: UrlResource): Unit = gotoChannel(url)
 
+  /** Channel for replace-navigation (no new history entry). */
+  val gotoReplaceChannel: Channel[UrlResource] = Channel.create()
+
+  /** Go to a specific URL, replacing the current history entry. */
+  def gotoReplace(url: UrlResource): Unit = gotoReplaceChannel(url)
+
   /** Force a reload. */
   val reloadChannel: Channel[Any] = Channel.create()
 

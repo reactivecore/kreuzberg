@@ -43,7 +43,11 @@ private[extras] object RoutingState {
 
     routingTarget.forward match {
       case Some(url) =>
-        return RoutingState.Forward(url)
+        val replaceHistory = routingTarget match {
+          case fwd: kreuzberg.extras.Forward => fwd.replaceHistory
+          case _                             => false
+        }
+        return RoutingState.Forward(url, replaceHistory)
       case None      =>
       // continue
     }
@@ -143,7 +147,7 @@ private[extras] object RoutingState {
     }
   }
 
-  case class Forward(url: UrlResource) extends RoutingState {
+  case class Forward(url: UrlResource, replaceHistory: Boolean = false) extends RoutingState {
     override def result(settings: RouterSettings): RoutingResult = {
       RoutingResult("", settings.loadingHandler(url))
     }

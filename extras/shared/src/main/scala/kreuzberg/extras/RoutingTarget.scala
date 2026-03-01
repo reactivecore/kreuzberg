@@ -52,7 +52,14 @@ case class RoutingResult(
   }
 }
 
-case class Forward(url: UrlResource) extends RoutingTarget {
+/**
+ * We forward to a new page.
+ * @param url
+ *   target url
+ * @param replaceHistory
+ *   if true, do not push to state.
+ */
+case class Forward(url: UrlResource, replaceHistory: Boolean = false) extends RoutingTarget {
   override def preTitle: String = ""
 
   override def metaData: MetaData = MetaData.empty

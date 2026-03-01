@@ -31,12 +31,19 @@ case class MainRouter(
         val url = BrowserRouting.getCurrentResource()
         handlePath(false, url)
       case f: RoutingState.Forward =>
-        Router.goto(f.url)
+        if (f.replaceHistory) Router.gotoReplace(f.url)
+        else Router.goto(f.url)
       case _                       =>
     }
 
     addHandler(Router.gotoChannel) { url =>
       handlePath(true, url)
+    }
+
+    addHandler(Router.gotoReplaceChannel) { url =>
+      handlePath(false, url)
+      val target = routingStateModel.read().result(settings)
+      replaceUrl(url, target)
     }
 
     addHandlerAny(Router.reloadChannel) {
@@ -70,10 +77,9 @@ case class MainRouter(
     Router.currentUrl.set(url)
 
     routingStateModel.read() match {
-      case RoutingState.Loaded(_, _, route) if route.update(url) =>
-        // The route can update it's stuff by itself, stop here now
-        return
-      case _                                                     =>
+      case RoutingState.Loaded(_, result, route) if route.update(url) =>
+        if (pushState) pushUrl(url, result)
+      case _                                                          =>
       // Nothing
     }
 
@@ -92,6 +98,14 @@ case class MainRouter(
     if (url != currentPath) {
       Logger.debug(s"Push state ${routingTarget.preTitle}/${url}")
       BrowserRouting.pushState(routingTarget.preTitle, url.str)
+    }
+  }
+
+  private def replaceUrl(url: UrlResource, routingTarget: RoutingTarget): Unit = {
+    val currentPath = BrowserRouting.getCurrentResource()
+    if (url != currentPath) {
+      Logger.debug(s"Replace state ${routingTarget.preTitle}/${url}")
+      BrowserRouting.replaceState(routingTarget.preTitle, url.str)
     }
   }
 }
