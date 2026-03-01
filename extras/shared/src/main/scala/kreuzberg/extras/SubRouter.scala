@@ -26,12 +26,17 @@ class SubRouter(
         goto(Router.currentUrl.read(), true)
       case f: RoutingState.Forward =>
         val full = f.url.prependPath(prefix)
-        Router.goto(full)
+        if (f.replaceHistory) Router.gotoReplace(full)
+        else Router.goto(full)
       case _                       =>
       //
     }
 
     addHandler(Router.gotoChannel) { url =>
+      goto(url, false)
+    }
+
+    addHandler(Router.gotoReplaceChannel) { url =>
       goto(url, false)
     }
 

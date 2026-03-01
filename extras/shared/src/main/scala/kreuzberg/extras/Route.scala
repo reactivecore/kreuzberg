@@ -62,13 +62,23 @@ object Route {
     override def target(state: Unit): RoutingResult = result
   }
 
+  /**
+   * A Simple forwarding
+   * @param path
+   *   current url
+   * @param destination
+   *   destination url
+   * @param replaceHistory
+   *   if true, do not append current page to history
+   */
   case class SimpleForward(
       path: UrlPath,
-      destination: UrlResource
+      destination: UrlResource,
+      replaceHistory: Boolean = false
   ) extends RouteWithCodec[Unit] {
     override def codec: PathCodec[Unit] = PathCodec.const(path)
 
-    override def target(state: Unit): Forward = Forward(destination)
+    override def target(state: Unit): Forward = Forward(destination, replaceHistory)
   }
 
   /** A eager Route whose target depends on a value. */
