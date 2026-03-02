@@ -83,8 +83,7 @@ case class MainRouter(
       // Nothing
     }
 
-    val state = RoutingState.decide(url, routes, routingStateModel)
-    routingStateModel.set(state)
+    val state = RoutingState.decideAndUpdate(url, routes, routingStateModel)
 
     if (pushState) {
       val intermediate = state.result(settings)

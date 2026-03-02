@@ -15,30 +15,36 @@ private[extras] sealed trait RoutingState {
 private[extras] object RoutingState {
 
   /**
-   * Runs the state machine for a given URL and routes.
+   * Runs the state machine for a given URL and routes, and updates the model accordingly.
    *
    * @param url
    *   url where to go
    * @param routes
    *   available routes
    * @param model
-   *   model to update in case of lazy updates.
+   *   model to update with the new state (and again when a lazy route finishes loading).
+   * @return
+   *   the new routing state (already applied to `model`)
    */
-  def decide(url: UrlResource, routes: Seq[Route], model: Model[RoutingState])(
+  def decideAndUpdate(url: UrlResource, routes: Seq[Route], model: Model[RoutingState])(
       using ec: ExecutionContext
   ): RoutingState = {
     val route = routes.find(_.handles(url)) match {
       case Some(found) =>
         found
       case None        =>
-        return RoutingState.NotFound(url)
+        val state = RoutingState.NotFound(url)
+        model.set(state)
+        return state
     }
 
     val routingTarget = route.target(url) match {
       case Right(value) =>
         value
       case Left(error)  =>
-        return RoutingState.Failed(url, error)
+        val state = RoutingState.Failed(url, error)
+        model.set(state)
+        return state
     }
 
     routingTarget.forward match {
@@ -47,25 +53,30 @@ private[extras] object RoutingState {
           case fwd: kreuzberg.extras.Forward => fwd.replaceHistory
           case _                             => false
         }
-        return RoutingState.Forward(url, replaceHistory)
+        val state          = RoutingState.Forward(url, replaceHistory)
+        model.set(state)
+        return state
       case None      =>
       // continue
     }
 
     routingTarget match {
       case eager: RoutingResult =>
-        RoutingState.Loaded(url, eager, route)
+        val state = RoutingState.Loaded(url, eager, route)
+        model.set(state)
+        state
       case lazyRoute            =>
-        val loadingId = Identifier.next()
-
+        val loadingId    = Identifier.next()
+        val loadingState = RoutingState.Loading(url, lazyRoute, loadingId)
+        // Must set the model BEFORE calling load() so that PendingModelChange is queued
+        // ahead of any onComplete callback (which fires immediately for Future.successful).
+        model.set(loadingState)
         Router.loading.set(true)
-
         lazyRoute.load().onComplete { result =>
           Router.loading.set(false)
           onLoaded(url, route, loadingId, result, model)
         }
-
-        RoutingState.Loading(url, lazyRoute, loadingId)
+        loadingState
     }
   }
 

@@ -75,11 +75,10 @@ class SubRouter(
     if (!refresh && url == routingState.eagerValue().url) {
       return
     }
-    val state = decide(url)
-    routingState.set(state)
+    decideAndUpdate(url)
   }
 
-  private def decide(url: UrlResource): RoutingState = {
+  private def decideAndUpdate(url: UrlResource): RoutingState = {
     val subUrl = url.path.stripPrefix(prefix) match {
       case Some(remainder) =>
         url.copy(path = remainder)
@@ -87,6 +86,6 @@ class SubRouter(
         return RoutingState.NotFound(url)
     }
 
-    RoutingState.decide(subUrl, routes, routingState)
+    RoutingState.decideAndUpdate(subUrl, routes, routingState)
   }
 }
