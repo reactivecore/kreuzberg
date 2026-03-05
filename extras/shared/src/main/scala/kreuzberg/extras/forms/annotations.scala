@@ -13,7 +13,8 @@ case class UseField[-T](
     description: String = "",
     tooltip: String = "",
     validator: Validator[T] = Validator.succeed,
-    required: Boolean = false
+    required: Boolean = false,
+    options: Seq[(String, String)] = Seq.empty
 ) extends StaticAnnotation {
 
   /** Returns the name to use for this field. */

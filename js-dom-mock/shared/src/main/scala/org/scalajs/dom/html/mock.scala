@@ -9,3 +9,9 @@ trait Input extends Element {
 
   var checked: Boolean // scalafix:ok
 }
+
+trait Select extends Element {
+
+  /** Selected value of select element */
+  var value: String // scalafix:ok
+}

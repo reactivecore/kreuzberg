@@ -5,7 +5,7 @@ import kreuzberg.RuntimeState.JsProperty
 import kreuzberg.extras.Result
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
-import org.scalajs.dom.html.Input
+import org.scalajs.dom.html.{Input, Select}
 
 /** Responsible for displaying a form. */
 case class FormComponent[T](
@@ -87,8 +87,16 @@ trait FormFieldComponent extends Component {
 
 object FormFieldComponent {
 
+  /** Common trait for form field input elements (input, select, etc.). */
+  trait FormFieldInputBase extends SimpleComponentBase {
+    def text: RuntimeProperty[String]
+
+    /** The event to track changes, to bind validation. */
+    def onChangeEvent: JsEvent
+  }
+
   /** Input inside form field. */
-  case class FormFieldInput(field: FormField[?], initialValue: String) extends SimpleComponentBase {
+  case class FormFieldInput(field: FormField[?], initialValue: String) extends FormFieldInputBase {
     def assemble(using sc: SimpleContext): Html = {
       input(
         name   := field.name,
@@ -99,8 +107,9 @@ object FormFieldComponent {
     }
 
     override type DomElement = Input
-    def onChange     = jsEvent("change")
-    def onInputEvent = jsEvent("input")
+
+    /** Uses "input" DOM event to validate on every keystroke. */
+    def onChangeEvent = jsEvent("input")
 
     // Workaround to make it also usable with Checkboxes
     val text: JsProperty[DomElement, String] = if (field.formType == "checkbox") {
@@ -108,6 +117,30 @@ object FormFieldComponent {
     } else {
       jsProperty(_.value, (r, v) => r.value = v)
     }
+  }
+
+  /** Select dropdown inside form field. */
+  case class FormFieldSelect(field: FormField[?], initialValue: String) extends FormFieldInputBase {
+    def assemble(using sc: SimpleContext): Html = {
+      select(
+        name := field.name,
+        if (field.required) required
+      )(
+        field.options.map { case (optValue, optLabel) =>
+          option(
+            value := optValue,
+            if (optValue == initialValue) selected
+          )(optLabel)
+        }
+      )
+    }
+
+    override type DomElement = Select
+
+    /** Uses "change" DOM event to validate when a new option is selected. */
+    def onChangeEvent = jsEvent("change")
+
+    val text: JsProperty[DomElement, String] = jsProperty(_.value, (r, v) => r.value = v)
   }
 
   case class FormFieldViolationsComponent(violations: Subscribeable[List[String]]) extends SimpleComponentBase {
@@ -124,13 +157,14 @@ object FormFieldComponent {
   }
 
   case class Default(field: FormField[?], initialValue: String) extends SimpleComponentBase with FormFieldComponent {
-    val input               = FormFieldInput(field, initialValue)
-    val violations          = Model.create[List[String]](Nil)
-    val violationsComponent = FormFieldViolationsComponent(violations)
+    val input: FormFieldInputBase =
+      if (field.options.nonEmpty) FormFieldSelect(field, initialValue) else FormFieldInput(field, initialValue)
+    val violations                = Model.create[List[String]](Nil)
+    val violationsComponent       = FormFieldViolationsComponent(violations)
 
     def assemble(using sc: SimpleContext): Html = {
       add(
-        input.onInputEvent.handle { _ =>
+        input.onChangeEvent.handle { _ =>
           val value   = input.text.read()
           val decoded = field.decodeAndValidate(value).fold(_.asList, _ => Nil)
           violations.set(decoded)

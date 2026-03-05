@@ -13,7 +13,8 @@ case class FormField[T](
     tooltip: String = "",
     codec: Codec[T, String] = Codec.string,
     validator: Validator[T] = Validator.succeed,
-    required: Boolean = false
+    required: Boolean = false,
+    options: Seq[(String, String)] = Seq.empty
 ) {
   def ::[Y](before: FormField[Y]): RecursiveFormFields[Y *: T *: EmptyTuple] = {
     RecursiveFormFields.Node(before, RecursiveFormFields.Node(this, RecursiveFormFields.Leaf))
