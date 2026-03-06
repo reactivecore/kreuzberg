@@ -50,7 +50,8 @@ object Generator {
       tooltip = nonEmptyOr(_.tooltip, ""),
       codec = fieldDescription.codec,
       validator = fieldDescription.useFieldAnnotation.map(_.validator).getOrElse(Validator.succeed),
-      required = fieldDescription.useFieldAnnotation.exists(_.required)
+      required = fieldDescription.useFieldAnnotation.exists(_.required),
+      options = fieldDescription.useFieldAnnotation.map(_.options).getOrElse(Seq.empty)
     )
   }
 

@@ -36,7 +36,12 @@ object ExtendedFormPage extends SimpleComponentBase with SimpleRouted {
       )
       largeNumber: Int = 0,
       @UseField(label = "Is Adult", validator = Validator.fromPredicate[Boolean](_ == true, "Must be true"))
-      isAdult: Boolean = false
+      isAdult: Boolean = false,
+      @UseField(
+        label = "Favorite Color",
+        options = Seq("red" -> "Red", "green" -> "Green", "blue" -> "Blue", "yellow" -> "Yellow")
+      )
+      favoriteColor: String = "red"
   )
 
   val registerForm: Form[Register] = Generator.generate[Register]
@@ -70,9 +75,14 @@ object ExtendedFormPage extends SimpleComponentBase with SimpleRouted {
         formType = "checkbox",
         codec = Codec.simpleBoolean,
         validator = Validator.fromPredicate[Boolean](_ == true, "Must be true")
+      ) ::
+      FormField(
+        "favoriteColor",
+        label = "Favorite Color",
+        options = Seq("red" -> "Red", "green" -> "Green", "blue" -> "Blue", "yellow" -> "Yellow")
       )
   ).xmap[Register](
-    tuple => Register(tuple._1, tuple._2, tuple._3, tuple._4, tuple._5, tuple._6, tuple._7),
+    tuple => Register(tuple._1, tuple._2, tuple._3, tuple._4, tuple._5, tuple._6, tuple._7, tuple._8),
     entry =>
       (
         entry.firstName,
@@ -81,7 +91,8 @@ object ExtendedFormPage extends SimpleComponentBase with SimpleRouted {
         entry.password,
         entry.passwordRepeat,
         entry.largeNumber,
-        entry.isAdult
+        entry.isAdult,
+        entry.favoriteColor
       )
   ).chainValidator(
     Validator.fromPredicate(r => r.password == r.passwordRepeat, "Passwords do not match")
