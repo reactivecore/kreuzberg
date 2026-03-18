@@ -19,6 +19,7 @@ case class DeploymentConfig(
       ".*\\.css\\.map"
     ),
     noScriptText: Option[String] = None, // if not given, use default.
+    noScriptBody: Seq[Modifier] = Nil,
     // Attributes for the root <html>
     htmlRootAttributes: Seq[Modifier] = Seq()
 ) {

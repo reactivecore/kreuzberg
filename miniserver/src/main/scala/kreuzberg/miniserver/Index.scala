@@ -24,9 +24,11 @@ case class Index(config: DeploymentConfig) {
       body(
         div(id := "root"),
         noscript(
-          config.noScriptText.getOrElse(
-            "Please enable JavaScript in order to use this page."
-          )
+          if (config.noScriptBody.nonEmpty) config.noScriptBody
+          else
+            config.noScriptText.getOrElse(
+              "Please enable JavaScript in order to use this page."
+            )
         )
       )
     )
