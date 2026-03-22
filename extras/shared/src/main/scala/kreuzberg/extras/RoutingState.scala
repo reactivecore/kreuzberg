@@ -131,7 +131,8 @@ private[extras] object RoutingState {
 
     override def result(settings: RouterSettings): RoutingResult = RoutingResult(
       title = routingTarget.preTitle,
-      component = settings.loadingHandler(url)
+      component = settings.loadingHandler(url),
+      meta = routingTarget.metaData
     )
   }
 

@@ -92,7 +92,8 @@ object RoutingTarget {
       underlying.load().map { result =>
         RoutingResult(
           title = titleFn(result.title),
-          component = componentFn(result.component)
+          component = componentFn(result.component),
+          meta = metaFn(result.meta)
         )
       }
     }
