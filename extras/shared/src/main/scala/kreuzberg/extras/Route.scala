@@ -3,7 +3,7 @@ package kreuzberg.extras
 import kreuzberg.*
 
 import language.implicitConversions
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /** A Route within [[MainRouter]] */
 trait Route {
@@ -104,7 +104,12 @@ object Route {
 
         override def metaData: MetaData = meta
 
-        override def load(): Future[RoutingResult] = fn(state)
+        override def load(): Future[RoutingResult] = {
+          implicit given ec: ExecutionContext = ExecutionContext.parasitic
+          fn(state).map { result =>
+            if (result.meta.isEmpty) result.copy(meta = meta) else result
+          }
+        }
       }
     }
   }
