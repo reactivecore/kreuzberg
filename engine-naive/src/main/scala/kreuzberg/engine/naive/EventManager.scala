@@ -6,7 +6,6 @@ import org.scalajs.dom.Event
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 /** Encapsulate the highly stateful event handling. */
 private[kreuzberg] class EventManager(delegate: EventManagerDelegate) {
@@ -28,24 +27,12 @@ private[kreuzberg] class EventManager(delegate: EventManagerDelegate) {
   /** During Iteration: Set of changed models. */
   private val _changedModel = mutable.Set[Identifier]()
 
-  /** Bindings to Model instances. */
-  private case class ModelBindings[T](
-      handler: (T, T) => Unit,
-      owner: Identifier
-  )
-
   /**
    * Bindings to Window-Events. We cannot directly move them to the inner handler, as we need a simple way to deconnect
    * garbage collected / dereferenced components from it.
    */
   private case class WindowEventBinding(
       handler: Event => Unit,
-      owner: Identifier
-  )
-
-  /** Binding to Component Events. */
-  private case class ComponentEventBinding[T](
-      handler: T => Unit,
       owner: Identifier
   )
 

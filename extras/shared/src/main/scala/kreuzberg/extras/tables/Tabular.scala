@@ -1,7 +1,6 @@
 package kreuzberg.extras.tables
 
 import scala.deriving.Mirror
-import scala.quoted.*
 
 /** Type class which can convert Seq[T] into a table */
 trait Tabular[T] {

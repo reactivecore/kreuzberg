@@ -5,10 +5,12 @@ import kreuzberg.miniserver.DeploymentType.Production
 import scala.annotation.experimental
 
 @experimental
-object ProdMain extends App {
-  ServerMainLoom(deploymentConfig =
-    defaultDeploymentConfig.copy(
-      deploymentType = Production
-    )
-  ).run()
+object ProdMain {
+  def main(args: Array[String]): Unit = {
+    ServerMainLoom(deploymentConfig =
+      defaultDeploymentConfig.copy(
+        deploymentType = Production
+      )
+    ).run()
+  }
 }

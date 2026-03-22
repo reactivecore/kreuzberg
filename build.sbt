@@ -16,13 +16,12 @@ val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
 
-ThisBuild / scalaVersion := "3.7.4"
+ThisBuild / scalaVersion := "3.8.2"
 
 ThisBuild / scalacOptions ++= Seq(
   "-Xcheck-macros",
   "-feature",
   "-Wunused:all",
-  "-Wunused:strict-no-implicit-warn",
   "-Wconf:any:e",                                      // All Warnings are errors
   "-Wconf:src=src_managed/.*:silent",                  // No Warnings inside generated code
   "-Wconf:msg=unused private member&src=test/*:silent" // Do not care about unused stuff in Testcases

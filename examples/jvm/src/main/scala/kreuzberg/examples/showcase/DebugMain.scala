@@ -5,10 +5,12 @@ import kreuzberg.miniserver.DeploymentType.Debug
 import scala.annotation.experimental
 
 @experimental
-object DebugMain extends App {
-  ServerMainLoom(deploymentConfig =
-    defaultDeploymentConfig.copy(
-      deploymentType = Debug
-    )
-  ).run()
+object DebugMain {
+  def main(args: Array[String]): Unit = {
+    ServerMainLoom(deploymentConfig =
+      defaultDeploymentConfig.copy(
+        deploymentType = Debug
+      )
+    ).run()
+  }
 }

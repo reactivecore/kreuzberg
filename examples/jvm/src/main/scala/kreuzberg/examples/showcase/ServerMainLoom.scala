@@ -66,7 +66,7 @@ val defaultDeploymentConfig = DeploymentConfig(
 )
 
 @experimental
-class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfig) extends App {
+class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfig) {
   val todoDispatcher: Dispatcher[Id] =
     Dispatcher.makeIdDispatcher[TodoApi[Id]](new TodoServiceLoom: TodoApi[Id]).preRequestFlatMap { request =>
       // Demonstrating adding a pre filter
