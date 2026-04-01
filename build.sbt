@@ -16,7 +16,7 @@ val artefactVersion = versionTag.getOrElse(snapshotVersion)
 
 ThisBuild / version := artefactVersion
 
-ThisBuild / scalaVersion := "3.8.2"
+ThisBuild / scalaVersion := "3.8.3"
 
 ThisBuild / scalacOptions ++= Seq(
   "-Xcheck-macros",
