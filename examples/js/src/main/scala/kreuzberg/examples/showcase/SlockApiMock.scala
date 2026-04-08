@@ -7,7 +7,7 @@ import scala.concurrent.duration.FiniteDuration
 object SlowApiMock {
 
   def timer[T](duration: FiniteDuration, result: T): Future[T] = {
-    val promise = Promise[T]
+    val promise = Promise[T]()
     scalajs.js.timers.setTimeout(duration) {
       promise.success(result)
     }

@@ -11,9 +11,9 @@ import scala.util.Try
 abstract class OxServiceBox[R] {
   private var used: Boolean          = false // scalafix:ok
   private val thread: Thread         = new Thread(() => threadMain())
-  private val result: Promise[R]     = Promise[R]
-  private val stopper: Promise[Unit] = Promise[Unit]
-  private val stopped: Promise[Unit] = Promise[Unit]
+  private val result: Promise[R]     = Promise[R]()
+  private val stopper: Promise[Unit] = Promise[Unit]()
+  private val stopped: Promise[Unit] = Promise[Unit]()
 
   protected val logger: Logger = LoggerFactory.getLogger(getClass)
 
