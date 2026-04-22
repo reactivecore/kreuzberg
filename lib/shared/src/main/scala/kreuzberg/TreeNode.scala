@@ -15,14 +15,14 @@ private[kreuzberg] type HeadlessOrComponent = Component | HeadlessComponent
  * @param handlers
  *   Event bindings
  * @param subscriptions
- *   subscribed models
+ *   subscribed models, each paired with the value observed at construction time
  */
 private[kreuzberg] case class TreeNode(
     component: HeadlessOrComponent,
     html: Html,
     children: Vector[TreeNode],
     handlers: Vector[EventBinding[?]],
-    subscriptions: Vector[Identifier]
+    subscriptions: Vector[SubscriptionRecord]
 ) {
   override def toString: String = s"Component ${id}/${component}"
 
@@ -41,10 +41,11 @@ private[kreuzberg] case class TreeNode(
   /** All subscriptions of this tree, modelId to component id. */
   def allSubscriptions: Iterator[(Identifier, Identifier)] = {
     for {
-      node         <- iterator
-      subscription <- node.subscriptions
+      node    <- iterator
+      record  <- node.subscriptions
+      modelId <- record.dependencies
     } yield {
-      subscription -> node.id
+      modelId -> node.id
     }
   }
 
@@ -61,6 +62,9 @@ private[kreuzberg] case class TreeNode(
   def iterator: Iterator[TreeNode] = {
     Iterator(this) ++ children.iterator.flatMap(_.iterator)
   }
+
+  /** True iff every subscribed value still equals the value observed when this node was built. */
+  def isUnchanged: Boolean = subscriptions.forall(r => r.subscribable.read() == r.lastValue)
 
   private lazy val childrenMap: Map[Identifier, TreeNode] = children.map { t => t.id -> t }.toMap
 
@@ -93,4 +97,16 @@ private[kreuzberg] object TreeNode {
 
   private def emptyRootHtml: Html =
     SimpleHtml("div", children = Vector(SimpleHtmlNode.Text("Empty Root"))).withId(Identifier.RootComponent)
+}
+
+/**
+ * A subscription recorded on a [[TreeNode]]. Carries the subscribed [[Subscribeable]] together with the value observed
+ * at tree-construction time, so the engine can compare against the current value and skip re-renders whose mapped value
+ * has not actually changed.
+ */
+private[kreuzberg] case class SubscriptionRecord(
+    subscribable: Subscribeable[?],
+    lastValue: Any
+) {
+  def dependencies: Seq[Identifier] = subscribable.dependencies
 }

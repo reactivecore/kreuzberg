@@ -28,7 +28,7 @@ private[kreuzberg] object Assembler {
       htmlToUse,
       children,
       assembly.handlers,
-      assembly.subscriptions.flatMap(_.dependencies)
+      assembly.subscriptions.map(s => SubscriptionRecord(s, s.read()))
     )
   }
 
@@ -46,7 +46,7 @@ private[kreuzberg] object Assembler {
       html = Html.Empty,
       children = children,
       handlers = assembly.handlers,
-      assembly.subscriptions.flatMap(_.dependencies)
+      assembly.subscriptions.map(s => SubscriptionRecord(s, s.read()))
     )
   }
 

@@ -13,4 +13,7 @@ object UpdateResult {
 
   /** Append the inner HTML with some code. */
   case class Append(assembly: Assembly) extends UpdateResult
+
+  /** Reuse the existing TreeNode; the component has nothing to update this cycle. */
+  case object Unchanged extends UpdateResult
 }
