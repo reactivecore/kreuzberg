@@ -93,16 +93,25 @@ private[kreuzberg] object UpdatePath {
         componentNode: TreeNode,
         component: Component
     ): TreeNode = {
-      component.update(before) match
-        case UpdateResult.Build(assembly)   => {
-          rebuildNode(component, assembly)
-        }
-        case UpdateResult.Prepend(assembly) => {
-          prependNode(componentNode, assembly)
-        }
-        case UpdateResult.Append(assembly)  => {
-          appendNode(componentNode, assembly)
-        }
+      if (componentNode.isUnchanged) {
+        // Subscribed values are all unchanged: skip the update but recurse into children
+        // (a descendant may still be in changedComponents).
+        componentNode.copy(children = componentNode.children.map(collectNodes))
+      } else {
+        component.update(before) match
+          case UpdateResult.Build(assembly)   => {
+            rebuildNode(component, assembly)
+          }
+          case UpdateResult.Prepend(assembly) => {
+            prependNode(componentNode, assembly)
+          }
+          case UpdateResult.Append(assembly)  => {
+            appendNode(componentNode, assembly)
+          }
+          case UpdateResult.Unchanged         => {
+            componentNode.copy(children = componentNode.children.map(collectNodes))
+          }
+      }
     }
 
     private def collectService(
@@ -132,7 +141,8 @@ private[kreuzberg] object UpdatePath {
       val updatedChildren      = newChildren ++ treeNode.children
       val updatedHtml          = treeNode.html.prependChild(assembly.html)
       val updatedEventHandlers = assembly.handlers ++ treeNode.handlers
-      val updatedSubscriptions = assembly.subscriptions.flatMap(_.dependencies) ++ treeNode.subscriptions
+      val updatedSubscriptions = assembly.subscriptions.map(s => SubscriptionRecord(s, s.read())) ++
+        treeNode.subscriptions.map(r => r.copy(lastValue = r.subscribable.read()))
       val rendered             = renderSubHtml(assembly.html, newChildren)
       val change               = Change.PrependHtml(treeNode.id, newChildren, rendered)
       changeBuilder += change
@@ -154,7 +164,8 @@ private[kreuzberg] object UpdatePath {
       val updatedChildren      = treeNode.children ++ newChildren
       val updatedHtml          = treeNode.html.appendChild(assembly.html)
       val updatedEventHandlers = treeNode.handlers ++ assembly.handlers
-      val updatedSubscriptions = assembly.subscriptions.flatMap(_.dependencies) ++ treeNode.subscriptions
+      val updatedSubscriptions = assembly.subscriptions.map(s => SubscriptionRecord(s, s.read())) ++
+        treeNode.subscriptions.map(r => r.copy(lastValue = r.subscribable.read()))
       val rendered             = renderSubHtml(assembly.html, newChildren)
       val change               = Change.AppendHtml(treeNode.id, newChildren, rendered)
       changeBuilder += change

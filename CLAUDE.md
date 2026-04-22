@@ -59,3 +59,4 @@ Dependency chain: `testCore` <- `js-dom-mock` <- `lib` <- `scalatags`/`xml` <- `
 - **Linting**: scalafix with `DisableSyntax` (no vars, no finalize), `RemoveUnused`, `RedundantSyntax`
 - **Testing**: ScalaTest FlatSpec via `TestBase` from `testCore`. Pattern: `it should "desc" in { ... shouldBe ... }`
 - **Cross-compilation**: Shared code goes in `shared/src/main/scala`. JS-only DOM types need mocks in `js-dom-mock` for JVM/Native compilation (e.g., `org.scalajs.dom.html.Input`, `Select`)
+- **File ordering**: Within a file, place referenced definitions *below* the code that references them. The primary type comes first; helper/support types it uses appear after it.
