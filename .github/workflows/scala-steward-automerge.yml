@@ -1,0 +1,69 @@
+name: Scala Steward Auto-Merge
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily at 06:00 UTC
+  workflow_dispatch:       # allow manual runs for testing/oversight
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: read
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge eligible Scala Steward PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          BLOCK_LABEL="block"
+          MIN_AGE_HOURS=48
+          now=$(date -u +%s)
+
+          gh pr list --repo "$REPO" --author "scala-steward" --state open \
+            --json number,createdAt,labels,body,mergeable \
+            | jq -c '.[]' | while read -r pr; do
+              num=$(jq -r '.number'        <<<"$pr")
+              created=$(jq -r '.createdAt'  <<<"$pr")
+              body=$(jq -r '.body'          <<<"$pr")
+              mergeable=$(jq -r '.mergeable' <<<"$pr")
+
+              # 4) block label
+              if jq -e --arg L "$BLOCK_LABEL" '.labels[]?|select(.name==$L)' <<<"$pr" >/dev/null; then
+                echo "#$num skip: '$BLOCK_LABEL' label"; continue
+              fi
+
+              # 3) age >= 2 days (uses created_at, stable across Steward rebases)
+              age=$(( (now - $(date -u -d "$created" +%s)) / 3600 ))
+              if (( age < MIN_AGE_HOURS )); then
+                echo "#$num skip: only ${age}h old"; continue
+              fi
+
+              # 2) minor/patch only (conservative early-semver, read from PR body)
+              labels=$(grep -oiE 'labels:[^<]*' <<<"$body" | head -n1 || true)
+              if grep -qi 'early-semver-major' <<<"$labels"; then
+                echo "#$num skip: early-semver-major"; continue
+              fi
+              if ! grep -qiE 'early-semver-(minor|patch)' <<<"$labels"; then
+                echo "#$num skip: not minor/patch ($labels)"; continue
+              fi
+
+              # no merge conflicts
+              if [ "$mergeable" != "MERGEABLE" ]; then
+                echo "#$num skip: mergeable=$mergeable"; continue
+              fi
+
+              # 1) build/checks all green (exit 0 only when every check passed;
+              #    pending=8, failure!=0 -> skip, retried on the next run)
+              if ! gh pr checks "$num" --repo "$REPO"; then
+                echo "#$num skip: checks not green"; continue
+              fi
+
+              echo "#$num MERGE (squash)"
+              gh pr merge "$num" --repo "$REPO" --squash || echo "#$num merge failed"
+          done
