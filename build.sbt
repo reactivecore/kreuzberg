@@ -47,7 +47,7 @@ val isIntelliJ = {
 
 val scalaTagsVersion             = "0.13.1"
 val scalatestVersion             = "3.2.20"
-val logbackVersion               = "1.5.34"
+val logbackVersion               = "1.5.37"
 val slf4jVersion                 = "2.0.18"
 val scalaJsDomVersion            = "2.8.1"
 val scalaJsWeakReferencesVersion = "1.0.0"
