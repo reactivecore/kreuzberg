@@ -152,8 +152,11 @@ object AssetCandidatePath {
    *
    * @param prefix
    *   prefix which will be removed from any search file
+   * @param groups
+   *   maven groups which are searched for the webjar's version descriptor, in order. The defaults cover classical
+   *   (`org.webjars`) and npm-derived (`org.webjars.npm`) webjars, add e.g. `org.webjars.bower` if needed.
    */
-  case class Webjar(prefix: String = "") extends AssetCandidatePath {
+  case class Webjar(prefix: String = "", groups: Seq[String] = Webjar.DefaultGroups) extends AssetCandidatePath {
     private var versionCache: Map[String, String] = Map.empty // scalafix:ok
     private val classLoader                       = getClass.getClassLoader
 
@@ -190,8 +193,13 @@ object AssetCandidatePath {
     }
 
     private def fetchVersion(componentName: String): Option[String] = {
+      groups.view.flatMap { group =>
+        readVersion(s"META-INF/maven/${group}/${componentName}/pom.properties")
+      }.headOption
+    }
+
+    private def readVersion(pomFile: String): Option[String] = {
       try {
-        val pomFile = s"META-INF/maven/org.webjars/${componentName}/pom.properties"
         Option(classLoader.getResourceAsStream(pomFile)).flatMap { stream =>
           Using.resource(stream) { _ =>
             val props = new Properties()
@@ -204,5 +212,11 @@ object AssetCandidatePath {
           None
       }
     }
+  }
+
+  object Webjar {
+
+    /** Default maven groups which are searched for webjar version descriptors. */
+    val DefaultGroups: Seq[String] = Seq("org.webjars", "org.webjars.npm")
   }
 }

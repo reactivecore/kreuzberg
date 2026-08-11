@@ -52,4 +52,28 @@ class AssetCandidatePathTest extends TestBase {
     candidatePath.locate("jquery") shouldBe empty
     candidatePath.locate("foo/jquery") shouldBe empty
   }
+
+  it should "load npm webjars" in {
+    val candidatePath = AssetCandidatePath.Webjar("foo/")
+    val found         = candidatePath.locate("foo/hash-wasm/dist/index.umd.js").value
+    found.load().readAllBytes().size shouldBe >=(10)
+
+    // The same instance still serves classical webjars
+    candidatePath.locate("foo/jquery/jquery.js") shouldBe defined
+
+    candidatePath.locate("foo/hash-wasm/dist/missing.js") shouldBe empty
+    candidatePath.locate("hash-wasm/dist/index.umd.js") shouldBe empty
+    candidatePath.locate("foo/other/index.umd.js") shouldBe empty
+    candidatePath.locate("foo/hash-wasm") shouldBe empty
+  }
+
+  it should "respect the configured groups" in {
+    val classical = AssetCandidatePath.Webjar("foo/", Seq("org.webjars"))
+    classical.locate("foo/jquery/jquery.js") shouldBe defined
+    classical.locate("foo/hash-wasm/dist/index.umd.js") shouldBe empty
+
+    val npm = AssetCandidatePath.Webjar("foo/", Seq("org.webjars.npm"))
+    npm.locate("foo/hash-wasm/dist/index.umd.js") shouldBe defined
+    npm.locate("foo/jquery/jquery.js") shouldBe empty
+  }
 }
