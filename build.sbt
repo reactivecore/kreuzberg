@@ -195,7 +195,8 @@ lazy val miniserver = (project in file("miniserver"))
       "com.softwaremill.sttp.tapir"   %% "tapir-prometheus-metrics" % tapirVersion,
       "com.softwaremill.sttp.client3" %% "core"                     % sttpVersion % Test,
       "net.reactivecore"              %% "quest"                    % questVersion,
-      "org.webjars"                    % "jquery"                   % "3.7.1"     % Test // For testing Webjar Loader
+      "org.webjars"                    % "jquery"                   % "3.7.1"     % Test, // For testing Webjar Loader
+      "org.webjars.npm"                % "hash-wasm"                % "4.12.0"    % Test  // For testing NPM Webjar Loader
     ),
     publishSettings
   )
