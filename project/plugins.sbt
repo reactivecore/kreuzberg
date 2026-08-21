@@ -8,7 +8,7 @@ addSbtPlugin("org.portable-scala" % "sbt-scala-native-crossproject" % "1.4.0")
 addSbtPlugin("io.spray"         % "sbt-revolver" % "0.10.0")
 addSbtPlugin("com.timushev.sbt" % "sbt-updates"  % "0.7.0")
 addSbtPlugin("org.xerial.sbt"   % "sbt-sonatype" % "3.12.2")
-addSbtPlugin("com.github.sbt"   % "sbt-pgp"      % "2.3.1")
+addSbtPlugin("com.github.sbt"   % "sbt-pgp"      % "2.3.2")
 
 addSbtPlugin("com.vmunier"         % "sbt-web-scalajs"     % "1.4.0")
 addSbtPlugin("com.github.dwickern" % "sbt-web-brotli"      % "2.0.0")
