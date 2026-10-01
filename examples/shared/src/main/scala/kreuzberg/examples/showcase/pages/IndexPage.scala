@@ -2,6 +2,7 @@ package kreuzberg.examples.showcase.pages
 
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.Button
+import kreuzberg.i18n.tr
 import kreuzberg.extras.{LocalStorage, Meta, MetaData, SimpleRouted}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
@@ -18,7 +19,7 @@ case object Counter extends SimpleComponentBase {
       model.update(_ + 1)
     }
 
-    all.span(s"Showing for ${counter} seconds")
+    all.span(tr("index.showing", counter))
   }
 }
 
@@ -26,7 +27,7 @@ object IndexPage extends SimpleComponentBase with SimpleRouted {
   val secondCounter = LocalStorage[Int](1, "local_storage_counter", _.toString, _.toInt)
   val count         = Model.create(0)
 
-  val countIncrementer = Button(count.map { i => s"Clicked ${i} times" })
+  val countIncrementer = Button(count.map { i => tr("index.clicked", i) })
 
   def assemble(using sc: SimpleContext): Html = {
     add(
@@ -36,8 +37,8 @@ object IndexPage extends SimpleComponentBase with SimpleRouted {
     )
     addService(secondCounter)
     div(
-      h2("Hi There"),
-      "Welcome to this small Kreuzberg Demonstration",
+      h2(tr("index.title")),
+      tr("index.welcome"),
       div(
         Counter,
         br,
@@ -47,7 +48,7 @@ object IndexPage extends SimpleComponentBase with SimpleRouted {
   }
 
   override def path  = "/"
-  override def title = "Welcome"
+  override def title = tr("index.pageTitle")
 
   override def metaData: MetaData =
     Seq(

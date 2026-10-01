@@ -1,0 +1,4 @@
+@locale "default"
+
+greeting: "Hello %1"
+script.close: "</script>"

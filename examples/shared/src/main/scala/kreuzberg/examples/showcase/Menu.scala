@@ -1,6 +1,7 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg.*
+import kreuzberg.examples.showcase.components.LanguagePicker
 import kreuzberg.examples.showcase.pages.{IndexPage, LazyPage}
 import kreuzberg.extras.{RouterLink, UrlResource}
 import kreuzberg.scalatags.*
@@ -25,6 +26,6 @@ case object Menu extends SimpleComponentBase {
 
   override def assemble(using sc: SimpleContext): Html = {
     val items = links.map { case (link, name) => RouterLink(UrlResource(link), name, deco = true).wrap }
-    div(items*)
+    div(items :+ LanguagePicker.wrap*)
   }
 }

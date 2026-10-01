@@ -11,7 +11,8 @@ case class MiniServerConfig(
     host: String = "0.0.0.0",
     port: Int = 8090,
     api: Option[Dispatcher[Id]] = None,
-    init: Option[InitRequest => String] = None
+    init: Option[InitRequest => String] = None,
+    translations: Option[TranslationConfig] = None
 )
 
 case class InitRequest(

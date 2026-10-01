@@ -14,7 +14,8 @@ import kreuzberg.miniserver.{
   InitRequest,
   MiniServer,
   MiniServerConfig,
-  RestrictedAssetCandidatePath
+  RestrictedAssetCandidatePath,
+  TranslationConfig
 }
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
@@ -61,8 +62,7 @@ val defaultDeploymentConfig = DeploymentConfig(
     meta(
       charset := "utf-8"
     )
-  ),
-  htmlRootAttributes = Seq(lang := "en")
+  )
 )
 
 @experimental
@@ -90,7 +90,13 @@ class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfi
   val config = MiniServerConfig(
     deploymentConfig,
     api = Some(todoDispatcher),
-    init = Some(initializer)
+    init = Some(initializer),
+    translations = Some(
+      TranslationConfig(
+        resources = Seq("i18n/examples.default.rctr", "i18n/examples.de.rctr", "i18n/examples.fr.rctr"),
+        defaultLocale = "en"
+      )
+    )
   )
 
   def run(): Unit = {

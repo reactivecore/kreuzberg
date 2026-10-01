@@ -145,14 +145,18 @@ class MiniServer(
     Right(makeIndexHtml(headers, cookies))
   }
 
+  /** Translations (loaded once at construction, fails fast on invalid catalogs). */
+  private val translationProvider: Option[TranslationProvider] = config.translations.map(TranslationProvider.load(_))
+
   /** Generate the Index HTML Page. */
   def makeIndexHtml(headers: List[Header], cookies: List[Cookie]): String = {
-    val initRequest = InitRequest(
+    val initRequest  = InitRequest(
       headers = headers.map(h => h.name -> h.value),
       cookies = cookies.map(c => c.name -> c.value)
     )
-    val initData    = config.init.map(_.apply(initRequest))
-    Index(config.deployment).pageHtml(initData)
+    val initData     = config.init.map(_.apply(initRequest))
+    val translations = translationProvider.map(_.forRequest(initRequest))
+    Index(config.deployment).pageHtml(initData, translations)
   }
 
   /** Endpoint handler for API-Calls. */

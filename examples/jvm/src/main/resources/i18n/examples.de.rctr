@@ -1,0 +1,9 @@
+@locale "de"
+
+index.pageTitle:  "Willkommen"
+index.title:      "Hallo"
+index.welcome:    "Willkommen zu dieser kleinen Kreuzberg-Demonstration"
+index.showing:    "Seit %1 Sekunden sichtbar"
+index.clicked:    "%1 Mal geklickt"
+
+language.label:   "Sprache"

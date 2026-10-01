@@ -294,6 +294,15 @@ lazy val root = (project in file("."))
     runnerProd
   )
 
+// Checks tr("...") calls of the examples against their translation catalogs
+lazy val i18nCheck = taskKey[Unit]("Check translations")
+i18nCheck := Def.taskDyn {
+  val examplesDir = baseDirectory.value / "examples"
+  (lib.jvm / Compile / runMain).toTask(
+    s" kreuzberg.i18n.TranslationCheck --sources ${examplesDir} --catalogs ${examplesDir / "jvm/src/main/resources/i18n"}"
+  )
+}.value
+
 addCommandAlias("lint", "scalafmtAll;scalafixAll")
 
-addCommandAlias("lintCheck", "scalafmtCheckAll; scalafixAll --check")
+addCommandAlias("lintCheck", "scalafmtCheckAll; scalafixAll --check; i18nCheck")

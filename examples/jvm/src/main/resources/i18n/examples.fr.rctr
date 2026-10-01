@@ -1,0 +1,9 @@
+@locale "fr"
+
+index.pageTitle:  "Bienvenue"
+index.title:      "Bonjour"
+index.welcome:    "Bienvenue dans cette petite démonstration de Kreuzberg"
+index.showing:    "Affiché depuis %1 secondes"
+index.clicked:    "Cliqué %1 fois"
+
+language.label:   "Langue"

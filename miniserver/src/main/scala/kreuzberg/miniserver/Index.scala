@@ -1,5 +1,6 @@
 package kreuzberg.miniserver
 
+import kreuzberg.i18n.Translations
 import kreuzberg.scalatags.*
 import scalatags.Text.TypedTag
 import scalatags.Text.all.*
@@ -12,11 +13,13 @@ import java.util.Base64
 case class Index(config: DeploymentConfig) {
 
   /** Rendered index page. */
-  def index(initData: Option[String]): TypedTag[String] = {
-    html(config.htmlRootAttributes)(
+  def index(initData: Option[String], translations: Option[PageTranslations] = None): TypedTag[String] = {
+    // The per request language comes first, browsers ignore later duplicate attributes
+    html(translations.map(t => lang := t.locale), config.htmlRootAttributes)(
       head(
         config.extraHtmlHeader,
         initData.map(encodeData),
+        translations.map(encodeTranslations),
         mainJs,
         extraJs,
         extraCss
@@ -34,8 +37,8 @@ case class Index(config: DeploymentConfig) {
     )
   }
 
-  def pageHtml(initData: Option[String]): String = {
-    "<!DOCTYPE html>\n" + index(initData).toString
+  def pageHtml(initData: Option[String], translations: Option[PageTranslations] = None): String = {
+    "<!DOCTYPE html>\n" + index(initData, translations).toString
   }
 
   private def encodeData(initData: String): TypedTag[String] = {
@@ -50,6 +53,12 @@ case class Index(config: DeploymentConfig) {
       )
     )
     scriptCode
+  }
+
+  private def encodeTranslations(translations: PageTranslations): TypedTag[String] = {
+    // JSON is valid JavaScript; escaping "</" prevents closing the script tag early
+    val json = translations.toJson.noSpaces.replace("</", "<\\/")
+    script(RawFrag(s"window.${Translations.GlobalName} = ${json};"))
   }
 
   // Caching expensive hashedUrl calls
