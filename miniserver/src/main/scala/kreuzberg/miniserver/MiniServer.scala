@@ -148,6 +148,14 @@ class MiniServer(
   /** Translations (loaded once at construction, fails fast on invalid catalogs). */
   private val translationProvider: Option[TranslationProvider] = config.translations.map(TranslationProvider.load(_))
 
+  if (translationProvider.nonEmpty && Index.hasLangAttribute(config.deployment.htmlRootAttributes)) {
+    logger.error(
+      "Translations are configured, but DeploymentConfig.htmlRootAttributes also sets lang. " +
+        "Remove lang from htmlRootAttributes, the language is set per request. " +
+        "Otherwise <html lang> becomes invalid (e.g. lang=\"de en\")."
+    )
+  }
+
   /** Generate the Index HTML Page. */
   def makeIndexHtml(headers: List[Header], cookies: List[Cookie]): String = {
     val initRequest  = InitRequest(

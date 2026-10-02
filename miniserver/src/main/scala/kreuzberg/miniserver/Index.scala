@@ -13,7 +13,8 @@ case class Index(config: DeploymentConfig) {
 
   /** Rendered index page. */
   def index(initData: Option[String], translations: Option[PageTranslations] = None): TypedTag[String] = {
-    // The per request language comes first, browsers ignore later duplicate attributes
+    // With translations, lang must not be part of htmlRootAttributes:
+    // ScalaTags joins both values into one invalid attribute (the MiniServer logs an error).
     html(translations.map(t => lang := t.locale), config.htmlRootAttributes)(
       head(
         config.extraHtmlHeader,
@@ -63,5 +64,16 @@ case class Index(config: DeploymentConfig) {
 
   private val extraCss = config.extraCss.map { name =>
     link(rel := "stylesheet", href := config.hashedUrl(name))
+  }
+}
+
+object Index {
+
+  /** Returns true if the modifiers set a `lang` attribute. */
+  def hasLangAttribute(modifiers: Seq[Modifier]): Boolean = {
+    modifiers.exists {
+      case pair: scalatags.generic.AttrPair[?, ?] => pair.a.name == "lang"
+      case _                                      => false
+    }
   }
 }
