@@ -30,6 +30,11 @@ class CatalogSetTest extends TestBase {
     set.merged("en") shouldBe default.entries
   }
 
+  it should "list translated messages without the default catalog" in {
+    set.translated("de-at") shouldBe Map("a" -> "A-at", "b" -> "B-de")
+    set.translated("en") shouldBe Map.empty
+  }
+
   it should "validate" in {
     CatalogSet(Seq(de), "en") shouldBe Left("No catalog declares @locale \"default\"")
     CatalogSet(Seq(default, de, de.copy(source = "other.rctr")), "en") shouldBe Left(

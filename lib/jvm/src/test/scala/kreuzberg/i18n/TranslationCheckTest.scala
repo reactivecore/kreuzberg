@@ -33,6 +33,14 @@ class TranslationCheckTest extends TestBase {
     report.failed(strict = false) shouldBe true
   }
 
+  it should "consider the fallback chain for untranslated keys" in {
+    val deFull = Catalog("de", Map("a" -> "A-de", "b" -> "B-de %1", "c" -> "C-de"), "app.de.rctr")
+    val deCh   = Catalog("de-CH", Map("a" -> "A-ch"), "app.de-ch.rctr")
+    val itCh   = Catalog("it-CH", Map("a" -> "A-it"), "app.it-ch.rctr")
+    val report = TranslationCheck.check(Seq(call("a"), call("b", 1), call("c")), Seq(default, deFull, deCh, itCh))
+    report.warnings shouldBe Seq("it-CH: 2 of 3 keys untranslated (b, c)")
+  }
+
   it should "fail only in strict mode on warnings" in {
     val report =
       TranslationCheck.check(Seq(call("a"), call("b", 1), call("c")), Seq(default, de.copy(entries = Map("a" -> "x"))))

@@ -29,7 +29,15 @@ case class CatalogSet private (catalogs: Seq[Catalog], defaultLocale: String) {
 
   /** Returns all messages for an effective locale, falling back key by key along its chain. */
   def merged(locale: String): Map[String, String] = {
-    val chain = LocaleChain(Seq(locale))
+    merge(LocaleChain(Seq(locale)))
+  }
+
+  /** Like [[merged]], but without the default catalog: the messages which are actually translated. */
+  def translated(locale: String): Map[String, String] = {
+    merge(LocaleChain(Seq(locale)).filterNot(_ == Catalog.DefaultLocale))
+  }
+
+  private def merge(chain: Seq[String]): Map[String, String] = {
     chain.reverse.flatMap(byLocale.get).foldLeft(Map.empty[String, String]) { (acc, catalog) =>
       acc ++ catalog.entries
     }

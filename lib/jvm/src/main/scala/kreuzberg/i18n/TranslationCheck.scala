@@ -78,8 +78,9 @@ object TranslationCheck {
 
     val translations = set.catalogs.filterNot(_.isDefault).sortBy(_.locale)
 
+    // A key is missing if no catalog along the fallback chain (e.g. de-ch -> de) translates it
     val missing = translations.flatMap { catalog =>
-      val keys = default.keySet.diff(catalog.entries.keySet).toSeq.sorted
+      val keys = default.keySet.diff(set.translated(catalog.locale).keySet).toSeq.sorted
       Option.when(keys.nonEmpty) {
         s"${catalog.locale}: ${keys.size} of ${default.size} keys untranslated (${abbreviate(keys)})"
       }
