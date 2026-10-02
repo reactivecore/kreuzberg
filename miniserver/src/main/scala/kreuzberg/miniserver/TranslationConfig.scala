@@ -22,7 +22,7 @@ case class TranslationConfig(
     cookieName: String = Translations.DefaultCookieName
 )
 
-/** Translations resolved for one page request. */
+/** Translations of one locale, as delivered with the index page. Created once per locale. */
 case class PageTranslations(locale: String, available: Seq[String], cookieName: String, messages: Map[String, String]) {
 
   /** JSON payload, as read by the client. */
@@ -32,6 +32,13 @@ case class PageTranslations(locale: String, available: Seq[String], cookieName: 
     "cookie"    -> Json.fromString(cookieName),
     "messages"  -> Json.fromFields(messages.toSeq.sortBy(_._1).map { case (k, v) => k -> Json.fromString(v) })
   )
+
+  /** JavaScript for the index page, rendered once. */
+  val scriptCode: String = {
+    // JSON is valid JavaScript; escaping "</" prevents closing the script tag early
+    val json = toJson.noSpaces.replace("</", "<\\/")
+    s"window.${Translations.GlobalName} = ${json};"
+  }
 }
 
 /** Loads catalogs once and resolves the translations for each request. */

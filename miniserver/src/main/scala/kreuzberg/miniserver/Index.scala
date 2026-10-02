@@ -1,6 +1,5 @@
 package kreuzberg.miniserver
 
-import kreuzberg.i18n.Translations
 import kreuzberg.scalatags.*
 import scalatags.Text.TypedTag
 import scalatags.Text.all.*
@@ -19,7 +18,7 @@ case class Index(config: DeploymentConfig) {
       head(
         config.extraHtmlHeader,
         initData.map(encodeData),
-        translations.map(encodeTranslations),
+        translations.map(t => script(RawFrag(t.scriptCode))),
         mainJs,
         extraJs,
         extraCss
@@ -53,12 +52,6 @@ case class Index(config: DeploymentConfig) {
       )
     )
     scriptCode
-  }
-
-  private def encodeTranslations(translations: PageTranslations): TypedTag[String] = {
-    // JSON is valid JavaScript; escaping "</" prevents closing the script tag early
-    val json = translations.toJson.noSpaces.replace("</", "<\\/")
-    script(RawFrag(s"window.${Translations.GlobalName} = ${json};"))
   }
 
   // Caching expensive hashedUrl calls

@@ -31,6 +31,14 @@ class TranslationProviderTest extends TestBase {
     de.messages shouldBe Map("greeting" -> "Hallo %1", "script.close" -> "</script>")
   }
 
+  it should "reuse the rendered script per locale" in {
+    val first  = provider.forRequest(InitRequest(Nil, Seq("lang" -> "de")))
+    val second = provider.forRequest(InitRequest(Seq("Accept-Language" -> "de-DE"), Nil))
+    first should be theSameInstanceAs second
+    first.scriptCode should startWith("""window.kreuzbergTranslations = {"locale":"de",""")
+    first.scriptCode should include(""""script.close":"<\/script>"""")
+  }
+
   it should "fail on missing or invalid resources" in {
     an[IllegalArgumentException] shouldBe thrownBy {
       TranslationProvider.load(TranslationConfig(Seq("test_i18n/missing.rctr")))
