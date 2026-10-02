@@ -145,15 +145,36 @@ class MiniServer(
     Right(makeIndexHtml(headers, cookies))
   }
 
+  /** Translations (loaded once at construction, fails fast on invalid catalogs). */
+  private val translationProvider: Option[TranslationProvider] = config.translations.map(TranslationProvider.load(_))
+
+  if (translationProvider.nonEmpty && Index.hasLangAttribute(config.deployment.htmlRootAttributes)) {
+    logger.error(
+      "Translations are configured, but DeploymentConfig.htmlRootAttributes also sets lang. " +
+        "Remove lang from htmlRootAttributes, the language is set per request. " +
+        "Otherwise <html lang> becomes invalid (e.g. lang=\"de en\")."
+    )
+  }
+
   /** Generate the Index HTML Page. */
   def makeIndexHtml(headers: List[Header], cookies: List[Cookie]): String = {
-    val initRequest = InitRequest(
+    val initRequest  = InitRequest(
       headers = headers.map(h => h.name -> h.value),
       cookies = cookies.map(c => c.name -> c.value)
     )
-    val initData    = config.init.map(_.apply(initRequest))
-    Index(config.deployment).pageHtml(initData)
+    val initData     = config.init.map(_.apply(initRequest))
+    val translations = translationProvider.map(_.forRequest(initRequest))
+    index.pageHtml(initData, translations)
   }
+
+  /**
+   * In production, assets do not change, so asset hashes are computed once. In debug mode they are computed per
+   * request, so that recompiled JavaScript is picked up.
+   */
+  private val productionIndex: Option[Index] =
+    Option.when(config.deployment.deploymentType == DeploymentType.Production)(Index(config.deployment))
+
+  private def index: Index = productionIndex.getOrElse(Index(config.deployment))
 
   /** Endpoint handler for API-Calls. */
   val apiEndpointHandler = config.api.map(ApiHandler(_).handler)

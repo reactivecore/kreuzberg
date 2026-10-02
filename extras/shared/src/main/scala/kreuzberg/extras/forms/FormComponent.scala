@@ -102,7 +102,7 @@ object FormFieldComponent {
         name   := field.name,
         `type` := field.formType,
         value  := initialValue,
-        if (field.required) required
+        Option.when(field.required)(required)
       )
     }
 
@@ -124,12 +124,12 @@ object FormFieldComponent {
     def assemble(using sc: SimpleContext): Html = {
       select(
         name := field.name,
-        if (field.required) required
+        Option.when(field.required)(required)
       )(
         field.options.map { case (optValue, optLabel) =>
           option(
             value := optValue,
-            if (optValue == initialValue) selected
+            Option.when(optValue == initialValue)(selected)
           )(optLabel)
         }
       )

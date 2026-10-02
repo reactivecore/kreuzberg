@@ -48,7 +48,10 @@ class MiniServerTest extends TestBase with ShutdownSupport {
       deployment,
       port = 0,
       host = "127.0.0.1",
-      api = Some(helloApi)
+      api = Some(helloApi),
+      translations = Some(
+        TranslationConfig(Seq("test_i18n/test.default.rctr", "test_i18n/test.de.rctr"))
+      )
     )
 
     val miniServer               = new MiniServer(config, fastShutdown = true)
@@ -79,6 +82,26 @@ class MiniServerTest extends TestBase with ShutdownSupport {
     val result = basicRequest.get(uri"${rootUrl}").send(backend)
     result.code shouldBe StatusCode.Ok
     result.body.value should include("Hello MiniServer")
+  }
+
+  it should "deliver translations with the index page" in new Env {
+    val english = basicRequest.get(uri"${rootUrl}").send(backend).body.value
+    english should include("<html lang=\"en\">")
+    english should include(
+      """window.kreuzbergTranslations = {"locale":"en","available":["en","de"],"cookie":"lang","""
+    )
+    english should include("\"greeting\":\"Hello %1\"")
+    english should include("<\\/script>")
+    english should not include ("</script>\"")
+
+    val byCookie = basicRequest.get(uri"${rootUrl}/other").cookie("lang", "de").send(backend).body.value
+    byCookie should include("<html lang=\"de\">")
+    byCookie should include("\"greeting\":\"Hallo %1\"")
+    byCookie should include("\"script.close\":\"<\\/script>\"")
+
+    val byHeader =
+      basicRequest.get(uri"${rootUrl}").header("Accept-Language", "fr-CH, de;q=0.9, en;q=0.8").send(backend).body.value
+    byHeader should include("<html lang=\"de\">")
   }
 
   it should "serve index html on other places" in new Env {

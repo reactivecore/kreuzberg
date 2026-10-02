@@ -12,11 +12,14 @@ import java.util.Base64
 case class Index(config: DeploymentConfig) {
 
   /** Rendered index page. */
-  def index(initData: Option[String]): TypedTag[String] = {
-    html(config.htmlRootAttributes)(
+  def index(initData: Option[String], translations: Option[PageTranslations] = None): TypedTag[String] = {
+    // With translations, lang must not be part of htmlRootAttributes:
+    // ScalaTags joins both values into one invalid attribute (the MiniServer logs an error).
+    html(translations.map(t => lang := t.locale), config.htmlRootAttributes)(
       head(
         config.extraHtmlHeader,
         initData.map(encodeData),
+        translations.map(t => script(RawFrag(t.scriptCode))),
         mainJs,
         extraJs,
         extraCss
@@ -34,8 +37,8 @@ case class Index(config: DeploymentConfig) {
     )
   }
 
-  def pageHtml(initData: Option[String]): String = {
-    "<!DOCTYPE html>\n" + index(initData).toString
+  def pageHtml(initData: Option[String], translations: Option[PageTranslations] = None): String = {
+    "<!DOCTYPE html>\n" + index(initData, translations).toString
   }
 
   private def encodeData(initData: String): TypedTag[String] = {
@@ -61,5 +64,16 @@ case class Index(config: DeploymentConfig) {
 
   private val extraCss = config.extraCss.map { name =>
     link(rel := "stylesheet", href := config.hashedUrl(name))
+  }
+}
+
+object Index {
+
+  /** Returns true if the modifiers set a `lang` attribute. */
+  def hasLangAttribute(modifiers: Seq[Modifier]): Boolean = {
+    modifiers.exists {
+      case pair: scalatags.generic.AttrPair[?, ?] => pair.a.name == "lang"
+      case _                                      => false
+    }
   }
 }
