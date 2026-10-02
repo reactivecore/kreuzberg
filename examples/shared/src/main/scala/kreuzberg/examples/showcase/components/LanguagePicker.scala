@@ -26,7 +26,7 @@ case object LanguagePicker extends SimpleComponentBase {
     )
     select(aria.label := tr("language.label"))(
       languages.map { case (code, name) =>
-        option(value := code, if (code == current) selected)(name)
+        option(value := code, Option.when(code == current)(selected))(name)
       }
     )
   }
