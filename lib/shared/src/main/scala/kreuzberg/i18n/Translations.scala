@@ -41,8 +41,11 @@ object Translations {
     MapTranslations(locale, available, entries)
   }
 
+  /** Locale name of the default (schema) catalog. */
+  val DefaultLocale = "default"
+
   /** No translations, every key resolves to itself. */
-  val empty: Translations = fromMap(Catalog.DefaultLocale, Nil, Map.empty)
+  val empty: Translations = fromMap(DefaultLocale, Nil, Map.empty)
 
   /** Name of the global variable the MiniServer injects. */
   val GlobalName = "kreuzbergTranslations"

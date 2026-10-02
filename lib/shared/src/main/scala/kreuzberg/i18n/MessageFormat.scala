@@ -35,16 +35,4 @@ object MessageFormat {
       sb.result()
     }
   }
-
-  /** Returns the placeholder numbers used in a template. */
-  def placeholders(template: String): Set[Int] = {
-    PlaceholderRegex.findAllMatchIn(template).collect { case m if m.group(1) != "%" => m.group(1).toInt }.toSet
-  }
-
-  /** Returns the number of arguments a template expects (highest placeholder). */
-  def arity(template: String): Int = {
-    placeholders(template).maxOption.getOrElse(0)
-  }
-
-  private val PlaceholderRegex = "%([1-9%])".r
 }

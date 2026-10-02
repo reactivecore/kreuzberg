@@ -69,7 +69,7 @@ object TranslationCheck {
       default.get(call.key) match {
         case None           => Some(s"${call.position}: Unknown key ${call.key}")
         case Some(template) =>
-          val expected = MessageFormat.arity(template)
+          val expected = Placeholders.arity(template)
           Option.when(expected != call.argCount) {
             s"${call.position}: ${call.key} expects ${expected} arguments, got ${call.argCount}"
           }
@@ -96,7 +96,7 @@ object TranslationCheck {
       catalog         <- translations
       (key, message)  <- catalog.entries.toSeq.sortBy(_._1)
       defaultTemplate <- default.get(key)
-      if MessageFormat.placeholders(message) != MessageFormat.placeholders(defaultTemplate)
+      if Placeholders(message) != Placeholders(defaultTemplate)
     } yield s"${catalog.source}: Placeholders of ${key} differ from default catalog"
 
     val usedKeys = calls.map(_.key).toSet

@@ -12,11 +12,4 @@ class MessageFormatTest extends TestBase {
     MessageFormat.format("Missing: %2.", Seq("a")) shouldBe "Missing: ."
     MessageFormat.format("Not a placeholder: %a %", Nil) shouldBe "Not a placeholder: %a %"
   }
-
-  it should "find placeholders" in {
-    MessageFormat.placeholders("Hello %1, %2 and %1") shouldBe Set(1, 2)
-    MessageFormat.placeholders("100%% %%1") shouldBe Set.empty
-    MessageFormat.arity("%3 only") shouldBe 3
-    MessageFormat.arity("none") shouldBe 0
-  }
 }

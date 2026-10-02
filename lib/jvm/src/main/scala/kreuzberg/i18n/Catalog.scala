@@ -17,7 +17,7 @@ case class Catalog(locale: String, entries: Map[String, String], source: String 
 object Catalog {
 
   /** Locale name of the schema catalog. */
-  val DefaultLocale = "default"
+  val DefaultLocale: String = Translations.DefaultLocale
 }
 
 /** Error during parsing a catalog. */
