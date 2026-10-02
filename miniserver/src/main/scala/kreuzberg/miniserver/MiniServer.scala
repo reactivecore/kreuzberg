@@ -156,8 +156,17 @@ class MiniServer(
     )
     val initData     = config.init.map(_.apply(initRequest))
     val translations = translationProvider.map(_.forRequest(initRequest))
-    Index(config.deployment).pageHtml(initData, translations)
+    index.pageHtml(initData, translations)
   }
+
+  /**
+   * In production, assets do not change, so asset hashes are computed once. In debug mode they are computed per
+   * request, so that recompiled JavaScript is picked up.
+   */
+  private val productionIndex: Option[Index] =
+    Option.when(config.deployment.deploymentType == DeploymentType.Production)(Index(config.deployment))
+
+  private def index: Index = productionIndex.getOrElse(Index(config.deployment))
 
   /** Endpoint handler for API-Calls. */
   val apiEndpointHandler = config.api.map(ApiHandler(_).handler)
