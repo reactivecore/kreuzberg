@@ -17,6 +17,8 @@ sbt extrasJVM/test                   # Run tests for a specific subproject
 sbt "extrasJVM/Test/testOnly kreuzberg.extras.forms.GeneratorTest"  # Single test class
 sbt examplesJS/fastOptJS             # Compile JS (dev mode)
 sbt runner/run                       # Start example server (debug)
+sbt runnerServerSide/run             # Start example server with server-side rendering
+sbt -Dkreuzberg.e2e=true engineServerE2e/test  # Browser tests of server-side rendering (Playwright)
 ~sbt runner/reStart                  # Watch & restart on changes
 sbt lint                             # Format (scalafmt) + lint (scalafix)
 sbt lintCheck                        # Check formatting without fixing
@@ -30,6 +32,8 @@ Cross-compiled subprojects use platform suffixes: `extrasJVM`, `extrasJS`, `extr
 |---|---|---|
 | `lib` | JS/JVM/Native | Core: Component, Model, Channel, EventBinding, Assembly, Html |
 | `engine-naive` | JS only | Mutable DOM rendering engine |
+| `engine-server` | JVM only | Server-side rendering engine; the browser runs `kreuzberg-client.js` (served as asset, protocol in `ClientProtocol`) |
+| `engine-server-e2e` | JVM | End-to-end tests of `engine-server` (not aggregated; browser tests need `-Dkreuzberg.e2e=true`) |
 | `scalatags` | JS/JVM/Native | ScalaTags HTML integration |
 | `xml` | JS/JVM/Native | Scala XML HTML integration |
 | `extras` | JS/JVM/Native | Router, Forms (macro-generated), Tables |
@@ -39,6 +43,7 @@ Cross-compiled subprojects use platform suffixes: `extrasJVM`, `extrasJS`, `extr
 | `js-dom-mock` | JVM/Native | Mocks `org.scalajs.dom` types for cross-compilation |
 | `examples` | JS/JVM | Showcase application |
 | `runner` | JVM | Wraps examples + debug mode |
+| `runner-server-side` | JVM | Runs examples with server-side rendering |
 
 Dependency chain: `testCore` <- `js-dom-mock` <- `lib` <- `scalatags`/`xml` <- `extras` <- `examples`
 

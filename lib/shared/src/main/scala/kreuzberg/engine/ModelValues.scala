@@ -1,4 +1,4 @@
-package kreuzberg.engine.naive
+package kreuzberg.engine
 
 import kreuzberg.*
 

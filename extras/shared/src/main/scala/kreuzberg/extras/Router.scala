@@ -35,6 +35,12 @@ object Router {
   /** We are loading an URL in the moment, updated by any Router. */
   val loading: Model[Boolean] = Model.create(false)
 
+  /**
+   * HTTP status of the current page, updated by [[MainRouter]]: 404 if no route matched, 500 if loading failed,
+   * otherwise [[RoutingResult.statusCode]]. Used by server-side rendering for the response of a page load.
+   */
+  val statusCode: Model[Int] = Model.create(200)
+
   /** Some (SubRouter) requests a specific title. */
   val requestTitle: Channel[String] = Channel.create()
 }

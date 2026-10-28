@@ -1,7 +1,8 @@
 package kreuzberg.engine.naive
 
 import kreuzberg.*
-import UpdatePath.Change
+import kreuzberg.engine.UpdatePath
+import kreuzberg.engine.UpdatePath.Change
 import org.scalajs.dom.Element
 
 import scala.util.control.NonFatal

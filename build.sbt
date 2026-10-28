@@ -202,6 +202,14 @@ lazy val miniserver = (project in file("miniserver"))
   )
   .dependsOn(lib.jvm, scalatags.jvm, rpc.jvm, testCore.jvm % Test)
 
+// Server-side rendering engine, with a small client script in the browser
+lazy val engineServer = (project in file("engine-server"))
+  .settings(
+    name := "kreuzberg-engine-server",
+    publishSettings
+  )
+  .dependsOn(miniserver, extras.jvm, xml.jvm, jsDomMock.jvm, testCore.jvm % Test)
+
 lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
     name           := "examples",
@@ -215,7 +223,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     Compile / fullLinkJS / scalaJSLinkerConfig ~= (_.withSourceMap(false))
   )
   .jvmSettings(logsettings)
-  .jvmConfigure(_.dependsOn(miniserver))
+  .jvmConfigure(_.dependsOn(miniserver, engineServer))
   .jsConfigure(_.dependsOn(engineNaive))
   .dependsOn(lib, xml, scalatags, extras, rpc, testCore % Test)
   .jsEnablePlugins(
@@ -231,6 +239,30 @@ lazy val runner = (project in file("runner"))
     publishLocal        := {}
   )
   .dependsOn(examples.jvm, testCore.jvm % Test)
+
+lazy val runnerServerSide = (project in file("runner-server-side"))
+  .settings(
+    Compile / mainClass := Some("kreuzberg.examples.showcase.SsrMain"),
+    publish / skip      := true,
+    publishLocal        := {}
+  )
+  .dependsOn(examples.jvm, testCore.jvm % Test)
+
+// End-to-end tests of the server-side rendering engine. Browser tests (Playwright, headless Chromium)
+// only run with: sbt -Dkreuzberg.e2e=true engineServerE2e/test
+lazy val engineServerE2e = (project in file("engine-server-e2e"))
+  .settings(
+    publish / skip := true,
+    publishLocal   := {},
+    libraryDependencies ++= Seq(
+      "com.microsoft.playwright" % "playwright" % "1.64.0" % Test
+    ),
+    Test / fork    := true,
+    Test / javaOptions ++= Seq(
+      "-Dkreuzberg.e2e=" + sys.props.getOrElse("kreuzberg.e2e", "false")
+    )
+  )
+  .dependsOn(examples.jvm, engineServer % "compile->compile;test->test", testCore.jvm % Test)
 
 // SBT / JS Pipeline seems to break IntelliJs multi project workign
 // We need it for releasing or inside SBT anyway.
@@ -283,6 +315,7 @@ lazy val root = (project in file("."))
     extras.jvm,
     extras.native,
     miniserver,
+    engineServer,
     examples.js,
     examples.jvm,
     rpc.js,
@@ -291,7 +324,8 @@ lazy val root = (project in file("."))
     jsDomMock.jvm,
     jsDomMock.native,
     runner,
-    runnerProd
+    runnerProd,
+    runnerServerSide
   )
 
 // Checks tr("...") calls of the examples against their translation catalogs

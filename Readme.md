@@ -25,7 +25,7 @@ The aim of Kreuzberg is to simplify the use of Scala in web applications. Its ke
   **Note:** This depends on experimental Scala features.
 - Deriving HTML Forms from Case-Classes, including Validation.  
 - HTML technique agnosticism. There is support for Scalatags and Scala XML, and more implementations can be added.
-- Theoretically, it should be possible to implement a server-side engine, but this has not yet been done.
+- A server-side rendering engine, which runs the components on the server. The browser only runs a small client script, which forwards events and applies the updates.
 
 Kreuzberg prioritizes ease-of-use over optimal performance or full functional programming.
 
@@ -54,7 +54,9 @@ For simplification, there is a `SimpleComponentBase`, which makes it easier to i
 - `miniserver-loom`: A Simple Tapir/Virtual threads based server for starting the example application
 - `engine-common`: Contains common engine code.
 - `engine-naive`: Contains the naive rendering engine.
+- `engine-server`: Server-side rendering engine, with a small client script in the browser.
 - `runner`: Wraps the naive engine with examples.
+- `runner-server-side`: Runs the examples with the server-side rendering engine.
 - `js-dom-mock` Mocks out some types of Scala JS DOM for JVM/Scala Native
  
 # How to

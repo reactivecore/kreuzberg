@@ -1,6 +1,7 @@
 package kreuzberg.engine.naive
 
 import kreuzberg.*
+import kreuzberg.engine.{ModelValues, UpdatePath}
 import org.scalajs.dom.{Element, Event}
 
 object Binder {

@@ -61,6 +61,7 @@ case class MainRouter(
 
     BrowserRouting.setDocumentTitle(settings.titlePrefix + result.title)
     MetaUtil.injectMetaData(result.meta)
+    Router.statusCode.set(routingState.statusCode(settings))
 
     div(result.component)
   }

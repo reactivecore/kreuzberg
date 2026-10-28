@@ -1,9 +1,32 @@
 package kreuzberg.i18n
 
-/** Outside the browser there are no page translations; `tr` returns the key. */
-private[i18n] object TranslationsPlatform {
+import kreuzberg.SimpleThreadLocal
 
-  def load(): Translations = Translations.empty
+/**
+ * Outside the browser, translations are provided by a [[TranslationsPlatform.Backend]] per thread, e.g. by a
+ * server-side engine for the current session. Without one, there are no translations and `tr` returns the key.
+ */
+private[kreuzberg] object TranslationsPlatform {
 
-  def switchLocale(locale: String): Unit = ()
+  /** Provides translations, e.g. of a session. */
+  trait Backend {
+    def translations: Translations
+
+    /** Called by [[Translations.switchLocale]]. */
+    def switchLocale(locale: String): Unit
+  }
+
+  private object NoBackend extends Backend {
+    override def translations: Translations         = Translations.empty
+    override def switchLocale(locale: String): Unit = ()
+  }
+
+  private val backend = new SimpleThreadLocal[Backend](NoBackend)
+
+  /** Run `f` with a backend for the current thread. */
+  def withBackend[T](b: Backend)(f: => T): T = backend.withInstance(b)(f)
+
+  def current: Translations = backend.get().translations
+
+  def switchLocale(locale: String): Unit = backend.get().switchLocale(locale)
 }

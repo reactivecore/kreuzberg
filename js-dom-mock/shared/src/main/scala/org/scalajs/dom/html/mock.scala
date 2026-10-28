@@ -15,3 +15,9 @@ trait Select extends Element {
   /** Selected value of select element */
   var value: String // scalafix:ok
 }
+
+trait TextArea extends Element {
+
+  /** Text content of textarea */
+  var value: String // scalafix:ok
+}
