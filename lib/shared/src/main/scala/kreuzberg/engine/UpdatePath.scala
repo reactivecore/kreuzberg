@@ -1,6 +1,6 @@
-package kreuzberg.engine.naive
+package kreuzberg.engine
 
-import kreuzberg.engine.naive.UpdatePath.Change
+import kreuzberg.engine.UpdatePath.Change
 import kreuzberg.*
 
 /** A list of changes in order to update a Tree. */

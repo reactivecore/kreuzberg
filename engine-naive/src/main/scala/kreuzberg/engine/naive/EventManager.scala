@@ -1,6 +1,7 @@
 package kreuzberg.engine.naive
 
 import kreuzberg.*
+import kreuzberg.engine.ModelValues
 import kreuzberg.engine.naive.utils.MutableMultimap
 import org.scalajs.dom.Event
 
