@@ -47,14 +47,14 @@ val isIntelliJ = {
 
 val scalaTagsVersion             = "0.13.1"
 val scalatestVersion             = "3.2.20"
-val logbackVersion               = "1.6.4"
+val logbackVersion               = "1.6.5"
 val slf4jVersion                 = "2.0.20"
 val scalaJsDomVersion            = "2.8.1"
 val scalaJsWeakReferencesVersion = "1.0.0"
 val scalaJsJavaTimeVersion       = "2.5.0"
 val scalaXmlVersion              = "2.5.0"
-val circeVersion                 = "0.14.16"
-val tapirVersion                 = "1.13.32"
+val circeVersion                 = "0.14.17"
+val tapirVersion                 = "1.14.0"
 val sttpVersion                  = "3.11.0"
 val questVersion                 = "0.2.0"
 
