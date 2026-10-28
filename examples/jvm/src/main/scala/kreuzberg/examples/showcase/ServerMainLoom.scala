@@ -65,6 +65,11 @@ val defaultDeploymentConfig = DeploymentConfig(
   )
 )
 
+val showcaseTranslations = TranslationConfig(
+  resources = Seq("i18n/examples.default.rctr", "i18n/examples.de.rctr", "i18n/examples.fr.rctr"),
+  defaultLocale = "en"
+)
+
 @experimental
 class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfig) {
   val todoDispatcher: Dispatcher[Id] =
@@ -91,12 +96,7 @@ class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfi
     deploymentConfig,
     api = Some(todoDispatcher),
     init = Some(initializer),
-    translations = Some(
-      TranslationConfig(
-        resources = Seq("i18n/examples.default.rctr", "i18n/examples.de.rctr", "i18n/examples.fr.rctr"),
-        defaultLocale = "en"
-      )
-    )
+    translations = Some(showcaseTranslations)
   )
 
   def run(): Unit = {
