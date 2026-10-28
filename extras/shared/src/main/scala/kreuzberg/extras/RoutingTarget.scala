@@ -27,11 +27,18 @@ trait RoutingTarget {
   ): RoutingTarget = RoutingTarget.Transformer(this, titleFn, metaFn, componentFn)
 }
 
-/** The final result of the Route, is a RoutingTarget itself. */
+/**
+ * The final result of the Route, is a RoutingTarget itself.
+ *
+ * @param statusCode
+ *   HTTP status, when the page is rendered on the server (not found and failed routes have their own, see
+ *   [[Router.statusCode]])
+ */
 case class RoutingResult(
     title: String,
     component: Component,
-    meta: MetaData = MetaData.empty
+    meta: MetaData = MetaData.empty,
+    statusCode: Int = 200
 ) extends RoutingTarget {
   override def preTitle: String = title
 
@@ -47,7 +54,8 @@ case class RoutingResult(
     RoutingResult(
       titleFn(title),
       componentFn(component),
-      metaFn(metaData)
+      metaFn(metaData),
+      statusCode
     )
   }
 }

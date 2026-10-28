@@ -8,6 +8,9 @@ import scala.scalajs.js.URIUtils
 /** Browser side: reads the translations injected by the MiniServer. */
 private[i18n] object TranslationsPlatform {
 
+  /** One page has one locale, a switch reloads the page. */
+  lazy val current: Translations = load()
+
   def load(): Translations = {
     // typeof on a global is safe, even if it (or window) is not defined, e.g. in Node.js
     if (js.typeOf(js.Dynamic.global.kreuzbergTranslations) != "object") {

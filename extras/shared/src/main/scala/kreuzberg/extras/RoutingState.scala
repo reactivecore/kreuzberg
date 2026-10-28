@@ -10,6 +10,9 @@ private[extras] sealed trait RoutingState {
   def url: UrlResource
 
   def result(settings: RouterSettings): RoutingResult
+
+  /** HTTP status of this state. */
+  def statusCode(settings: RouterSettings): Int = result(settings).statusCode
 }
 
 private[extras] object RoutingState {
@@ -149,6 +152,8 @@ private[extras] object RoutingState {
     override def result(settings: RouterSettings): RoutingResult = {
       settings.errorHandler(url, error)
     }
+
+    override def statusCode(settings: RouterSettings): Int = 500
   }
 
   case class NotFound(url: UrlResource) extends RoutingState {
@@ -157,6 +162,8 @@ private[extras] object RoutingState {
     override def result(settings: RouterSettings): RoutingResult = {
       settings.notFoundHandler(url)
     }
+
+    override def statusCode(settings: RouterSettings): Int = 404
   }
 
   case class Forward(url: UrlResource, replaceHistory: Boolean = false) extends RoutingState {

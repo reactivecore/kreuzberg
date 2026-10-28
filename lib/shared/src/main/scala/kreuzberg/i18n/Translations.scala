@@ -28,12 +28,13 @@ trait Translations {
 object Translations {
 
   /**
-   * Translations of the current page. In the browser, they are delivered by the MiniServer upon page load. On other
-   * platforms this is empty, so `tr` returns the key.
+   * Translations of the current page. In the browser, they are delivered by the MiniServer upon page load. On the JVM,
+   * a server-side engine provides them per request (see `TranslationsPlatform.withBackend`); otherwise they are empty,
+   * so `tr` returns the key.
    */
-  lazy val current: Translations = TranslationsPlatform.load()
+  def current: Translations = TranslationsPlatform.current
 
-  /** Switches the locale (by Cookie) and reloads the page. No-op outside the browser. */
+  /** Switches the locale (by Cookie) and reloads the page. No-op outside the browser and server-side engines. */
   def switchLocale(locale: String): Unit = TranslationsPlatform.switchLocale(locale)
 
   /** Translations backed by a Scala map. */
