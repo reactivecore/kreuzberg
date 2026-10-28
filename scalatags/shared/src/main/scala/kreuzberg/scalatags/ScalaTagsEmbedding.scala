@@ -28,7 +28,10 @@ object ScalaTagsEmbedding {
 /** Helper for collecting embedded [ScalaTagsEmbedding] elements. */
 private[scalatags] object ScalaTagsEmbeddingCollector {
   private val isActive  = new SimpleThreadLocal(false)
-  private val collector = new SimpleThreadLocal(mutable.ArrayBuffer[ScalaTagsEmbedding]())
+  // Not a SimpleThreadLocal, its initial value would be shared by all threads (e.g. in server-side rendering)
+  private val collector = new ThreadLocal[mutable.ArrayBuffer[ScalaTagsEmbedding]] {
+    override def initialValue(): mutable.ArrayBuffer[ScalaTagsEmbedding] = mutable.ArrayBuffer()
+  }
 
   /** Check if we are in the collecting phase, then do nothing. */
   def collectingPhase(embed: ScalaTagsEmbedding): Boolean = {
