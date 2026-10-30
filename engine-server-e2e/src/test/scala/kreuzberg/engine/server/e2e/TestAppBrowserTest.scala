@@ -10,7 +10,10 @@ import scala.jdk.CollectionConverters.*
 /** Drives the engine-server test app in a browser. */
 class TestAppBrowserTest extends TestBase with PlaywrightFixture {
 
-  override protected def createEngine(): ServerEngine = TestApp.engine(TestServer.config)
+  override protected def createTarget(): PlaywrightFixture.Target = {
+    val engine = TestApp.engine(TestServer.config)
+    PlaywrightFixture.Target(engine.miniServer, () => engine.close())
+  }
 
   "the app" should "render the page on initial load" in withPage { page =>
     page.navigate(s"${baseUrl}/")

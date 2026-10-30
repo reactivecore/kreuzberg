@@ -1,8 +1,12 @@
 package kreuzberg.engine.server.e2e
 
 import com.microsoft.playwright.{BrowserType, Page, Playwright}
-import kreuzberg.engine.server.{ServerEngine, TestServer}
+import kreuzberg.engine.server.TestServer
+import kreuzberg.engine.server.e2e.PlaywrightFixture.Target
+import kreuzberg.miniserver.MiniServer
 import org.scalatest.{BeforeAndAfterAll, Outcome, TestSuite, TestSuiteMixin}
+
+import scala.util.Try
 
 /**
  * Runs a server and a headless Chromium. Each test gets a fresh browser context, i.e. a new session.
@@ -11,17 +15,20 @@ import org.scalatest.{BeforeAndAfterAll, Outcome, TestSuite, TestSuiteMixin}
  */
 trait PlaywrightFixture extends TestSuiteMixin with BeforeAndAfterAll { this: TestSuite =>
 
-  /** The engine under test. */
-  protected def createEngine(): ServerEngine
+  /** The server under test. */
+  protected def createTarget(): Target
 
   private val enabled = sys.props.get("kreuzberg.e2e").contains("true")
 
-  private lazy val engine     = createEngine()
-  private lazy val server     = TestServer.Running(engine.miniServer)
+  /** Created once; a failure is kept, so that cleanup does not run into it again. */
+  private lazy val running    = Try {
+    val target = createTarget()
+    (target, TestServer.Running(target.miniServer))
+  }
   private lazy val playwright = Playwright.create()
   private lazy val browser    = playwright.chromium().launch(BrowserType.LaunchOptions().setHeadless(true))
 
-  protected def baseUrl: String = server.baseUrl
+  protected def baseUrl: String = running.get._2.baseUrl
 
   /** Run with a page in a fresh browser context. */
   protected def withPage[T](f: Page => T): T = {
@@ -44,9 +51,17 @@ trait PlaywrightFixture extends TestSuiteMixin with BeforeAndAfterAll { this: Te
     if (enabled) {
       browser.close()
       playwright.close()
-      server.close()
-      engine.close()
+      running.foreach { case (target, server) =>
+        server.close()
+        target.close()
+      }
     }
     super.afterAll()
   }
+}
+
+object PlaywrightFixture {
+
+  /** The server under test; `close` releases resources besides the HTTP server. */
+  case class Target(miniServer: MiniServer, close: () => Unit = () => ())
 }

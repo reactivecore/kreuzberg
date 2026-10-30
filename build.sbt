@@ -248,7 +248,8 @@ lazy val runnerServerSide = (project in file("runner-server-side"))
   )
   .dependsOn(examples.jvm, testCore.jvm % Test)
 
-// End-to-end tests of the server-side rendering engine. Browser tests (Playwright, headless Chromium)
+// End-to-end tests of the server-side rendering engine. The showcase browser tests also run with client-side
+// rendering, to compare both engines. Browser tests (Playwright, headless Chromium)
 // only run with: sbt -Dkreuzberg.e2e=true engineServerE2e/test
 lazy val engineServerE2e = (project in file("engine-server-e2e"))
   .settings(
@@ -257,9 +258,13 @@ lazy val engineServerE2e = (project in file("engine-server-e2e"))
     libraryDependencies ++= Seq(
       "com.microsoft.playwright" % "playwright" % "1.64.0" % Test
     ),
+    // The client-side showcase needs the JS bundle
+    Test / compile := (Test / compile).dependsOn(examples.js / Compile / fastOptJS).value,
     Test / fork    := true,
     Test / javaOptions ++= Seq(
-      "-Dkreuzberg.e2e=" + sys.props.getOrElse("kreuzberg.e2e", "false")
+      "-Dkreuzberg.e2e=" + sys.props.getOrElse("kreuzberg.e2e", "false"),
+      "-Dkreuzberg.e2e.clientBundle=" +
+        (examples.js / Compile / fastOptJS / artifactPath).value.getParentFile.getAbsolutePath
     )
   )
   .dependsOn(examples.jvm, engineServer % "compile->compile;test->test", testCore.jvm % Test)

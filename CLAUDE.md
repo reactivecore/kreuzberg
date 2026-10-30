@@ -18,7 +18,7 @@ sbt "extrasJVM/Test/testOnly kreuzberg.extras.forms.GeneratorTest"  # Single tes
 sbt examplesJS/fastOptJS             # Compile JS (dev mode)
 sbt runner/run                       # Start example server (debug)
 sbt runnerServerSide/run             # Start example server with server-side rendering
-sbt -Dkreuzberg.e2e=true engineServerE2e/test  # Browser tests of server-side rendering (Playwright)
+sbt -Dkreuzberg.e2e=true engineServerE2e/test  # Browser tests (Playwright); the showcase runs server- and client-side
 ~sbt runner/reStart                  # Watch & restart on changes
 sbt lint                             # Format (scalafmt) + lint (scalafix)
 sbt lintCheck                        # Check formatting without fixing
@@ -33,7 +33,7 @@ Cross-compiled subprojects use platform suffixes: `extrasJVM`, `extrasJS`, `extr
 | `lib` | JS/JVM/Native | Core: Component, Model, Channel, EventBinding, Assembly, Html |
 | `engine-naive` | JS only | Mutable DOM rendering engine |
 | `engine-server` | JVM only | Server-side rendering engine; the browser runs `kreuzberg-client.js` (served as asset, protocol in `ClientProtocol`) |
-| `engine-server-e2e` | JVM | End-to-end tests of `engine-server` (not aggregated; browser tests need `-Dkreuzberg.e2e=true`) |
+| `engine-server-e2e` | JVM | End-to-end tests of `engine-server`; showcase browser tests also run with client-side rendering, to compare both engines (not aggregated; browser tests need `-Dkreuzberg.e2e=true`) |
 | `scalatags` | JS/JVM/Native | ScalaTags HTML integration |
 | `xml` | JS/JVM/Native | Scala XML HTML integration |
 | `extras` | JS/JVM/Native | Router, Forms (macro-generated), Tables |
