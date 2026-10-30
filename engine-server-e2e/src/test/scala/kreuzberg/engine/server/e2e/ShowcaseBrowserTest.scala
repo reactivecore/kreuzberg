@@ -2,20 +2,23 @@ package kreuzberg.engine.server.e2e
 
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.options.WaitForSelectorState
-import kreuzberg.engine.server.{ServerEngine, TestServer}
-import kreuzberg.examples.showcase.{SsrMain, showcaseTranslations}
+import kreuzberg.engine.server.TestServer
+import kreuzberg.engine.server.e2e.PlaywrightFixture.Target
+import kreuzberg.examples.showcase.{ServerMainLoom, SsrMain, defaultDeploymentConfig, showcaseTranslations}
+import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, DeploymentType, MiniServer}
 import kreuzberg.testcore.TestBase
 
 import scala.annotation.experimental
 
-/** Drives the showcase app in a browser, covering async flows (forwarding, lazy routes, API calls). */
+/**
+ * Drives the showcase app in a browser, covering async flows (forwarding, lazy routes, API calls).
+ *
+ * Runs with server-side and client-side rendering, so that both engines are checked for the same behavior.
+ */
 @experimental
-class ShowcaseBrowserTest extends TestBase with PlaywrightFixture {
+abstract class ShowcaseBrowserTest(engineName: String) extends TestBase with PlaywrightFixture {
 
-  override protected def createEngine(): ServerEngine =
-    SsrMain.engine(TestServer.config.copy(translations = Some(showcaseTranslations)))
-
-  "the showcase" should "forward to the index page" in withPage { page =>
+  s"the showcase (${engineName})" should "forward to the index page" in withPage { page =>
     page.navigate(s"${baseUrl}/xml")
     page.waitForSelector("h2:has-text('XML Example')")
     page.click("text=Forward")
@@ -107,4 +110,35 @@ class ShowcaseBrowserTest extends TestBase with PlaywrightFixture {
   }
 
   private val hidden = Page.WaitForSelectorOptions().setState(WaitForSelectorState.HIDDEN)
+}
+
+/** The showcase with server-side rendering. */
+@experimental
+class ShowcaseServerSideBrowserTest extends ShowcaseBrowserTest("server-side") {
+
+  override protected def createTarget(): Target = {
+    val engine = SsrMain.engine(TestServer.config.copy(translations = Some(showcaseTranslations)))
+    Target(engine.miniServer, () => engine.close())
+  }
+}
+
+/** The showcase with client-side rendering, serving the Scala.js bundle of `examples.js`. */
+@experimental
+class ShowcaseClientSideBrowserTest extends ShowcaseBrowserTest("client-side") {
+
+  override protected def createTarget(): Target = {
+    val clientBundle     = sys.props.getOrElse(
+      "kreuzberg.e2e.clientBundle",
+      throw new IllegalStateException("kreuzberg.e2e.clientBundle not set, run via sbt")
+    )
+    // Without the bundle, all tests would only time out
+    require(java.io.File(clientBundle, "main.js").isFile, s"No main.js in ${clientBundle}, run examplesJS/fastOptJS")
+    val deploymentConfig = defaultDeploymentConfig.copy(
+      assetPaths = AssetPaths(Seq(AssetCandidatePath(clientBundle))),
+      deploymentType = DeploymentType.Debug
+    )
+    val config           =
+      ServerMainLoom(deploymentConfig).config.copy(host = TestServer.config.host, port = TestServer.config.port)
+    Target(MiniServer(config))
+  }
 }
