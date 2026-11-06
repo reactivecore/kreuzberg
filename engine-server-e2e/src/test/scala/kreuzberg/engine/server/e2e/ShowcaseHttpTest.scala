@@ -1,7 +1,7 @@
 package kreuzberg.engine.server.e2e
 
 import kreuzberg.engine.server.TestServer
-import kreuzberg.examples.showcase.{SsrMain, showcaseTranslations}
+import kreuzberg.examples.showcase.{SsrMain, showcaseContent, showcaseTranslations}
 import kreuzberg.testcore.TestBase
 import org.scalatest.BeforeAndAfterAll
 
@@ -11,7 +11,9 @@ import scala.annotation.experimental
 @experimental
 class ShowcaseHttpTest extends TestBase with BeforeAndAfterAll {
 
-  private lazy val engine = SsrMain.engine(TestServer.config.copy(translations = Some(showcaseTranslations)))
+  private lazy val engine = SsrMain.engine(
+    TestServer.config.copy(translations = Some(showcaseTranslations), content = Some(showcaseContent))
+  )
   private lazy val server = TestServer.Running(engine.miniServer)
 
   override protected def afterAll(): Unit = {
@@ -38,6 +40,17 @@ class ShowcaseHttpTest extends TestBase with BeforeAndAfterAll {
     val german = client.get("/", "Cookie" -> "lang=de").body
     german should include("<h2>Hallo</h2>")
     german should include("""<p>Auf <a href="https://github.com/reactivecore/kreuzberg">GitHub</a> liegt der Quellcode.</p>""")
+  }
+
+  it should "render localized content on the server" in server.withClient { client =>
+    val response = client.get("/about")
+    response.header("Content-Type") shouldBe Some("text/html; charset=UTF-8")
+    val english  = response.body
+    english should include("About Kreuzberg</h1>")
+    english should include("""<code class="file">about.de.md</code>""")
+    val german  = client.get("/about", "Cookie" -> "lang=de").body
+    german should include("Über Kreuzberg</h1>")
+    german should include("<td>auf dem Server</td>")
   }
 
   it should "patch multi-line XML pages, one operation per line" in server.withClient { client =>

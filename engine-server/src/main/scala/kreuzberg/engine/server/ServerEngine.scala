@@ -2,14 +2,14 @@ package kreuzberg.engine.server
 
 import kreuzberg.*
 import kreuzberg.extras.{UrlPath, UrlResource}
-import kreuzberg.i18n.Translations
+import kreuzberg.i18n.{ContentPlatform, Translations}
 import kreuzberg.miniserver.*
 import kreuzberg.miniserver.MiniServer.MiniServerEndpoint
 import org.slf4j.LoggerFactory
 import sttp.model.headers.Cookie.SameSite
 import sttp.model.headers.{Cookie, CookieWithMeta}
 import sttp.model.headers.CacheDirective
-import sttp.model.{Header, MediaType, StatusCode}
+import sttp.model.{Header, StatusCode}
 import sttp.tapir.*
 import sttp.tapir.server.interceptor.decodefailure.DefaultDecodeFailureHandler.OnDecodeFailure.*
 
@@ -24,8 +24,9 @@ import scala.concurrent.duration.*
  * [[ClientProtocol]]). Results of async work arriving between events are pushed via a long-lived stream.
  *
  * Translations (`MiniServerConfig.translations`) are resolved per page load (cookie, then `Accept-Language`) and kept
- * per session; `Translations.switchLocale` stores the locale in the cookie and reloads the page. Init data
- * (`MiniServerConfig.init`) is not supported.
+ * per session; `Translations.switchLocale` stores the locale in the cookie and reloads the page. Content
+ * (`MiniServerConfig.content`) is rendered in the session's locale. Init data (`MiniServerConfig.init`) is not
+ * supported.
  *
  * @param component
  *   root component, evaluated per session
@@ -48,7 +49,15 @@ class ServerEngine(
     assetPaths = AssetPaths(ServerEngine.ClientAsset +: config.deployment.assetPaths.assetPaths)
   )
 
-  private val sessionManager = SessionManager(component, serviceRepositoryFactory, sessionExpiry)
+  private val contentProvider: Option[ContentProvider] = config.content.map(ContentProvider.load(_))
+
+  /** Content in the locale of the session; translations are set by the session, too. */
+  private val contentBackend = new ContentPlatform.Backend {
+    override def load(name: String): Option[String] =
+      contentProvider.flatMap(_.get(name, Translations.current.locale))
+  }
+
+  private val sessionManager = SessionManager(component, serviceRepositoryFactory, sessionExpiry, contentBackend)
 
   private val clientUrl: String = deploymentConfig.hashedUrl(ServerEngine.ClientPath)
 
@@ -70,11 +79,12 @@ class ServerEngine(
 
   /** The MiniServer, serving pages, events, assets and the API. */
   lazy val miniServer: MiniServer = {
-    val eventEndpoints = EventController(sessionManager, config.translations.map(_.cookieName)).endpoints
-    // Pages are rendered here, so the MiniServer needs no translations
-    new MiniServer(config.copy(deployment = deploymentConfig, translations = None)) {
+    val eventEndpoints   = EventController(sessionManager, config.translations.map(_.cookieName)).endpoints
+    // Pages are rendered here, so the MiniServer needs no translations; content is loaded only once, here
+    val contentEndpoints = contentProvider.map(ContentProvider.contentEndpoint).toList
+    new MiniServer(config.copy(deployment = deploymentConfig, translations = None, content = None)) {
       override protected def primaryEndpoints: List[MiniServerEndpoint] =
-        List(assetHandler, pageHandler) ++ apiEndpointHandler.toList ++ eventEndpoints
+        List(assetHandler, pageHandler) ++ apiEndpointHandler.toList ++ eventEndpoints ++ contentEndpoints
 
       override protected def secondaryEndpoints: List[MiniServerEndpoint] =
         List(otherPageHandler, rootAssetHandler)
@@ -115,7 +125,6 @@ class ServerEngine(
   private def pageEndpoint = endpoint.get
     .out(htmlBodyUtf8)
     .out(setCookies)
-    .out(header(Header.contentType(MediaType.TextHtml)))
     // The page belongs to the session's current state, it must not come from a cache (e.g. on back navigation)
     .out(header(Header.cacheControl(CacheDirective.NoStore)))
     // As decided by the router, e.g. 404 for unknown pages

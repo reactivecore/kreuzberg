@@ -2,6 +2,7 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.*
 import kreuzberg.examples.showcase.pages.{
+  AboutPage,
   ExtendedFormPage,
   FormPage,
   IndexPage,
@@ -45,6 +46,7 @@ object App extends SimpleComponentBase {
     LazyPage,
     TablePage,
     SubRouterPage,
+    AboutPage,
     Route.SimpleForward("/forward", UrlResource("/"))
   )
 }

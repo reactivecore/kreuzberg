@@ -18,7 +18,9 @@ object SsrMain {
       extraHtmlHeader = defaultDeploymentConfig.extraHtmlHeader,
       deploymentType = DeploymentType.Debug
     )
-    engine(MiniServerConfig(deploymentConfig, translations = Some(showcaseTranslations))).run()
+    engine(
+      MiniServerConfig(deploymentConfig, translations = Some(showcaseTranslations), content = Some(showcaseContent))
+    ).run()
   }
 
   /** The showcase engine. The Todo API is served via HTTP and called in-process by the server-side components. */

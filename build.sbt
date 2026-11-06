@@ -57,6 +57,7 @@ val circeVersion                 = "0.14.17"
 val tapirVersion                 = "1.14.0"
 val sttpVersion                  = "3.11.0"
 val questVersion                 = "0.2.0"
+val flexmarkVersion              = "0.64.8"
 
 ThisBuild / sonatypeCredentialHost := sonatypeCentralHost
 
@@ -210,6 +211,20 @@ lazy val engineServer = (project in file("engine-server"))
   )
   .dependsOn(miniserver, extras.jvm, xml.jvm, jsDomMock.jvm, testCore.jvm % Test)
 
+// Optional Markdown renderer for localized content (flexmark), JVM only
+lazy val markdown = (project in file("markdown"))
+  .settings(
+    name := "kreuzberg-markdown",
+    libraryDependencies ++= Seq(
+      "com.vladsch.flexmark" % "flexmark"                 % flexmarkVersion,
+      "com.vladsch.flexmark" % "flexmark-ext-attributes"  % flexmarkVersion,
+      "com.vladsch.flexmark" % "flexmark-ext-definition"  % flexmarkVersion,
+      "com.vladsch.flexmark" % "flexmark-ext-tables"      % flexmarkVersion
+    ),
+    publishSettings
+  )
+  .dependsOn(lib.jvm, testCore.jvm % Test)
+
 lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
   .settings(
     name           := "examples",
@@ -223,7 +238,7 @@ lazy val examples = (crossProject(JSPlatform, JVMPlatform) in file("examples"))
     Compile / fullLinkJS / scalaJSLinkerConfig ~= (_.withSourceMap(false))
   )
   .jvmSettings(logsettings)
-  .jvmConfigure(_.dependsOn(miniserver, engineServer))
+  .jvmConfigure(_.dependsOn(miniserver, engineServer, markdown))
   .jsConfigure(_.dependsOn(engineNaive))
   .dependsOn(lib, xml, scalatags, extras, rpc, testCore % Test)
   .jsEnablePlugins(
@@ -321,6 +336,7 @@ lazy val root = (project in file("."))
     extras.native,
     miniserver,
     engineServer,
+    markdown,
     examples.js,
     examples.jvm,
     rpc.js,

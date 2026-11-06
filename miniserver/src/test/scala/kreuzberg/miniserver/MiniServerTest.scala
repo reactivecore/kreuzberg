@@ -51,7 +51,8 @@ class MiniServerTest extends TestBase with ShutdownSupport {
       api = Some(helloApi),
       translations = Some(
         TranslationConfig(Seq("test_i18n/test.default.rctr", "test_i18n/test.de.rctr"))
-      )
+      ),
+      content = Some(ContentConfig(Seq("test_content/about")))
     )
 
     val miniServer               = new MiniServer(config, fastShutdown = true)
@@ -82,6 +83,19 @@ class MiniServerTest extends TestBase with ShutdownSupport {
     val result = basicRequest.get(uri"${rootUrl}").send(backend)
     result.code shouldBe StatusCode.Ok
     result.body.value should include("Hello MiniServer")
+    result.header("Content-Type") shouldBe Some("text/html; charset=UTF-8")
+  }
+
+  it should "deliver content" in new Env {
+    def content(name: String, locale: Option[String]) =
+      basicRequest.get(uri"${rootUrl}/krz/content?name=${name}&locale=${locale}").send(backend)
+
+    val german = content("test_content/about", Some("de"))
+    german.body.value shouldBe "<p>Deutsch</p>\n"
+    german.header("Content-Type") shouldBe Some("text/html; charset=UTF-8")
+    content("test_content/about", Some("en")).body.value shouldBe "<p>English</p>\n"
+    content("test_content/about", None).body.value shouldBe "<p>English</p>\n"
+    content("test_content/unknown", Some("de")).code shouldBe StatusCode.NotFound
   }
 
   it should "deliver translations with the index page" in new Env {

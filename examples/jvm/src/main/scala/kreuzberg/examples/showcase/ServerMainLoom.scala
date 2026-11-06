@@ -1,6 +1,7 @@
 package kreuzberg.examples.showcase
 
 import kreuzberg.examples.showcase.todo.{ListItemResponse, TodoApi}
+import kreuzberg.markdown.MarkdownRenderer
 import kreuzberg.rpc.{Dispatcher, Id, SecurityError}
 
 import java.util.UUID
@@ -9,6 +10,7 @@ import io.circe.syntax.*
 import kreuzberg.miniserver.{
   AssetCandidatePath,
   AssetPaths,
+  ContentConfig,
   DeploymentConfig,
   DeploymentType,
   InitRequest,
@@ -70,6 +72,9 @@ val showcaseTranslations = TranslationConfig(
   defaultLocale = "en"
 )
 
+/** Markdown pages per locale, see [[kreuzberg.examples.showcase.pages.AboutPage]]. */
+val showcaseContent = ContentConfig(documents = Seq("content/about"), renderer = MarkdownRenderer())
+
 @experimental
 class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfig) {
   val todoDispatcher: Dispatcher[Id] =
@@ -96,7 +101,8 @@ class ServerMainLoom(deploymentConfig: DeploymentConfig = defaultDeploymentConfi
     deploymentConfig,
     api = Some(todoDispatcher),
     init = Some(initializer),
-    translations = Some(showcaseTranslations)
+    translations = Some(showcaseTranslations),
+    content = Some(showcaseContent)
   )
 
   def run(): Unit = {

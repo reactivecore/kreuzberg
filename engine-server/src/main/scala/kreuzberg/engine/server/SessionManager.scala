@@ -2,7 +2,7 @@ package kreuzberg.engine.server
 
 import kreuzberg.*
 import kreuzberg.extras.UrlResource
-import kreuzberg.i18n.Translations
+import kreuzberg.i18n.{ContentPlatform, Translations}
 import org.slf4j.LoggerFactory
 
 import java.util.UUID
@@ -14,7 +14,8 @@ import scala.jdk.CollectionConverters.*
 private[server] class SessionManager(
     component: => Component,
     serviceRepositoryFactory: () => ServiceRepository,
-    expiry: FiniteDuration
+    expiry: FiniteDuration,
+    contentBackend: ContentPlatform.Backend = ContentPlatform.NoBackend
 ) extends AutoCloseable {
   private val logger   = LoggerFactory.getLogger(getClass)
   private val sessions = ConcurrentHashMap[String, Session]()
@@ -91,7 +92,7 @@ private[server] class SessionManager(
 
   private def createSession(): Session = {
     val id      = UUID.randomUUID().toString
-    val session = Session(id, serviceRepositoryFactory(), scheduler)
+    val session = Session(id, serviceRepositoryFactory(), scheduler, contentBackend)
     sessions.put(id, session)
     logger.debug(s"Created session ${id}")
     session

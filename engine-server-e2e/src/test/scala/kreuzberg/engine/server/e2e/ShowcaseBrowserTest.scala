@@ -4,7 +4,13 @@ import com.microsoft.playwright.Page
 import com.microsoft.playwright.options.WaitForSelectorState
 import kreuzberg.engine.server.TestServer
 import kreuzberg.engine.server.e2e.PlaywrightFixture.Target
-import kreuzberg.examples.showcase.{ServerMainLoom, SsrMain, defaultDeploymentConfig, showcaseTranslations}
+import kreuzberg.examples.showcase.{
+  ServerMainLoom,
+  SsrMain,
+  defaultDeploymentConfig,
+  showcaseContent,
+  showcaseTranslations
+}
 import kreuzberg.miniserver.{AssetCandidatePath, AssetPaths, DeploymentType, MiniServer}
 import kreuzberg.testcore.TestBase
 
@@ -102,6 +108,14 @@ abstract class ShowcaseBrowserTest(engineName: String) extends TestBase with Pla
     page.getAttribute("html", "lang") shouldBe "de"
   }
 
+  it should "show localized content" in withPage { page =>
+    page.navigate(s"${baseUrl}/about")
+    page.waitForSelector("h1:has-text('About Kreuzberg')")
+    page.selectOption("select[aria-label='Language']", "de")
+    page.waitForSelector("h1:has-text('Über Kreuzberg')")
+    page.textContent("table") should include("auf dem Server")
+  }
+
   it should "render Scala XML pages (multi-line patches)" in withPage { page =>
     page.navigate(s"${baseUrl}/")
     page.click("text=XML")
@@ -117,7 +131,9 @@ abstract class ShowcaseBrowserTest(engineName: String) extends TestBase with Pla
 class ShowcaseServerSideBrowserTest extends ShowcaseBrowserTest("server-side") {
 
   override protected def createTarget(): Target = {
-    val engine = SsrMain.engine(TestServer.config.copy(translations = Some(showcaseTranslations)))
+    val engine = SsrMain.engine(
+      TestServer.config.copy(translations = Some(showcaseTranslations), content = Some(showcaseContent))
+    )
     Target(engine.miniServer, () => engine.close())
   }
 }

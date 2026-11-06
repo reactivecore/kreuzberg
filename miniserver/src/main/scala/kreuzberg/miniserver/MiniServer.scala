@@ -4,7 +4,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import ox.Ox
 import sttp.capabilities.WebSockets
 import sttp.model.headers.Cookie
-import sttp.model.{Header, MediaType, StatusCode}
+import sttp.model.{Header, StatusCode}
 import sttp.shared.Identity
 import sttp.tapir.*
 import sttp.tapir.server.ServerEndpoint
@@ -79,7 +79,7 @@ class MiniServer(
   protected def primaryEndpoints: List[MiniServerEndpoint] = List(
     assetHandler,
     indexHandler
-  ) ++ apiEndpointHandler.toList
+  ) ++ apiEndpointHandler.toList ++ contentHandler.toList
 
   /** Documentation Endpoints. */
   def docEndpoints: List[MiniServerEndpoint] = if (config.deployment.deploymentType == DeploymentType.Debug) {
@@ -109,7 +109,6 @@ class MiniServer(
       .in(headers)
       .in(cookies)
       .out(htmlBodyUtf8)
-      .out(header(Header.contentType(MediaType.TextHtml)))
   }
 
   /** Handler For Index */
@@ -137,7 +136,6 @@ class MiniServer(
       .in(cookies)
       .errorOut(statusCode)
       .out(htmlBodyUtf8)
-      .out(header(Header.contentType(MediaType.TextHtml)))
   }
 
   /** Handler for index page from other locations. */
@@ -178,6 +176,10 @@ class MiniServer(
 
   /** Endpoint handler for API-Calls. */
   val apiEndpointHandler = config.api.map(ApiHandler(_).handler)
+
+  /** Endpoint handler for content (loaded once at construction, fails fast on missing default files). */
+  val contentHandler: Option[MiniServerEndpoint] =
+    config.content.map(c => ContentProvider.contentEndpoint(ContentProvider.load(c)))
 }
 
 object MiniServer {
