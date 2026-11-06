@@ -5,13 +5,11 @@ object Placeholders {
 
   /** Returns the placeholder numbers used in a template. */
   def apply(template: String): Set[Int] = {
-    PlaceholderRegex.findAllMatchIn(template).collect { case m if m.group(1) != "%" => m.group(1).toInt }.toSet
+    MessageFormat.parts(template).collect { case MessageFormat.Part.Arg(n) => n }.toSet
   }
 
   /** Returns the number of arguments a template expects (highest placeholder). */
   def arity(template: String): Int = {
     apply(template).maxOption.getOrElse(0)
   }
-
-  private val PlaceholderRegex = "%([1-9%])".r
 }

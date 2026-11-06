@@ -2,13 +2,13 @@ package kreuzberg.i18n
 
 import scala.collection.mutable
 
-/** A `tr("key", ...)` call found in source code. */
+/** A `tr("key", ...)` or `trHtml("key", ...)` call found in source code. */
 case class TrCall(key: String, argCount: Int, source: String, line: Int) {
   def position: String = s"${source}:${line}"
 }
 
 /**
- * Finds `tr("key", args...)` calls in Scala source code.
+ * Finds `tr("key", args...)` and `trHtml("key", args...)` calls in Scala source code.
  *
  * This is a lightweight lexer, not a parser: it skips comments, string and character literals and counts top level
  * arguments. Calls whose first argument is not a plain string literal are ignored (the `tr` macro rejects them anyway).
@@ -22,13 +22,14 @@ object TrCallScanner {
       skipNonCode(content, i) match {
         case Some(next) => i = next
         case None       =>
-          if (isTrStart(content, i)) {
-            parseCall(content, i + 2).foreach { case (key, argCount) =>
-              result += TrCall(key, argCount, source, lineOf(content, i))
-            }
-            i += 2
-          } else {
-            i += 1
+          callNameAt(content, i) match {
+            case Some(name) =>
+              parseCall(content, i + name.length).foreach { case (key, argCount) =>
+                result += TrCall(key, argCount, source, lineOf(content, i))
+              }
+              i += name.length
+            case None       =>
+              i += 1
           }
       }
     }
@@ -55,13 +56,18 @@ object TrCallScanner {
     }
   }
 
-  /** `tr` as a separate identifier, followed by `(`. */
-  private def isTrStart(content: String, i: Int): Boolean = {
-    content.startsWith("tr", i) &&
-    (i == 0 || !isIdentChar(content.charAt(i - 1))) &&
-    !precededByDef(content, i) && {
-      val after = skipWhitespace(content, i + 2)
-      after < content.length && content.charAt(after) == '('
+  /** Names of translating functions. */
+  private val CallNames = Seq("trHtml", "tr")
+
+  /** A translating function as a separate identifier at `i`, followed by `(`. */
+  private def callNameAt(content: String, i: Int): Option[String] = {
+    if (i > 0 && isIdentChar(content.charAt(i - 1)) || precededByDef(content, i)) {
+      None
+    } else {
+      CallNames.find { name =>
+        val after = skipWhitespace(content, i + name.length)
+        content.startsWith(name, i) && after < content.length && content.charAt(after) == '('
+      }
     }
   }
 
@@ -70,7 +76,9 @@ object TrCallScanner {
     before.startsWith("fed") && (before.length == 3 || !isIdentChar(before.charAt(3)))
   }
 
-  /** Parses the arguments of a call, `start` is after `tr`. Returns key and number of further arguments. */
+  /**
+   * Parses the arguments of a call, `start` is after the function name. Returns key and number of further arguments.
+   */
   private def parseCall(content: String, start: Int): Option[(String, Int)] = {
     val open     = skipWhitespace(content, start)
     val keyStart = skipWhitespace(content, open + 1)

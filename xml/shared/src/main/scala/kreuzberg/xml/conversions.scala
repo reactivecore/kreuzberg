@@ -17,6 +17,14 @@ extension (component: Component) {
   }
 }
 
+extension (html: Html) {
+
+  /** Embeds HTML of another flavour (e.g. from `trHtml`) into XML; without, `{html}` would be inserted as text. */
+  def wrap: ScalaXmlHtmlEmbedding = {
+    ScalaXmlHtmlEmbedding(html)
+  }
+}
+
 implicit def htmlEmbed(in: HtmlEmbedding): ScalaXmlEmbedding = in match {
   case c: Component => ScalaXmlComponentEmbedding(c)
   case h: Html      => ScalaXmlHtmlEmbedding(h)

@@ -3,6 +3,7 @@
 index.pageTitle:  "Bienvenue"
 index.title:      "Bonjour"
 index.welcome:    "Bienvenue dans cette petite démonstration de Kreuzberg"
+index.source:     "Le code source se trouve sur %1."
 index.showing:    "Affiché depuis %1 secondes"
 index.clicked:    "Cliqué %1 fois"
 

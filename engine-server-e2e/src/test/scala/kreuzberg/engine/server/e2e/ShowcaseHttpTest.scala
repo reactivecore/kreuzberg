@@ -35,7 +35,9 @@ class ShowcaseHttpTest extends TestBase with BeforeAndAfterAll {
 
   it should "render translated pages" in server.withClient { client =>
     client.get("/", "Accept-Language" -> "fr").body should include("""<html lang="fr">""")
-    client.get("/", "Cookie" -> "lang=de").body should include("<h2>Hallo</h2>")
+    val german = client.get("/", "Cookie" -> "lang=de").body
+    german should include("<h2>Hallo</h2>")
+    german should include("""<p>Auf <a href="https://github.com/reactivecore/kreuzberg">GitHub</a> liegt der Quellcode.</p>""")
   }
 
   it should "patch multi-line XML pages, one operation per line" in server.withClient { client =>

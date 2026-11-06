@@ -6,7 +6,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
 /**
- * Checks `tr("key", ...)` calls in Scala sources against `.rctr` translation catalogs.
+ * Checks `tr("key", ...)` and `trHtml("key", ...)` calls in Scala sources against `.rctr` translation catalogs.
  *
  * Usage (e.g. via `runMain` from sbt):
  * {{{
@@ -102,7 +102,9 @@ object TranslationCheck {
 
     val usedKeys = calls.map(_.key).toSet
     val unused   = default.keySet.diff(usedKeys).toSeq.sorted
-    val infos    = Option.when(unused.nonEmpty)(s"${unused.size} keys not referenced by tr(...): ${abbreviate(unused)}")
+    val infos    = Option.when(unused.nonEmpty)(
+      s"${unused.size} keys not referenced by tr(...) or trHtml(...): ${abbreviate(unused)}"
+    )
 
     Report(callErrors, missing ++ orphans ++ placeholderMismatches, infos.toSeq)
   }
