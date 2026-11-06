@@ -21,7 +21,11 @@ import java.util.concurrent.ConcurrentHashMap
 case class ContentConfig(
     documents: Seq[String],
     renderer: ContentRenderer = ContentRenderer.Html
-)
+) {
+
+  /** The provider of this configuration, loaded on first use and shared by all users of the configuration. */
+  lazy val provider: ContentProvider = ContentProvider.load(this)
+}
 
 /**
  * Loads and renders content files. Default files are rendered at construction, so missing ones fail at startup; files

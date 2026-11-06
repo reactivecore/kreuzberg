@@ -34,15 +34,8 @@ class ContentProviderTest extends TestBase {
   }
 
   it should "render each file once" in {
-    val count   = AtomicInteger()
-    val counted = new ContentRenderer {
-      override def extension: String              = "html"
-      override def render(source: String): String = {
-        count.incrementAndGet()
-        source
-      }
-    }
-    val p       = ContentProvider.load(config.copy(renderer = counted))
+    val (count, counted) = countingRenderer()
+    val p                = ContentProvider.load(config.copy(renderer = counted))
     count.get() shouldBe 2
     (0 until 3).foreach { _ =>
       p.get("test_content/about", "de")
@@ -50,5 +43,24 @@ class ContentProviderTest extends TestBase {
       p.get("test_content/about", "en")
     }
     count.get() shouldBe 3
+  }
+
+  it should "share the provider of a configuration with the MiniServer" in {
+    val (count, counted) = countingRenderer()
+    val countedConfig    = config.copy(renderer = counted)
+    MiniServer(MiniServerConfig(DeploymentConfig(), content = Some(countedConfig))).contentHandler shouldBe defined
+    countedConfig.provider.get("test_content/about", "default") shouldBe Some("<p>English</p>\n")
+    count.get() shouldBe 2
+  }
+
+  private def countingRenderer(): (AtomicInteger, ContentRenderer) = {
+    val count = AtomicInteger()
+    count -> new ContentRenderer {
+      override def extension: String              = "html"
+      override def render(source: String): String = {
+        count.incrementAndGet()
+        source
+      }
+    }
   }
 }

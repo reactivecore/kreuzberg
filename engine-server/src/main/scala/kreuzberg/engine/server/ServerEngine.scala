@@ -49,7 +49,7 @@ class ServerEngine(
     assetPaths = AssetPaths(ServerEngine.ClientAsset +: config.deployment.assetPaths.assetPaths)
   )
 
-  private val contentProvider: Option[ContentProvider] = config.content.map(ContentProvider.load(_))
+  private val contentProvider: Option[ContentProvider] = config.content.map(_.provider)
 
   /** Content in the locale of the session; translations are set by the session, too. */
   private val contentBackend = new ContentPlatform.Backend {
@@ -79,12 +79,11 @@ class ServerEngine(
 
   /** The MiniServer, serving pages, events, assets and the API. */
   lazy val miniServer: MiniServer = {
-    val eventEndpoints   = EventController(sessionManager, config.translations.map(_.cookieName)).endpoints
-    // Pages are rendered here, so the MiniServer needs no translations; content is loaded only once, here
-    val contentEndpoints = contentProvider.map(ContentProvider.contentEndpoint).toList
-    new MiniServer(config.copy(deployment = deploymentConfig, translations = None, content = None)) {
+    val eventEndpoints = EventController(sessionManager, config.translations.map(_.cookieName)).endpoints
+    // Pages are rendered here, so the MiniServer needs no translations
+    new MiniServer(config.copy(deployment = deploymentConfig, translations = None)) {
       override protected def primaryEndpoints: List[MiniServerEndpoint] =
-        List(assetHandler, pageHandler) ++ apiEndpointHandler.toList ++ eventEndpoints ++ contentEndpoints
+        List(assetHandler, pageHandler) ++ apiEndpointHandler.toList ++ eventEndpoints ++ contentHandler.toList
 
       override protected def secondaryEndpoints: List[MiniServerEndpoint] =
         List(otherPageHandler, rootAssetHandler)
