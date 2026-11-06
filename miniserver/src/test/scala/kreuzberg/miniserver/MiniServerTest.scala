@@ -10,13 +10,19 @@ import org.slf4j.LoggerFactory
 import sttp.shared.Identity
 import ox.*
 import sttp.client3.*
-import sttp.model.StatusCode
+import sttp.model.{StatusCode, Uri}
+
+import java.nio.charset.StandardCharsets
+import scala.util.Using
 
 class MiniServerTest extends TestBase with ShutdownSupport {
   val logger = LoggerFactory.getLogger(getClass)
 
   trait Env {
+    def deploymentType: DeploymentType = DeploymentType.Debug
+
     val deployment = DeploymentConfig(
+      deploymentType = deploymentType,
       assetPaths = AssetPaths(
         Seq(
           AssetCandidatePath.Resource("test_assets/", "foo/")
@@ -76,6 +82,20 @@ class MiniServerTest extends TestBase with ShutdownSupport {
     val backend = HttpClientSyncBackend()
     withShutdown {
       backend.close()
+    }
+
+    /**
+     * Sends a GET request over a plain socket and returns the status line and headers. The Java HttpClient hides some
+     * headers (e.g. Content-Length) and merges others.
+     */
+    def rawResponseHead(path: String, headers: String*): List[String] = {
+      Using.resource(new java.net.Socket("127.0.0.1", port)) { socket =>
+        val request  =
+          (s"GET ${path} HTTP/1.1" :: "Host: localhost" :: "Connection: close" :: headers.toList).mkString("\r\n")
+        socket.getOutputStream.write((request + "\r\n\r\n").getBytes(StandardCharsets.US_ASCII))
+        val response = new String(socket.getInputStream.readAllBytes(), StandardCharsets.US_ASCII)
+        response.split("\r\n\r\n", 2).head.split("\r\n").toList
+      }
     }
   }
 
@@ -168,6 +188,111 @@ class MiniServerTest extends TestBase with ShutdownSupport {
         .get(uri"${rootUrl}/assets/foo/../test_invisible/do_not_serve.txt")
         .send(backend)
         .code shouldBe StatusCode.NotFound
+    }
+  }
+
+  trait ProductionEnv extends Env {
+    override def deploymentType: DeploymentType = DeploymentType.Production
+  }
+
+  it should "answer assets with 304 if the ETag matches" in new Env {
+    val first = basicRequest.get(uri"${rootUrl}/assets/foo/asset1.txt").send(backend)
+    first.code shouldBe StatusCode.Ok
+    val etag  = first.header("ETag").value
+    etag should fullyMatch regex "\"[0-9a-f]{64}\""
+    first.header("Cache-Control") shouldBe Some(AssetHandler.RevalidateCacheControl)
+    first.header("Vary") shouldBe Some("Accept-Encoding")
+
+    val second = basicRequest.get(uri"${rootUrl}/assets/foo/asset1.txt").header("If-None-Match", etag).send(backend)
+    second.code shouldBe StatusCode.NotModified
+    second.header("ETag") shouldBe Some(etag)
+    second.header("Cache-Control") shouldBe Some(AssetHandler.RevalidateCacheControl)
+    second.body shouldBe Left("")
+
+    withClue("the 304 has the Content-Length of the full response (RFC 9110, 8.6)") {
+      val raw = rawResponseHead("/assets/foo/asset1.txt", s"If-None-Match: ${etag}")
+      raw.head shouldBe "HTTP/1.1 304 Not Modified"
+      raw.map(_.toLowerCase) should contain("content-length: 15")
+    }
+
+    withClue("multiple If-None-Match headers are allowed") {
+      val raw = rawResponseHead("/assets/foo/asset1.txt", "If-None-Match: \"other\"", s"If-None-Match: ${etag}")
+      raw.head shouldBe "HTTP/1.1 304 Not Modified"
+    }
+
+    withClue("weak ETags, e.g. from a compressing proxy, match too") {
+      basicRequest
+        .get(uri"${rootUrl}/assets/foo/asset1.txt")
+        .header("If-None-Match", s"W/${etag}")
+        .send(backend)
+        .code shouldBe StatusCode.NotModified
+    }
+
+    withClue("other ETags are served in full") {
+      val other =
+        basicRequest.get(uri"${rootUrl}/assets/foo/asset1.txt").header("If-None-Match", "\"other\"").send(backend)
+      other.code shouldBe StatusCode.Ok
+      other.body.value shouldBe "I am an Asset!\n"
+    }
+
+    withClue("root assets have ETags too") {
+      basicRequest.get(uri"${rootUrl}/favicon.png").send(backend).header("ETag") shouldBe defined
+    }
+  }
+
+  it should "use another ETag for the Brotli variant" in new Env {
+    def get(acceptEncoding: String, ifNoneMatch: Option[String] = None) = basicRequest
+      .get(uri"${rootUrl}/assets/foo/compressed.txt")
+      .header("Accept-Encoding", acceptEncoding, replaceExisting = true)
+      .header("If-None-Match", ifNoneMatch)
+      .disableAutoDecompression
+      .response(asByteArray)
+      .send(backend)
+
+    val plain  = get("gzip")
+    plain.header("Content-Encoding") shouldBe None
+    val brotli = get("gzip, br")
+    brotli.header("Content-Encoding") shouldBe Some("br")
+    brotli.body.value shouldBe getClass.getClassLoader
+      .getResourceAsStream("test_assets/compressed.txt.br")
+      .readAllBytes()
+
+    val plainEtag            = plain.header("ETag").value
+    val brotliEtag           = brotli.header("ETag").value
+    def hashOf(name: String) = AssetCandidatePath.Resource("test_assets/").locate(name).value.hashSha256()
+    plainEtag shouldBe s"\"${hashOf("compressed.txt")}\""
+    brotliEtag shouldBe s"\"${hashOf("compressed.txt.br")}\""
+
+    get("gzip, br", Some(brotliEtag)).code shouldBe StatusCode.NotModified
+    get("gzip, br", Some(plainEtag)).code shouldBe StatusCode.Ok
+    get("gzip", Some(brotliEtag)).code shouldBe StatusCode.Ok
+  }
+
+  it should "not cache hashed assets forever in debug mode" in new Env {
+    val hashed = deployment.hashedUrl("foo/asset1.txt")
+    val result = basicRequest.get(Uri.unsafeParse(rootUrl + hashed)).send(backend)
+    result.code shouldBe StatusCode.Ok
+    result.header("Cache-Control") shouldBe Some(AssetHandler.RevalidateCacheControl)
+  }
+
+  it should "cache assets with the current hash forever in production" in new ProductionEnv {
+    val hashed = deployment.hashedUrl("foo/asset1.txt")
+    hashed should startWith("/assets/foo/asset1.txt?hash=")
+    val result = basicRequest.get(Uri.unsafeParse(rootUrl + hashed)).send(backend)
+    result.code shouldBe StatusCode.Ok
+    result.header("Cache-Control") shouldBe Some(AssetHandler.ImmutableCacheControl)
+
+    withClue("an outdated hash must be revalidated") {
+      basicRequest
+        .get(uri"${rootUrl}/assets/foo/asset1.txt?hash=outdated")
+        .send(backend)
+        .header("Cache-Control") shouldBe Some(AssetHandler.RevalidateCacheControl)
+    }
+    withClue("no hash must be revalidated") {
+      basicRequest
+        .get(uri"${rootUrl}/assets/foo/asset1.txt")
+        .send(backend)
+        .header("Cache-Control") shouldBe Some(AssetHandler.RevalidateCacheControl)
     }
   }
 

@@ -1,9 +1,11 @@
 package kreuzberg.miniserver
 
-import java.io.{File, FileInputStream, IOException, InputStream}
+import java.io.{File, FileInputStream, IOException, InputStream, OutputStream}
+import java.net.JarURLConnection
 import java.nio.file.{Files, Paths}
 import java.security.{DigestInputStream, MessageDigest}
 import java.util.Properties
+import java.util.concurrent.ConcurrentHashMap
 import scala.language.implicitConversions
 import scala.util.Using
 import scala.util.control.NonFatal
@@ -13,9 +15,28 @@ sealed trait Location {
   /** Load the ressource. */
   def load(): InputStream
 
-  /** Try to load the resource with Brotli */
-  def brotli(): Option[InputStream]
+  /** Size in bytes. */
+  def size(): Long
 
+  /** The Brotli compressed variant (`.br`), if there is one. */
+  def brotliVariant(): Option[Location]
+
+  /** Changes when the content changes. */
+  protected def contentVersion(): (Long, Long)
+
+  /**
+   * SHA-256 of the content (hex). In production, it is cached until the modification time or size changes. Not cached
+   * in debug mode, where files may be rebuilt faster than the modification time changes.
+   */
+  def hashSha256(deploymentType: Option[DeploymentType]): String = {
+    if (deploymentType.contains(DeploymentType.Production)) {
+      cachedHashSha256()
+    } else {
+      hashSha256()
+    }
+  }
+
+  /** SHA-256 of the content (hex). */
   def hashSha256(): String = {
     Using(load()) { stream =>
       val sha256 = MessageDigest.getInstance("SHA-256")
@@ -28,6 +49,17 @@ sealed trait Location {
     }.get
   }
 
+  private def cachedHashSha256(): String = {
+    val version = contentVersion()
+    Option(Location.hashCache.get(this))
+      .collect { case (`version`, hash) => hash }
+      .getOrElse {
+        val hash = hashSha256()
+        Location.hashCache.put(this, (version, hash))
+        hash
+      }
+  }
+
   private def toHex(ba: Array[Byte]): String = {
     val builder = new StringBuilder()
     ba.foreach { byte =>
@@ -38,19 +70,23 @@ sealed trait Location {
 }
 
 object Location {
+
+  /** Hashes by location, with the content version they were computed for. */
+  private val hashCache = new ConcurrentHashMap[Location, ((Long, Long), String)]()
+
   case class File(file: java.io.File) extends Location {
     override def load(): InputStream = {
       new FileInputStream(file)
     }
 
-    override def brotli(): Option[InputStream] = {
-      val candidate = new java.io.File(file.getPath + ".br")
-      if (candidate.exists()) {
-        return Some(new FileInputStream(candidate))
-      } else {
-        None
-      }
+    override def size(): Long = file.length()
+
+    override def brotliVariant(): Option[Location] = {
+      Some(File(new java.io.File(file.getPath + ".br"))).filter(_.file.exists())
     }
+
+    /** Files may change while running (e.g. rebuilt in debug mode). */
+    override protected def contentVersion(): (Long, Long) = (file.lastModified(), file.length())
   }
 
   case class ResourcePath(path: String, classLoader: ClassLoader) extends Location {
@@ -62,9 +98,33 @@ object Location {
       stream
     }
 
-    override def brotli(): Option[InputStream] = {
-      val candidate = path + ".br"
-      Option(classLoader.getResourceAsStream(candidate))
+    override def size(): Long = {
+      val url        = Option(classLoader.getResource(path)).getOrElse {
+        throw new IOException(s"Could not find resource ${path}")
+      }
+      val fromSource = url.openConnection() match {
+        case jar: JarURLConnection          => Some(jar.getJarEntry.getSize).filter(_ >= 0)
+        case _ if url.getProtocol == "file" => Some(new java.io.File(url.toURI).length())
+        case _                              => None
+      }
+      fromSource.getOrElse {
+        Using.resource(load())(_.transferTo(OutputStream.nullOutputStream()))
+      }
+    }
+
+    override def brotliVariant(): Option[Location] = {
+      val brotliPath = path + ".br"
+      Option(classLoader.getResource(brotliPath)).map(_ => ResourcePath(brotliPath, classLoader))
+    }
+
+    /** Resources in JARs do not change while running, resources in directories (e.g. target/classes) may. */
+    override protected def contentVersion(): (Long, Long) = {
+      Option(classLoader.getResource(path)).filter(_.getProtocol == "file") match {
+        case Some(url) =>
+          val file = new java.io.File(url.toURI)
+          (file.lastModified(), file.length())
+        case None      => (0L, 0L)
+      }
     }
   }
 }
@@ -138,8 +198,9 @@ object AssetCandidatePath {
         // Escape attack
         None
       } else {
-        if (Files.exists(resolved)) {
-          Some(Location.File(resolved.toFile))
+        if (Files.isRegularFile(resolved)) {
+          // Normalized, so that other spellings of the path share hash cache entries
+          Some(Location.File(resolved.normalize().toFile))
         } else {
           None
         }
