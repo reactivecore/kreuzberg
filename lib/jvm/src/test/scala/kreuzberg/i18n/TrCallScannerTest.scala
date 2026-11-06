@@ -48,4 +48,13 @@ class TrCallScannerTest extends TestBase {
   it should "find qualified calls" in {
     scan("""kreuzberg.tr("q")""") shouldBe Seq("q" -> 0)
   }
+
+  it should "find trHtml calls" in {
+    scan("""p(trHtml("index.source", a(href := "x", "GitHub")), tr("t", 1))""") shouldBe Seq(
+      "index.source" -> 1,
+      "t"            -> 1
+    )
+    scan("""inline def trHtml(inline key: String, args: (HtmlEmbedding | String)*): Html = ???""") shouldBe Nil
+    scan("""trHtmlX("a"); xtrHtml("b"); trH("c")""") shouldBe Nil
+  }
 }

@@ -16,11 +16,14 @@ trait Translations {
 
   /** Looks up and formats a message. A missing key yields the key itself. */
   final def format(key: String, args: Seq[Any]): String = {
-    lookup(key) match {
-      case Some(template) => MessageFormat.format(template, args)
-      case None           =>
-        Logger.debug(s"Missing translation for ${key} in locale ${locale}")
-        key
+    lookupOrMissing(key).fold(identity, MessageFormat.format(_, args))
+  }
+
+  /** Looks up the raw message; a missing key is logged and returned as `Left`. */
+  final def lookupOrMissing(key: String): Either[String, String] = {
+    lookup(key).toRight {
+      Logger.debug(s"Missing translation for ${key} in locale ${locale}")
+      key
     }
   }
 }

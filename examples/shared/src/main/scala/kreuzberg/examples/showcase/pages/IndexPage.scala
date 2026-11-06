@@ -2,7 +2,7 @@ package kreuzberg.examples.showcase.pages
 
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.Button
-import kreuzberg.i18n.tr
+import kreuzberg.i18n.{tr, trHtml}
 import kreuzberg.extras.{LocalStorage, Meta, MetaData, SimpleRouted}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
@@ -39,6 +39,7 @@ object IndexPage extends SimpleComponentBase with SimpleRouted {
     div(
       h2(tr("index.title")),
       tr("index.welcome"),
+      p(trHtml("index.source", a(href := "https://github.com/reactivecore/kreuzberg", "GitHub"))),
       div(
         Counter,
         br,

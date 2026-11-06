@@ -4,6 +4,7 @@
 index.pageTitle:  "Welcome"
 index.title:      "Hi There"
 index.welcome:    "Welcome to this small Kreuzberg Demonstration"
+index.source:     "The source code is on %1."
 index.showing:    "Showing for %1 seconds"
 index.clicked:    "Clicked %1 times"
 

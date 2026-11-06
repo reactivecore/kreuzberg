@@ -29,7 +29,7 @@ class TranslationCheckTest extends TestBase {
       "de: 1 keys not in default catalog (x)",
       "app.de.rctr: Placeholders of b differ from default catalog"
     )
-    report.infos shouldBe Seq("1 keys not referenced by tr(...): c")
+    report.infos shouldBe Seq("1 keys not referenced by tr(...) or trHtml(...): c")
     report.failed(strict = false) shouldBe true
   }
 
