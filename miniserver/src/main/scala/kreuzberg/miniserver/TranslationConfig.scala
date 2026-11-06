@@ -3,9 +3,6 @@ package kreuzberg.miniserver
 import io.circe.Json
 import kreuzberg.i18n.{CatalogSet, LocaleChain, Translations}
 
-import java.nio.charset.StandardCharsets
-import scala.util.Using
-
 /**
  * Configures translations, which are delivered to the client on page load.
  *
@@ -62,10 +59,9 @@ object TranslationProvider {
   /** Loads catalogs from class path; throws on missing or invalid catalogs. */
   def load(config: TranslationConfig, classLoader: ClassLoader = getClass.getClassLoader): TranslationProvider = {
     val sources = config.resources.map { name =>
-      val stream = Option(classLoader.getResourceAsStream(name)).getOrElse {
+      name -> Resources.readUtf8(classLoader, name).getOrElse {
         throw new IllegalArgumentException(s"Translation resource not found: ${name}")
       }
-      name -> Using.resource(stream)(s => new String(s.readAllBytes(), StandardCharsets.UTF_8))
     }
     CatalogSet.parse(sources, config.defaultLocale) match {
       case Left(error) => throw new IllegalArgumentException(s"Invalid translations: ${error}")

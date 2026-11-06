@@ -2,7 +2,7 @@ package kreuzberg.examples.showcase
 
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.LanguagePicker
-import kreuzberg.examples.showcase.pages.{IndexPage, LazyPage}
+import kreuzberg.examples.showcase.pages.{AboutPage, IndexPage, LazyPage}
 import kreuzberg.extras.{RouterLink, UrlResource}
 import kreuzberg.scalatags.*
 import kreuzberg.scalatags.all.*
@@ -21,7 +21,8 @@ case object Menu extends SimpleComponentBase {
     "/table"                      -> "Table",
     LazyPage.route.url("123").str -> "Lazy",
     "/subrouter"                  -> "Sub Router",
-    "/forward"                    -> "Forward"
+    "/forward"                    -> "Forward",
+    AboutPage.url.str             -> "About"
   )
 
   override def assemble(using sc: SimpleContext): Html = {

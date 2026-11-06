@@ -4,7 +4,7 @@ import io.circe.{Json, JsonObject}
 import kreuzberg.*
 import kreuzberg.engine.{ModelValues, UpdatePath}
 import kreuzberg.extras.{BrowserRouting, Router, UrlResource}
-import kreuzberg.i18n.{Translations, TranslationsPlatform}
+import kreuzberg.i18n.{ContentPlatform, Translations, TranslationsPlatform}
 
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
@@ -22,7 +22,8 @@ import scala.util.control.NonFatal
 private[server] class Session(
     val id: String,
     serviceRepository: ServiceRepository,
-    scheduler: ScheduledExecutorService
+    scheduler: ScheduledExecutorService,
+    contentBackend: ContentPlatform.Backend = ContentPlatform.NoBackend
 ) {
   // Fair, so that concurrent requests are processed in order of arrival
   private val lock = ReentrantLock(true)
@@ -131,7 +132,9 @@ private[server] class Session(
   /** Run code within the Kreuzberg context of this session. */
   def run[T](f: => T): T = BrowserRouting.withBackend(routingBackend) {
     TranslationsPlatform.withBackend(translationsBackend) {
-      context.use(f)
+      ContentPlatform.withBackend(contentBackend) {
+        context.use(f)
+      }
     }
   }
 
