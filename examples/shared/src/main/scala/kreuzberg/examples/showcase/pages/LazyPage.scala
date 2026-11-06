@@ -3,7 +3,6 @@ package kreuzberg.examples.showcase.pages
 import kreuzberg.examples.showcase.SlowApiMock
 import kreuzberg.extras.{PathCodec, Route, RouteWithCodec, Routed, RoutingResult}
 import kreuzberg.{Html, SimpleComponentBase, SimpleContext}
-import kreuzberg.scalatags.all.*
 import kreuzberg.scalatags.*
 
 import scala.concurrent.duration.*

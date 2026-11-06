@@ -16,7 +16,6 @@ import kreuzberg.examples.showcase.pages.{
 import kreuzberg.examples.showcase.todo.{TodoPage, TodoPageWithApi}
 import kreuzberg.extras.{Route, RouterSettings, RoutingResult, MainRouter, UrlResource}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 /** Sample Application. */
 object App extends SimpleComponentBase {

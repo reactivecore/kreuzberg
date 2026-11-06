@@ -4,7 +4,6 @@ import io.circe.{Json, JsonObject}
 import kreuzberg.*
 import kreuzberg.extras.UrlResource
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.testcore.TestBase
 
 import scala.concurrent.duration.*

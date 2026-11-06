@@ -5,7 +5,6 @@ import kreuzberg.examples.showcase.components.LanguagePicker
 import kreuzberg.examples.showcase.pages.{AboutPage, IndexPage, LazyPage}
 import kreuzberg.extras.{RouterLink, UrlResource}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 case object Menu extends SimpleComponentBase {
 

@@ -2,7 +2,6 @@ package kreuzberg.examples.showcase.pages
 
 import kreuzberg.*
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.extras.{
   Page,
   PathCodec,

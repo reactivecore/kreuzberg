@@ -2,7 +2,6 @@ package kreuzberg.extras.tables
 
 import kreuzberg.Html
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 /** Type class rendering a cell. */
 trait CellRenderer[T] {
@@ -29,5 +28,5 @@ trait CellRenderer[T] {
 object CellRenderer {
 
   /** Default Renderer */
-  given default[T]: CellRenderer[T] = value => all.span(value.toString)
+  given default[T]: CellRenderer[T] = value => span(value.toString)
 }

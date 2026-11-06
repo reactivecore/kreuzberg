@@ -20,7 +20,6 @@ import kreuzberg.miniserver.{
   TranslationConfig
 }
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 class TodoServiceLoom extends TodoApi[Id] {
   private var items: Vector[String] = Vector.empty // scalafix:ok

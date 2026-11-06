@@ -2,7 +2,6 @@ package kreuzberg.miniserver
 
 import kreuzberg.scalatags.*
 import scalatags.Text.TypedTag
-import scalatags.Text.all.*
 import scalatags.Text.tags2.noscript
 
 import java.nio.charset.StandardCharsets

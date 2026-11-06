@@ -3,7 +3,6 @@ package kreuzberg.extras
 import kreuzberg.*
 import kreuzberg.extras.RoutingResult.fromPage
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 /** An additional sub router, which has it's own Paths. */
 class SubRouter(

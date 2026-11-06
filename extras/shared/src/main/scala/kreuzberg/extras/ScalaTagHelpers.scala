@@ -1,5 +1,4 @@
 package kreuzberg.extras
-import kreuzberg.scalatags.all._
 import kreuzberg.scalatags._
 
 private[extras] object ScalaTagHelpers {

@@ -5,7 +5,6 @@ import kreuzberg.examples.showcase.components.Button
 import kreuzberg.i18n.{tr, trHtml}
 import kreuzberg.extras.{LocalStorage, Meta, MetaData, SimpleRouted}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 import scala.concurrent.duration.*
 

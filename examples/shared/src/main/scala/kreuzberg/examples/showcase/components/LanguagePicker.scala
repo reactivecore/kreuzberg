@@ -3,7 +3,6 @@ package kreuzberg.examples.showcase.components
 import kreuzberg.*
 import kreuzberg.i18n.{Translations, tr}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import org.scalajs.dom.html.Select
 
 /** Selects the language, which is stored in a cookie by reloading the page. */

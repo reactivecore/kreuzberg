@@ -1,7 +1,7 @@
 package kreuzberg.miniserver
 
 import kreuzberg.{Html, miniserver}
-import kreuzberg.scalatags.all.*
+import kreuzberg.scalatags.*
 
 /** Deployment related configuration */
 case class DeploymentConfig(

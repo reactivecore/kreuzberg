@@ -3,7 +3,6 @@ package kreuzberg.examples.showcase.todo
 import kreuzberg.*
 import kreuzberg.examples.showcase.todo.{TodoAdder, TodoList}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.extras.{Meta, MetaData, SimpleRouted}
 
 object TodoPage extends SimpleComponentBase with SimpleRouted {

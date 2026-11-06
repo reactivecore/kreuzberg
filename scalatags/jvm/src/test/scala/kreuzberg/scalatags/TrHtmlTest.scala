@@ -2,7 +2,6 @@ package kreuzberg.scalatags
 
 import kreuzberg.*
 import kreuzberg.i18n.{Translations, TranslationsPlatform, trHtml}
-import kreuzberg.scalatags.all.*
 import kreuzberg.testcore.TestBase
 
 class TrHtmlTest extends TestBase {

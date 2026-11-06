@@ -3,7 +3,6 @@ package kreuzberg.examples.showcase.pages
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.Button
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.extras.SimpleRouted
 
 case class SimpleText(text: String) extends SimpleComponentBase {

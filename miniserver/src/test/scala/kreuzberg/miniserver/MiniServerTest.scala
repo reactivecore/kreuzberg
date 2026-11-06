@@ -3,7 +3,6 @@ package kreuzberg.miniserver
 import kreuzberg.testcore.{ShutdownSupport, TestBase}
 import scalatags.Text.tags2
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.*
 import kreuzberg.rpc.{Dispatcher, UnknownCallError}
 import org.slf4j.LoggerFactory
