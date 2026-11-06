@@ -22,7 +22,7 @@ case class AssetPaths(
 
     locateAsset(ensureSlash, deploymentType)
       .map { location =>
-        val hash = location.hashSha256()
+        val hash = location.hashSha256(deploymentType)
         AssetPaths.AssetUrlPrefix + asset + s"?hash=${hash}"
       }
       .getOrElse(AssetPaths.AssetUrlPrefix + asset)
