@@ -3,7 +3,6 @@ package kreuzberg.examples.showcase.pages
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.Button
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.extras.{SimpleRouted, UrlPath}
 import kreuzberg.extras.forms.{Form, FormComponent}
 import kreuzberg.extras.tables.{GenericTableComponent, Tabular, UseTableColumn}

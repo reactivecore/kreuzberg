@@ -5,7 +5,6 @@ import kreuzberg.*
 import kreuzberg.extras.UrlResource
 import kreuzberg.miniserver.DeploymentConfig
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.testcore.TestBase
 
 import java.util.concurrent.atomic.AtomicReference

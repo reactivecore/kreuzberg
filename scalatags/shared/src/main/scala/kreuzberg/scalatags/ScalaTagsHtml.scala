@@ -1,7 +1,6 @@
 package kreuzberg.scalatags
 import kreuzberg.{Component, FlatHtmlBuilder, Html, Identifier}
 import scalatags.Text.TypedTag
-import scalatags.Text.all.*
 
 import java.io.Writer
 import scala.language.implicitConversions

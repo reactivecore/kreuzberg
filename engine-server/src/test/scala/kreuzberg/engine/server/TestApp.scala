@@ -5,8 +5,7 @@ import kreuzberg.extras.*
 import kreuzberg.i18n.{Translations, tr}
 import org.scalajs.dom.KeyboardEvent
 import kreuzberg.miniserver.*
-import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.{id as idAttr, *}
+import kreuzberg.scalatags.{id as idAttr, *}
 import _root_.scalatags.Text.tags2.nav
 
 import scala.concurrent.duration.DurationInt

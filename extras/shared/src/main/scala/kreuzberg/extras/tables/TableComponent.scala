@@ -3,7 +3,6 @@ package kreuzberg.extras.tables
 import kreuzberg.*
 import kreuzberg.extras.ScalaTagHelpers.{cssClasses, cssClassesWithOverride}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 /** A Component which renders a table from data and allows the user to sort. */
 class TableComponent(
@@ -102,7 +101,7 @@ object TableComponent {
       } else {
         ()
       }
-      all.span(
+      span(
         cssClasses(options.flipperButtonClasses),
         clickableModifier,
         columnName,

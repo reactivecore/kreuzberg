@@ -4,7 +4,6 @@ import kreuzberg.*
 import kreuzberg.extras.SimpleRouted
 import kreuzberg.i18n.LocalizedContent
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 /** A Markdown file per locale, rendered on the server (see `showcaseContent`). */
 object AboutPage extends SimpleComponentBase with SimpleRouted {

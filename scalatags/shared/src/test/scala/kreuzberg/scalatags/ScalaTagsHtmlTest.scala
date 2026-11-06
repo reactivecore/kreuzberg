@@ -1,7 +1,6 @@
 package kreuzberg.scalatags
 import kreuzberg.{Assembler, Html, Identifier, SimpleComponentBase, SimpleContext, SimpleHtml}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.testcore.TestBase
 
 class ScalaTagsHtmlTest extends TestBase {

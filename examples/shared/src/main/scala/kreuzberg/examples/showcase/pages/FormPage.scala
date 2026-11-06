@@ -3,7 +3,6 @@ package kreuzberg.examples.showcase.pages
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.ValidatingTextInput
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.extras.SimpleRouted
 
 import scala.util.Try

@@ -2,7 +2,6 @@ package kreuzberg.extras
 
 import kreuzberg.*
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 object Router {
 

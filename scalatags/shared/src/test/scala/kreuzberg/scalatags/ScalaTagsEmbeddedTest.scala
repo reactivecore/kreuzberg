@@ -2,7 +2,6 @@ package kreuzberg.scalatags
 
 import kreuzberg.*
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.testcore.TestBase
 
 class ScalaTagsEmbeddedTest extends TestBase {

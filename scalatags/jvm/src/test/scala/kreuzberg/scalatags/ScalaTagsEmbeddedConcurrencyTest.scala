@@ -1,7 +1,6 @@
 package kreuzberg.scalatags
 
 import kreuzberg.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.testcore.TestBase
 
 import java.util.concurrent.{Callable, Executors, TimeUnit}

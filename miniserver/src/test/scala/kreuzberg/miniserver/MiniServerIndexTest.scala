@@ -31,14 +31,14 @@ class MiniServerIndexTest extends TestBase {
   }
 
   it should "detect lang in root attributes" in {
-    import kreuzberg.scalatags.all.*
+    import kreuzberg.scalatags.*
     Index.hasLangAttribute(Seq(lang := "en")) shouldBe true
     Index.hasLangAttribute(Seq(attr("data-x") := "1", cls := "dark")) shouldBe false
     Index.hasLangAttribute(Nil) shouldBe false
   }
 
   it should "still work with a conflicting lang (only logging an error)" in {
-    import kreuzberg.scalatags.all.*
+    import kreuzberg.scalatags.*
     val server = new MiniServer(
       MiniServerConfig(
         DeploymentConfig(htmlRootAttributes = Seq(lang := "en")),

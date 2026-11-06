@@ -4,7 +4,6 @@ import kreuzberg.*
 import kreuzberg.extras.UrlResource
 import kreuzberg.i18n.{ContentPlatform, LocalizedContent, Translations}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.testcore.TestBase
 
 import scala.concurrent.duration.*

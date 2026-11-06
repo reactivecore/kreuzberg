@@ -1,6 +1,5 @@
 package kreuzberg.extras
 
-import scalatags.Text.all.*
 import kreuzberg.*
 import kreuzberg.scalatags.*
 import org.scalajs.dom.Event

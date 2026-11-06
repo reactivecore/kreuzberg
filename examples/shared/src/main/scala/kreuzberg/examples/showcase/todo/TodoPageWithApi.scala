@@ -5,7 +5,6 @@ import kreuzberg.examples.showcase.components.{Button, TextInput}
 import kreuzberg.examples.showcase.*
 import kreuzberg.extras.{LazyLoader, SimpleRouted}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 import scala.concurrent.Future
 

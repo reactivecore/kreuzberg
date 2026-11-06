@@ -3,7 +3,6 @@ package kreuzberg.examples.showcase.todo
 import kreuzberg.*
 import kreuzberg.examples.showcase.components.{Button, TextInput}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 /** A Simple form which allows to add elements to the todo list. */
 case class TodoAdder(

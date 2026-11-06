@@ -4,7 +4,6 @@ import kreuzberg.examples.showcase.components.{Button, Label}
 import kreuzberg.extras.forms.{Form, FormComponent, FormField, Generator, UseField, UseValidator}
 import kreuzberg.{Html, Model, SimpleComponentBase, SimpleContext}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import kreuzberg.extras.{Codec, SimpleRouted, Validator}
 
 object ExtendedFormPage extends SimpleComponentBase with SimpleRouted {

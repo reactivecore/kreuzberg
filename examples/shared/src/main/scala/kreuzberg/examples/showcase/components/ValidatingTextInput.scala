@@ -2,7 +2,6 @@ package kreuzberg.examples.showcase.components
 
 import kreuzberg.*
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 
 case class ErrorShower(model: Model[Option[String]]) extends SimpleComponentBase {
 

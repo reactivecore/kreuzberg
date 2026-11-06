@@ -2,7 +2,6 @@ package kreuzberg.scalatags
 
 import kreuzberg.{SimpleComponentBase, SimpleContext, Subscribeable}
 import kreuzberg.scalatags.*
-import kreuzberg.scalatags.all.*
 import scala.language.implicitConversions
 
 /**
