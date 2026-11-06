@@ -179,7 +179,7 @@ class MiniServer(
 
   /** Endpoint handler for content (loaded once at construction, fails fast on missing default files). */
   val contentHandler: Option[MiniServerEndpoint] =
-    config.content.map(c => ContentProvider.contentEndpoint(ContentProvider.load(c)))
+    config.content.map(c => ContentProvider.contentEndpoint(c.provider))
 }
 
 object MiniServer {
