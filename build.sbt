@@ -47,7 +47,7 @@ val isIntelliJ = {
 
 val scalaTagsVersion             = "0.13.1"
 val scalatestVersion             = "3.2.20"
-val logbackVersion               = "1.6.6"
+val logbackVersion               = "1.6.7"
 val slf4jVersion                 = "2.0.20"
 val scalaJsDomVersion            = "2.8.1"
 val scalaJsWeakReferencesVersion = "1.0.0"
@@ -216,10 +216,10 @@ lazy val markdown = (project in file("markdown"))
   .settings(
     name := "kreuzberg-markdown",
     libraryDependencies ++= Seq(
-      "com.vladsch.flexmark" % "flexmark"                 % flexmarkVersion,
-      "com.vladsch.flexmark" % "flexmark-ext-attributes"  % flexmarkVersion,
-      "com.vladsch.flexmark" % "flexmark-ext-definition"  % flexmarkVersion,
-      "com.vladsch.flexmark" % "flexmark-ext-tables"      % flexmarkVersion
+      "com.vladsch.flexmark" % "flexmark"                % flexmarkVersion,
+      "com.vladsch.flexmark" % "flexmark-ext-attributes" % flexmarkVersion,
+      "com.vladsch.flexmark" % "flexmark-ext-definition" % flexmarkVersion,
+      "com.vladsch.flexmark" % "flexmark-ext-tables"     % flexmarkVersion
     ),
     publishSettings
   )
